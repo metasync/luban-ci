@@ -15,6 +15,8 @@ spec:
       value: "luban-ci"
     - name: stack_tag
       value: "al2023"
+    - name: sub_path
+      value: ""
 
   volumeClaimTemplates:
   - metadata:
@@ -42,7 +44,7 @@ spec:
         # Configure git credentials
         git config --global credential.helper store
         echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
-        
+
         echo "Cloning ${REPO_URL}..."
         git clone ${REPO_URL} /workdir/repo
         cd /workdir/repo
@@ -68,16 +70,29 @@ spec:
 
   - name: build-push
     container:
-      image: registry.k8s.io/buildpacks/kpack/kp:0.14.0
+      image: kpack/kp:latest
       command: [sh, -c]
       args:
       - |
-        # Trigger kpack build
-        echo "Triggering kpack build for {{workflow.parameters.app_name}}..."
-        kp image trigger {{workflow.parameters.app_name}} \
-          --commit {{workflow.parameters.revision}} \
-          --wait \
-          --namespace luban-ci
+        # Create or Update kpack Image resource and wait for build
+        echo "Upserting kpack Image for {{workflow.parameters.app_name}}..."
+        
+        # Prepare optional flags
+        SUB_PATH="{{workflow.parameters.sub_path}}"
+        SUB_PATH_FLAG=""
+        if [ -n "$SUB_PATH" ]; then
+          SUB_PATH_FLAG="--sub-path $SUB_PATH"
+        fi
+
+        kp image save {{workflow.parameters.app_name}} \
+          --tag quay.io/{{workflow.parameters.quay_namespace}}/{{workflow.parameters.app_name}} \
+          --builder luban-builder \
+          --git {{workflow.parameters.repo_url}} \
+          --git-revision {{workflow.parameters.revision}} \
+          $SUB_PATH_FLAG \
+          --service-account luban-ci-sa \
+          --namespace luban-ci \
+          --wait
       volumeMounts:
       - name: workdir
         mountPath: /workdir

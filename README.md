@@ -6,7 +6,9 @@ Luban CI is a GitOps-based Continuous Integration system running on Kubernetes, 
 
 - **Kubernetes-Native**: Runs entirely on Kubernetes (Argo Workflows).
 - **GitOps**: Pipeline definitions and configuration managed as code.
-- **Cloud Native Buildpacks**: Uses `pack` to build OCI-compliant images without writing Dockerfiles.
+- **Cloud Native Buildpacks (CNB)**:
+  - **kpack (Recommended)**: Kubernetes-native build service.
+  - **pack (Legacy)**: Supports Docker-in-Docker (DinD) execution.
 - **Secure**:
   - Non-root container execution (UID 1000).
   - Minimal base images (Amazon Linux 2023 Minimal).
@@ -17,6 +19,7 @@ Luban CI is a GitOps-based Continuous Integration system running on Kubernetes, 
 ## Prerequisites
 
 - **Kubernetes Cluster**: OrbStack (recommended for local) or any K8s cluster.
+  - *Note: kpack must be installed on the cluster (managed by `luban-bootstrapper`).*
 - **Tools**:
   - `kubectl`
   - `pack` CLI
@@ -79,10 +82,17 @@ Trigger the end-to-end CI pipeline (Checkout -> Build -> Push):
 ```bash
 make pipeline-run
 ```
+*Note: This defaults to the kpack workflow (`pipeline-run-kpack`). Use `make pipeline-run-dind` for the DinD version.*
 
 Watch the workflow status:
 ```bash
 kubectl get wf -n luban-ci -w
+```
+
+### Check Build Logs
+View the logs of the latest kpack build:
+```bash
+make pipeline-logs
 ```
 
 ### Test Result

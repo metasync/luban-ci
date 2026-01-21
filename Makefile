@@ -151,6 +151,10 @@ pipeline-run-kpack: ## Trigger the kpack CI Workflow
 	@kubectl create -f manifests/ci-kpack-workflow.yaml
 	@echo "Workflow started. Watch status with: kubectl get wf -n $(K8S_NAMESPACE) -w"
 
+pipeline-logs: ## Show logs for the latest kpack build of the app
+	@echo "Fetching logs for $(APP_NAME) in $(K8S_NAMESPACE)..."
+	@kp build logs $(APP_NAME) -n $(K8S_NAMESPACE)
+
 pipeline-clean: ## Delete all workflows
 	@kubectl delete wf --all -n $(K8S_NAMESPACE)
 
