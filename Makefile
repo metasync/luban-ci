@@ -137,13 +137,13 @@ pipeline-clean: ## Delete all workflows
 
 test: ## Run local test of the sample app
 	@echo "Testing Sample App..."
-	@docker pull $(REGISTRY_SERVER)/$(QUAY_NAMESPACE)/sample-app:$(TAG_PREFIX)
-	@docker rm -f sample-app-test || true
-	@docker run -d -p 8080:8080 --name sample-app-test $(REGISTRY_SERVER)/$(QUAY_NAMESPACE)/sample-app:$(TAG_PREFIX)
-	@sleep 2
-	@curl -v http://localhost:8080/
+	@docker pull $(REGISTRY_SERVER)/$(QUAY_NAMESPACE)/$(APP_NAME):$(APP_REVISION)
+	@docker rm -f $(APP_NAME)-test || true
+	@docker run -d -p 8080:8080 --name $(APP_NAME)-test $(REGISTRY_SERVER)/$(QUAY_NAMESPACE)/$(APP_NAME):$(APP_REVISION)
+	@sleep 5
+	@curl -v http://127.0.0.1:8080/
 	@echo "Test passed."
-	@docker rm -f sample-app-test
+	@docker rm -f $(APP_NAME)-test
 
 clean: pipeline-clean ## Cleanup local artifacts
 	@echo "Cleaning up..."
