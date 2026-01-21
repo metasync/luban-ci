@@ -15,7 +15,7 @@ spec:
     - name: app_name
       value: "sample-app"
     - name: quay_namespace
-      value: "metasync" # Default namespace on Quay.io
+      value: "luban-ci" # Default namespace on Quay.io
 
   volumeClaimTemplates:
   - metadata:
