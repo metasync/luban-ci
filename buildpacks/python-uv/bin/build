@@ -9,10 +9,24 @@ echo "---> Luban Python uv Buildpack"
 uv_layer="$CNB_LAYERS_DIR/uv"
 mkdir -p "$uv_layer/bin"
 
-# Check if uv is cached, if not download
-if [[ ! -f "$uv_layer/bin/uv" ]]; then
-    echo "Downloading uv..."
-    UV_VERSION="0.9.26"
+# Determine uv version
+DEFAULT_UV_VERSION="0.9.26"
+UV_VERSION="$DEFAULT_UV_VERSION"
+
+if [[ -f ".uv-version" ]]; then
+    UV_VERSION=$(cat .uv-version | tr -d '[:space:]')
+    echo "User requested uv version: $UV_VERSION"
+fi
+
+# Check cached version
+CACHED_VERSION=""
+if [[ -f "$uv_layer/version" ]]; then
+    CACHED_VERSION=$(cat "$uv_layer/version")
+fi
+
+# Check if uv is cached and version matches, if not download
+if [[ "$CACHED_VERSION" != "$UV_VERSION" ]] || [[ ! -f "$uv_layer/bin/uv" ]]; then
+    echo "Installing uv $UV_VERSION..."
     ARCH=$(uname -m)
     if [[ "$ARCH" == "x86_64" ]]; then
         UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-musl.tar.gz"
@@ -23,11 +37,14 @@ if [[ ! -f "$uv_layer/bin/uv" ]]; then
         exit 1
     fi
     
+    # Download and extract
     wget -O- "$UV_URL" | tar -xz -C "$uv_layer/bin" --strip-components=1
     
+    # Save version for caching
+    echo "$UV_VERSION" > "$uv_layer/version"
     echo "uv installed."
 else
-    echo "Using cached uv"
+    echo "Using cached uv $UV_VERSION"
 fi
 
 # Write layer metadata for uv
