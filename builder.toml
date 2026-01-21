@@ -5,16 +5,20 @@ description = "Luban CI Builder"
   version = "0.0.1"
 
 [lifecycle]
-  version = "0.20.5"
+  uri = "cache/lifecycle.tgz"
 
 [[order]]
   [[order.group]]
     id = "luban-ci/python-uv"
     version = "0.0.1"
 
+[[targets]]
+  os = "linux"
+  arch = "amd64"
+
 [build]
-  image = "luban-ci/build:latest"
+  image = "quay.io/luban-ci/luban-build:al2023"
 
 [run]
   [[run.images]]
-    image = "luban-ci/run:latest"
+    image = "quay.io/luban-ci/luban-run:al2023"

@@ -32,7 +32,7 @@ A workflow template must be designed to execute the following steps:
 1.  **Checkout:** Clone the source code repository.
 2.  **Language Detection / Configuration:** Determine the build strategy based on repository content or configuration.
 3.  **Build & Publish:**
-    -   Use `pack` CLI to build the OCI container image.
+    -   Use `pack` CLI to build the OCI container image (via Docker-in-Docker sidecar).
     -   Push the image to Quay.io.
     -   **Constraint:** Must use the custom Buildpack ecosystem defined in Section 4.
 

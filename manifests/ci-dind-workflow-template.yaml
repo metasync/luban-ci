@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
-kind: Workflow
+kind: WorkflowTemplate
 metadata:
-  generateName: luban-ci-
+  name: luban-ci-dind-template
   namespace: luban-ci
 spec:
   entrypoint: ci-pipeline
@@ -9,13 +9,12 @@ spec:
   arguments:
     parameters:
     - name: repo_url
-      value: "https://github.com/metasync/luban-ci.git"
     - name: revision
-      value: "main"
     - name: app_name
-      value: "sample-app"
     - name: quay_namespace
-      value: "luban-ci" # Default namespace on Quay.io
+      value: "luban-ci"
+    - name: stack_tag
+      value: "al2023"
 
   volumeClaimTemplates:
   - metadata:
@@ -69,10 +68,15 @@ spec:
 
   - name: build-push
     container:
-      image: buildpacksio/pack:0.32.1
-      command: [sh, -c]
+      image: ubuntu:22.04
+      command: [bash, -c]
       args:
       - |
+        apt-get update && apt-get install -y curl ca-certificates
+        
+        # Install pack
+        curl -sSL "https://github.com/buildpacks/pack/releases/download/v0.32.1/pack-v0.32.1-linux.tgz" | tar -C /usr/local/bin/ -xzv pack
+        
         echo "Building {{workflow.parameters.app_name}}..."
         # Set PACK_HOME to a writable location
         export PACK_HOME=/workdir/.pack
@@ -81,7 +85,8 @@ spec:
         # Using the builder image from Quay
         pack build quay.io/{{workflow.parameters.quay_namespace}}/{{workflow.parameters.app_name}}:{{workflow.parameters.revision}} \
           --path /workdir/repo/{{workflow.parameters.app_name}} \
-          --builder quay.io/{{workflow.parameters.quay_namespace}}/luban-builder:latest \
+          --builder quay.io/{{workflow.parameters.quay_namespace}}/luban-builder:{{workflow.parameters.stack_tag}} \
+          --run-image quay.io/{{workflow.parameters.quay_namespace}}/luban-run:{{workflow.parameters.stack_tag}} \
           --publish
       env:
       - name: DOCKER_HOST

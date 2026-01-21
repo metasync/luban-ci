@@ -1,4 +1,0 @@
-[stack]
-id = "io.buildpacks.stacks.luban"
-build-image = "luban-ci/build:latest"
-run-image = "luban-ci/run:latest"
