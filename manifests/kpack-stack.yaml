@@ -1,0 +1,10 @@
+apiVersion: kpack.io/v1alpha2
+kind: ClusterStack
+metadata:
+  name: luban-stack
+spec:
+  id: "io.buildpacks.stacks.luban"
+  buildImage:
+    image: "quay.io/luban-ci/luban-build:al2023"
+  runImage:
+    image: "quay.io/luban-ci/luban-run:al2023"

@@ -1,0 +1,15 @@
+apiVersion: kpack.io/v1alpha2
+kind: Image
+metadata:
+  name: sample-app
+  namespace: luban-ci
+spec:
+  tag: quay.io/luban-ci/sample-app
+  serviceAccountName: luban-ci-sa
+  builder:
+    name: luban-builder
+    kind: Builder
+  source:
+    git:
+      url: https://github.com/luban-ci/sample-app
+      revision: main

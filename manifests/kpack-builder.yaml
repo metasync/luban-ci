@@ -1,0 +1,24 @@
+apiVersion: kpack.io/v1alpha2
+kind: ClusterStore
+metadata:
+  name: luban-store
+spec:
+  sources:
+  - image: quay.io/luban-ci/python-uv:0.0.1
+---
+apiVersion: kpack.io/v1alpha2
+kind: Builder
+metadata:
+  name: luban-builder
+  namespace: luban-ci
+spec:
+  tag: quay.io/luban-ci/luban-kpack-builder:al2023
+  stack:
+    name: luban-stack
+    kind: ClusterStack
+  store:
+    name: luban-store
+    kind: ClusterStore
+  order:
+  - group:
+    - id: luban-ci/python-uv

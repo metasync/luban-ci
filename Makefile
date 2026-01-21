@@ -25,6 +25,7 @@ help: ## Show this help message
 
 all: secrets \
     stack-push \
+    buildpack-package \
     builder-push \
     pipeline-deploy ## Setup secrets, push images (if needed), and deploy pipeline
 
@@ -48,6 +49,13 @@ secrets: ## Create/Update Kubernetes secrets from env files
 		--from-literal=username="$(GITHUB_USERNAME)" \
 		--from-literal=token="$(GITHUB_TOKEN)"
 	@echo "Secrets setup complete."
+
+# --- Buildpack Management ---
+
+buildpack-package: ## Package and publish the custom buildpack to Quay.io
+	@echo "Packaging Buildpack..."
+	@cd buildpacks/python-uv && pack buildpack package $(BUILDPACK_IMAGE) --config package.toml --publish --target $(PLATFORM)
+	@echo "Buildpack published: $(BUILDPACK_IMAGE)"
 
 # --- Stack Management ---
 
@@ -118,16 +126,29 @@ builder-push: ## Check remote, build (if needed), tag and push Builder Image
 
 # --- Pipeline Management ---
 
-pipeline-deploy: ## Deploy Argo Workflow Manifests
-	@echo "Deploying Pipeline Manifests..."
+pipeline-deploy: ## Deploy Argo Workflow Template and RBAC
+	@echo "Deploying Workflow RBAC..."
 	@kubectl apply -f manifests/pipeline-sa.yaml
+	@echo "Deploying kpack Stack and Builder..."
+	@kubectl apply -f manifests/kpack-stack.yaml
+	@kubectl apply -f manifests/kpack-builder.yaml
+	@echo "Deploying Workflow Templates..."
 	@kubectl apply -f manifests/ci-dind-workflow-template.yaml
+	@kubectl apply -f manifests/ci-kpack-workflow-template.yaml
 	@echo "Pipeline deployed."
 
-pipeline-run: ## Trigger the CI Workflow
-	@echo "Triggering CI Workflow..."
+pipeline-run: pipeline-run-kpack ## Trigger the kpack CI Workflow (default)
+
+pipeline-run-dind: ## Trigger the DinD CI Workflow
+	@echo "Triggering DinD CI Workflow..."
 	@kubectl delete wf --all -n $(K8S_NAMESPACE)
 	@kubectl create -f manifests/ci-dind-workflow.yaml
+	@echo "Workflow started. Watch status with: kubectl get wf -n $(K8S_NAMESPACE) -w"
+
+pipeline-run-kpack: ## Trigger the kpack CI Workflow
+	@echo "Triggering kpack CI Workflow..."
+	@kubectl delete wf --all -n $(K8S_NAMESPACE)
+	@kubectl create -f manifests/ci-kpack-workflow.yaml
 	@echo "Workflow started. Watch status with: kubectl get wf -n $(K8S_NAMESPACE) -w"
 
 pipeline-clean: ## Delete all workflows
