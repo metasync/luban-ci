@@ -1,0 +1,110 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: luban-ci-
+  namespace: luban-ci
+spec:
+  entrypoint: ci-pipeline
+  serviceAccountName: luban-ci-sa
+  arguments:
+    parameters:
+    - name: repo_url
+      value: "https://github.com/metasync/luban-ci.git"
+    - name: revision
+      value: "main"
+    - name: app_name
+      value: "sample-app"
+    - name: quay_namespace
+      value: "metasync" # Default namespace on Quay.io
+
+  volumeClaimTemplates:
+  - metadata:
+      name: workdir
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+
+  templates:
+  - name: ci-pipeline
+    steps:
+    - - name: checkout
+        template: git-checkout
+    - - name: build-and-push
+        template: build-push
+
+  - name: git-checkout
+    container:
+      image: alpine/git
+      command: [sh, -c]
+      args:
+      - |
+        # Configure git credentials
+        git config --global credential.helper store
+        echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
+        
+        echo "Cloning ${REPO_URL}..."
+        git clone ${REPO_URL} /workdir/repo
+        cd /workdir/repo
+        git checkout ${REVISION}
+      env:
+      - name: GITHUB_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: github-creds
+            key: username
+      - name: GITHUB_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: github-creds
+            key: token
+      - name: REPO_URL
+        value: "{{workflow.parameters.repo_url}}"
+      - name: REVISION
+        value: "{{workflow.parameters.revision}}"
+      volumeMounts:
+      - name: workdir
+        mountPath: /workdir
+
+  - name: build-push
+    container:
+      image: buildpacksio/pack:0.32.1
+      command: [sh, -c]
+      args:
+      - |
+        echo "Building {{workflow.parameters.app_name}}..."
+        # Set PACK_HOME to a writable location
+        export PACK_HOME=/workdir/.pack
+        
+        # Build and push
+        # Using the builder image from Quay
+        pack build quay.io/{{workflow.parameters.quay_namespace}}/{{workflow.parameters.app_name}}:{{workflow.parameters.revision}} \
+          --path /workdir/repo/{{workflow.parameters.app_name}} \
+          --builder quay.io/{{workflow.parameters.quay_namespace}}/luban-builder:latest \
+          --publish
+      env:
+      - name: DOCKER_HOST
+        value: "tcp://localhost:2375"
+      volumeMounts:
+      - name: workdir
+        mountPath: /workdir
+      - name: docker-config
+        mountPath: /root/.docker/
+    sidecars:
+    - name: dind
+      image: docker:24-dind
+      securityContext:
+        privileged: true
+      env:
+      - name: DOCKER_TLS_CERTDIR
+        value: ""
+      mirrorVolumeMounts: true
+
+    volumes:
+    - name: docker-config
+      secret:
+        secretName: quay-creds
+        items:
+        - key: .dockerconfigjson
+          path: config.json

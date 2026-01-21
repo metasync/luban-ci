@@ -1,0 +1,20 @@
+description = "Luban CI Builder"
+
+[[buildpacks]]
+  uri = "buildpacks/python-uv"
+  version = "0.0.1"
+
+[lifecycle]
+  version = "0.20.5"
+
+[[order]]
+  [[order.group]]
+    id = "luban-ci/python-uv"
+    version = "0.0.1"
+
+[build]
+  image = "luban-ci/build:latest"
+
+[run]
+  [[run.images]]
+    image = "luban-ci/run:latest"

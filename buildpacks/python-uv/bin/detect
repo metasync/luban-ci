@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+if [[ -f ".python-version" ]] || \
+   [[ -f "pyproject.toml" ]] || \
+   [[ -f "uv.lock" ]]; then
+    exit 0
+else
+    exit 100
+fi

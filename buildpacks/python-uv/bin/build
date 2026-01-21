@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+echo "---> Luban Python uv Buildpack"
+
+# CNB_LAYERS_DIR, CNB_PLATFORM_DIR, CNB_BP_PLAN_PATH are provided by the lifecycle
+
+# 1. Install uv
+uv_layer="$CNB_LAYERS_DIR/uv"
+mkdir -p "$uv_layer/bin"
+
+# Check if uv is cached, if not download
+if [[ ! -f "$uv_layer/bin/uv" ]]; then
+    echo "Downloading uv..."
+    UV_VERSION="0.9.26"
+    ARCH=$(uname -m)
+    if [[ "$ARCH" == "x86_64" ]]; then
+        UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-musl.tar.gz"
+    elif [[ "$ARCH" == "aarch64" ]]; then
+        UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-aarch64-unknown-linux-musl.tar.gz"
+    else
+        echo "Unsupported architecture: $ARCH"
+        exit 1
+    fi
+    
+    wget -O- "$UV_URL" | tar -xz -C "$uv_layer/bin" --strip-components=1
+    
+    echo "uv installed."
+else
+    echo "Using cached uv"
+fi
+
+# Write layer metadata for uv
+# launch=true ensures uv is available in the run image
+cat <<EOF > "$uv_layer.toml"
+[types]
+cache = true
+build = true
+launch = true
+EOF
+
+export PATH="$uv_layer/bin:$PATH"
+
+# 2. Configure uv paths
+# We want Python toolchains to be cached and available at launch
+python_layer="$CNB_LAYERS_DIR/python"
+export UV_PYTHON_INSTALL_DIR="$python_layer"
+
+# Write layer metadata for python
+cat <<EOF > "$python_layer.toml"
+[types]
+cache = true
+build = true
+launch = true
+EOF
+
+# UV Cache for package downloads
+uv_cache_layer="$CNB_LAYERS_DIR/uv_cache"
+export UV_CACHE_DIR="$uv_cache_layer"
+
+# Write layer metadata for uv cache (only needed for build)
+cat <<EOF > "$uv_cache_layer.toml"
+[types]
+cache = true
+build = true
+EOF
+
+# 3. Setup Virtual Environment Layer (Cached)
+venv_layer="$CNB_LAYERS_DIR/venv"
+mkdir -p "$venv_layer"
+# Create symlink .venv -> venv_layer to persist venv across builds
+rm -rf .venv
+ln -s "$venv_layer" .venv
+
+cat <<EOF > "$venv_layer.toml"
+[types]
+cache = true
+build = true
+launch = true
+EOF
+
+# 4. Install Python and Dependencies
+echo "Installing dependencies with uv..."
+
+# Ensure we are in the app directory (pwd is usually app dir)
+# If uv.lock exists, use frozen, otherwise generate lock
+if [[ -f "uv.lock" ]]; then
+    uv sync --frozen --no-install-project
+else
+    uv sync --no-install-project
+fi
+
+# 5. Set launch configuration
+# We default to using 'uv run' which handles venv activation and python path
+# But we need to define what to run.
+# Ideally read from Procfile, but for now we default to what the user requested for the sample app.
+# Or better: inspect pyproject.toml scripts?
+
+# For flexibility, let's check if there is a Procfile.
+if [[ -f "Procfile" ]]; then
+    # Parse Procfile (simple grep/sed)
+    web_cmd=$(grep "^web:" Procfile | cut -d: -f2- | xargs)
+    if [[ -n "$web_cmd" ]]; then
+        command="$web_cmd"
+    fi
+fi
+
+# Fallback for the sample app
+if [[ -z "$command" ]]; then
+    command="uv run uvicorn main:app --host 0.0.0.0 --port 8080"
+fi
+
+# Use explicit list for command to satisfy TOML requirements and ensure correct execution
+cat <<EOF > "$CNB_LAYERS_DIR/launch.toml"
+[[processes]]
+type = "web"
+command = ["/bin/bash", "-c", "$command"]
+default = true
+EOF
+
+echo "Build complete."
