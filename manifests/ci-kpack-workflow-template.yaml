@@ -17,6 +17,8 @@ spec:
       value: "al2023"
     - name: sub_path
       value: ""
+    - name: infra_repo_url
+      value: "https://github.com/metasync/luban-ci.git"
 
   volumeClaimTemplates:
   - metadata:
@@ -34,6 +36,8 @@ spec:
         template: git-checkout
     - - name: build-and-push
         template: build-push
+    - - name: update-infra
+        template: git-update
 
   - name: git-checkout
     container:
@@ -85,7 +89,7 @@ spec:
         fi
 
         kp image save {{workflow.parameters.app_name}} \
-          --tag quay.io/{{workflow.parameters.quay_namespace}}/{{workflow.parameters.app_name}} \
+          --tag quay.io/{{workflow.parameters.quay_namespace}}/{{workflow.parameters.app_name}}:{{workflow.parameters.revision}} \
           --builder luban-builder \
           --git {{workflow.parameters.repo_url}} \
           --git-revision {{workflow.parameters.revision}} \
@@ -93,6 +97,56 @@ spec:
           --service-account luban-ci-sa \
           --namespace luban-ci \
           --wait
+      volumeMounts:
+      - name: workdir
+        mountPath: /workdir
+
+  - name: git-update
+    container:
+      image: alpine/git
+      command: [sh, -c]
+      args:
+      - |
+        # Configure git credentials
+        git config --global credential.helper store
+        echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
+        
+        git config --global user.email "ci@luban.com"
+        git config --global user.name "Luban CI"
+
+        echo "Cloning ${INFRA_REPO_URL}..."
+        git clone ${INFRA_REPO_URL} /workdir/infra
+        cd /workdir/infra
+        
+        echo "Updating deployment manifest..."
+        sed -i "s|image: quay.io/${QUAY_NAMESPACE}/${APP_NAME}:.*|image: quay.io/${QUAY_NAMESPACE}/${APP_NAME}:${REVISION}|g" manifests/apps/${APP_NAME}/deployment.yaml
+        
+        if git diff --quiet; then
+          echo "No changes to commit."
+        else
+          git add manifests/apps/${APP_NAME}/deployment.yaml
+          git commit -m "Update ${APP_NAME} image tag to ${REVISION}"
+          git push
+        fi
+      env:
+      - name: GITHUB_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: github-creds
+            key: username
+      - name: GITHUB_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: github-creds
+            key: token
+      - name: INFRA_REPO_URL
+        value: "{{workflow.parameters.infra_repo_url}}"
+      - name: APP_NAME
+        value: "{{workflow.parameters.app_name}}"
+      - name: QUAY_NAMESPACE
+        value: "{{workflow.parameters.quay_namespace}}"
+      - name: REVISION
+        value: "{{workflow.parameters.revision}}"
       volumeMounts:
       - name: workdir
         mountPath: /workdir
