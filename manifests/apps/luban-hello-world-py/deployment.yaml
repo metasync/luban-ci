@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: luban-hello-world-py
+  namespace: luban-ci
+  labels:
+    app: luban-hello-world-py
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: luban-hello-world-py
+  template:
+    metadata:
+      labels:
+        app: luban-hello-world-py
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+      - name: app
+        image: quay.io/luban-ci/luban-hello-world-py:main
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
