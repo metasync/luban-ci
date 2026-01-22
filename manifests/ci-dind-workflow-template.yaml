@@ -84,7 +84,7 @@ spec:
         # Build and push
         # Using the builder image from Quay
         pack build quay.io/{{workflow.parameters.quay_namespace}}/{{workflow.parameters.app_name}}:{{workflow.parameters.revision}} \
-          --path /workdir/repo/{{workflow.parameters.app_name}} \
+          --path /workdir/repo \
           --builder quay.io/{{workflow.parameters.quay_namespace}}/luban-builder:{{workflow.parameters.stack_tag}} \
           --run-image quay.io/{{workflow.parameters.quay_namespace}}/luban-run:{{workflow.parameters.stack_tag}} \
           --publish

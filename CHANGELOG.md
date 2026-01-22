@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Sample App**: Moved `sample-app` to a separate repository `luban-hello-world-py`.
+- **Workflow**: Updated CI workflows to point to the new `luban-hello-world-py` repository.
+- **Workflow**: Removed `sub_path` usage in default workflows as the app is now at the repository root.
+
 ## [v0.3.0] - 2026-01-22
 
 ### Added

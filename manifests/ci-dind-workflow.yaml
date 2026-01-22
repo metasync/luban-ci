@@ -9,11 +9,11 @@ spec:
   arguments:
     parameters:
     - name: repo_url
-      value: "https://github.com/metasync/luban-ci.git"
+      value: "https://github.com/metasync/luban-hello-world-py.git"
     - name: revision
       value: "main"
     - name: app_name
-      value: "sample-app"
+      value: "luban-hello-world-py"
     - name: quay_namespace
       value: "luban-ci"
     - name: stack_tag

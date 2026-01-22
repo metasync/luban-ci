@@ -106,5 +106,4 @@ make test
 - `buildpacks/`: Custom Buildpacks source code (e.g., `python-uv`).
 - `stack/`: Dockerfiles for Base, Run, and Build images.
 - `manifests/`: Kubernetes manifests (Argo Workflows, RBAC).
-- `sample-app/`: Sample Python FastAPI application for testing.
 - `Makefile`: Main entry point for all operations.
