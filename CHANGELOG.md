@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Workflow**: Updated CI workflows to point to the new `luban-hello-world-py` repository.
 - **Workflow**: Removed `sub_path` usage in default workflows as the app is now at the repository root.
 
+### Fixed
+- **Testing**: Fixed `make test` failure by updating kpack workflow to tag images with git revision (matching `make test` expectation).
+- **Testing**: Fixed `make test` target to use correct application name and revision.
+
 ## [v0.3.0] - 2026-01-22
 
 ### Added
@@ -36,7 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docs**: Updated documentation to include new testing procedures and configuration options.
 
 ### Fixed
-- **Testing**: Fixed `make test` target to use correct application name and revision.
 - **Testing**: Addressed issues with Docker container cleanup during tests.
 
 ## [v0.1.0] - 2026-01-21

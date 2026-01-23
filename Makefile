@@ -27,7 +27,8 @@ all: secrets \
     stack-push \
     buildpack-package \
     builder-push \
-    pipeline-deploy ## Setup secrets, push images (if needed), and deploy pipeline
+    pipeline-deploy \
+    events-deploy ## Setup secrets, push images, deploy pipeline and events
 
 # --- Secrets Management ---
 
@@ -185,3 +186,158 @@ clean: pipeline-clean ## Cleanup local artifacts
 prune: ## Prune local Docker images
 	@echo "Pruning local Docker images..."
 	@docker image prune -f
+
+# --- Events Management ---
+
+events-deploy: ## Deploy Argo Events (EventBus, EventSource, Sensor)
+	@echo "Deploying Argo Events..."
+	@kubectl apply -f events/eventbus.yaml
+	@kubectl apply -f events/event-source.yaml
+	@kubectl apply -f events/sensor.yaml
+	@kubectl apply -f events/gateway.yaml
+	@echo "Argo Events deployed."
+
+events-webhook-secret: ## Generate and create GitHub webhook secret in K8s
+	@echo "Generating webhook secret for namespace $(K8S_NAMESPACE)..."
+	@SECRET=$$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32); \
+	kubectl delete secret github-webhook-secret -n $(K8S_NAMESPACE) --ignore-not-found; \
+	kubectl create secret generic github-webhook-secret -n $(K8S_NAMESPACE) --from-literal=secret="$$SECRET"; \
+	echo "Webhook secret created in K8s. Use this exact value in GitHub webhook settings:"; \
+	echo "$$SECRET"
+
+events-webhook-create-repo: ## Create a repo webhook via GitHub API (requires GITHUB_TOKEN)
+	@echo "Creating GitHub repo webhook..."
+	@GITHUB_OWNER=$${GITHUB_OWNER:-metasync}; \
+	GITHUB_REPO=$${GITHUB_REPO:-luban-hello-world-py}; \
+	WEBHOOK_URL=$${WEBHOOK_URL:-https://webhook.luban.k8s.orb.local/push}; \
+	SECRET=$$(kubectl get secret github-webhook-secret -n $(K8S_NAMESPACE) -o jsonpath='{.data.secret}' | base64 --decode); \
+	if [ -z "$$GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN is required"; exit 1; fi; \
+	BODY=$$(printf '{"name":"web","active":true,"events":["push"],"config":{"url":"%s","content_type":"json","secret":"%s","insecure_ssl":"0"}}' "$$WEBHOOK_URL" "$$SECRET"); \
+	curl -s -X POST \
+		-H "Authorization: Bearer $$GITHUB_TOKEN" \
+		-H "Accept: application/vnd.github+json" \
+		-H "X-GitHub-Api-Version: 2022-11-28" \
+		https://api.github.com/repos/$$GITHUB_OWNER/$$GITHUB_REPO/hooks \
+		-d "$$BODY"
+
+events-webhook-create-org: ## Create an org webhook via GitHub API (requires admin:org_hook)
+	@echo "Creating GitHub organization webhook..."
+	@GITHUB_ORG=$${GITHUB_ORG:-metasync}; \
+	WEBHOOK_URL=$${WEBHOOK_URL:-https://webhook.luban.k8s.orb.local/push}; \
+	SECRET=$$(kubectl get secret github-webhook-secret -n $(K8S_NAMESPACE) -o jsonpath='{.data.secret}' | base64 --decode); \
+	if [ -z "$$GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN is required and must have admin:org_hook scope"; exit 1; fi; \
+	BODY=$$(printf '{"name":"web","active":true,"events":["push"],"config":{"url":"%s","content_type":"json","secret":"%s","insecure_ssl":"0"}}' "$$WEBHOOK_URL" "$$SECRET"); \
+	curl -s -X POST \
+		-H "Authorization: Bearer $$GITHUB_TOKEN" \
+		-H "Accept: application/vnd.github+json" \
+		-H "X-GitHub-Api-Version: 2022-11-28" \
+		https://api.github.com/orgs/$$GITHUB_ORG/hooks \
+		-d "$$BODY"
+
+events-webhook-test: ## Send signed push payload via gateway to trigger Workflow
+	@echo "Testing signed webhook delivery via gateway..."
+	@GATEWAY_HOSTNAME=$${GATEWAY_HOSTNAME:-webhook.luban.k8s.orb.local}; \
+	GATEWAY_HOST=$${GATEWAY_HOST:-127.0.0.1}; \
+	GATEWAY_PORT=$${GATEWAY_PORT:-8443}; \
+	REPO_URL=$${REPO_URL:-https://github.com/metasync/luban-hello-world-py.git}; \
+	REVISION=$${REVISION:-main}; \
+	APP_NAME=$${APP_NAME:-luban-hello-world-py}; \
+	SECRET=$$(kubectl get secret github-webhook-secret -n $(K8S_NAMESPACE) -o jsonpath='{.data.secret}' | base64 --decode); \
+	BODY=$$(printf '{"ref":"refs/heads/%s","after":"%s","repository":{"clone_url":"%s","name":"%s"}}' "$$REVISION" "$$REVISION" "$$REPO_URL" "$$APP_NAME"); \
+	SIG=$$(printf '%s' "$$BODY" | openssl dgst -sha256 -hmac "$$SECRET" | sed -E 's/^.*= //'); \
+	curl -v -k --resolve "$$GATEWAY_HOSTNAME:$$GATEWAY_PORT:$$GATEWAY_HOST" \
+		-H "Content-Type: application/json" \
+		-H "X-Hub-Signature-256: sha256=$$SIG" \
+		-d "$$BODY" \
+		https://$$GATEWAY_HOSTNAME:$$GATEWAY_PORT/push; \
+	echo "Latest workflow:"; \
+	kubectl get wf -n $(K8S_NAMESPACE) --sort-by=.metadata.creationTimestamp | tail -n 1
+
+gitops-repo-create: ## Create GitOps repo (defaults: org=metasync, name=luban-gitops)
+	@echo "Creating GitOps repository..."
+	@GITHUB_ORG=$${GITHUB_ORG:-metasync}; \
+	GITOPS_REPO_NAME=$${GITOPS_REPO_NAME:-luban-gitops}; \
+	if [ -z "$$GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN is required"; exit 1; fi; \
+	BODY=$$(printf '{"name":"%s","private":false,"auto_init":true}' "$$GITOPS_REPO_NAME"); \
+	curl -s -X POST \
+		-H "Authorization: Bearer $$GITHUB_TOKEN" \
+		-H "Accept: application/vnd.github+json" \
+		-H "X-GitHub-Api-Version: 2022-11-28" \
+		https://api.github.com/orgs/$$GITHUB_ORG/repos \
+		-d "$$BODY"
+
+gitops-repo-create-user: ## Create per-app GitOps repo under the authenticated user
+	@echo "Creating GitOps repository under user account..."
+	@GITOPS_REPO_NAME=$${GITOPS_REPO_NAME:-luban-hello-world-py-gitops}; \
+	if [ -z "$$GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN is required"; exit 1; fi; \
+	BODY=$$(printf '{"name":"%s","private":false,"auto_init":false}' "$$GITOPS_REPO_NAME"); \
+	curl -s -X POST \
+		-H "Authorization: Bearer $$GITHUB_TOKEN" \
+		-H "Accept: application/vnd.github+json" \
+		-H "X-GitHub-Api-Version: 2022-11-28" \
+		https://api.github.com/user/repos \
+		-d "$$BODY"
+
+gitops-repo-push: ## Push argocd and app (kustomize) to per-app GitOps repo
+	@echo "Pushing GitOps content..."
+	@GITHUB_OWNER=$${GITHUB_OWNER:-metasync}; \
+	GITOPS_REPO_NAME=$${GITOPS_REPO_NAME:-luban-hello-world-py-gitops}; \
+	GITOPS_REPO_URL=$${GITOPS_REPO_URL:-https://github.com/$$GITHUB_OWNER/$$GITOPS_REPO_NAME.git}; \
+	TMP_DIR=$$(mktemp -d); \
+	git clone $$GITOPS_REPO_URL $$TMP_DIR/repo; \
+	# Clean any non-kustomize root files
+	rm -f $$TMP_DIR/repo/app/deployment.yaml $$TMP_DIR/repo/app/kustomization.yaml || true; \
+	rm -f $$TMP_DIR/repo/argocd/application.yaml $$TMP_DIR/repo/argocd/kustomization.yaml || true; \
+	mkdir -p $$TMP_DIR/repo/app/base; \
+	if curl -fsS -o $$TMP_DIR/app/base/deployment.yaml https://raw.githubusercontent.com/$$GITHUB_OWNER/$$GITOPS_REPO_NAME/main/app/deployment.yaml; then echo "Fetched existing deployment.yaml"; else \
+	  if [ -f manifests/apps/luban-hello-world-py/deployment.yaml ]; then cp manifests/apps/luban-hello-world-py/deployment.yaml $$TMP_DIR/repo/app/base/; else \
+	    echo "Generating minimal deployment.yaml"; \
+	    cat > $$TMP_DIR/repo/app/base/deployment.yaml <<'EOF'\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: luban-hello-world-py\n  namespace: luban-ci\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: luban-hello-world-py\n  template:\n    metadata:\n      labels:\n        app: luban-hello-world-py\n    spec:\n      containers:\n      - name: app\n        image: quay.io/luban-ci/luban-hello-world-py:main\n        ports:\n        - containerPort: 8080\nEOF\n; fi; fi; \
+	if curl -fsS -o $$TMP_DIR/app/base/service.yaml https://raw.githubusercontent.com/$$GITHUB_OWNER/$$GITOPS_REPO_NAME/main/app/service.yaml; then echo "Fetched existing service.yaml"; else \
+	  if [ -f manifests/apps/luban-hello-world-py/service.yaml ]; then cp manifests/apps/luban-hello-world-py/service.yaml $$TMP_DIR/repo/app/base/; else \
+	    echo "Generating minimal service.yaml"; \
+	    cat > $$TMP_DIR/repo/app/base/service.yaml <<'EOF'\napiVersion: v1\nkind: Service\nmetadata:\n  name: luban-hello-world-py\n  namespace: luban-ci\nspec:\n  type: ClusterIP\n  selector:\n    app: luban-hello-world-py\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\nEOF\n; fi; fi; \
+	printf "resources:\n  - deployment.yaml\n  - service.yaml\n" > $$TMP_DIR/repo/app/base/kustomization.yaml; \
+	mkdir -p $$TMP_DIR/repo/app/overlays/snd $$TMP_DIR/repo/app/overlays/prd; \
+	printf "resources:\n  - ../../base\n" > $$TMP_DIR/repo/app/overlays/snd/kustomization.yaml; \
+	printf "resources:\n  - ../../base\n" > $$TMP_DIR/repo/app/overlays/prd/kustomization.yaml; \
+	mkdir -p $$TMP_DIR/repo/argocd/base $$TMP_DIR/repo/argocd/overlays/snd $$TMP_DIR/repo/argocd/overlays/prd; \
+	printf "apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata:\n  name: luban-hello-world-py\n  namespace: argocd\nspec:\n  project: default\n  source:\n    repoURL: %s\n    targetRevision: main\n    path: app/base\n  destination:\n    server: https://kubernetes.default.svc\n    namespace: luban-ci\n  syncPolicy:\n    automated:\n      prune: true\n      selfHeal: true\n    syncOptions:\n    - CreateNamespace=true\n" "$$GITOPS_REPO_URL" > $$TMP_DIR/repo/argocd/base/application.yaml; \
+	printf "resources:\n  - application.yaml\n" > $$TMP_DIR/repo/argocd/base/kustomization.yaml; \
+	printf "apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata:\n  name: luban-hello-world-py\n  namespace: argocd\nspec:\n  project: devops-snd\n  source:\n    path: app/overlays/snd\n" > $$TMP_DIR/repo/argocd/overlays/snd/application-patch.yaml; \
+	printf "apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata:\n  name: luban-hello-world-py-snd\n  namespace: argocd\nspec:\n  project: devops-snd\n  source:\n    repoURL: %s\n    targetRevision: main\n    path: app/overlays/snd\n  destination:\n    server: https://kubernetes.default.svc\n    namespace: luban-ci\n  syncPolicy:\n    automated:\n      prune: true\n      selfHeal: true\n    syncOptions:\n    - CreateNamespace=true\n" "$$GITOPS_REPO_URL" > $$TMP_DIR/repo/argocd/overlays/snd/application-snd.yaml; \
+	printf "resources:\n  - application-snd.yaml\n" > $$TMP_DIR/repo/argocd/overlays/snd/kustomization.yaml; \
+	printf "apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata:\n  name: luban-hello-world-py\n  namespace: argocd\nspec:\n  project: devops-prd\n  source:\n    path: app/overlays/prd\n" > $$TMP_DIR/repo/argocd/overlays/prd/application-patch.yaml; \
+	printf "apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata:\n  name: luban-hello-world-py-prd\n  namespace: argocd\nspec:\n  project: devops-prd\n  source:\n    repoURL: %s\n    targetRevision: main\n    path: app/overlays/prd\n  destination:\n    server: https://kubernetes.default.svc\n    namespace: luban-ci\n  syncPolicy:\n    automated:\n      prune: true\n      selfHeal: true\n    syncOptions:\n    - CreateNamespace=true\n" "$$GITOPS_REPO_URL" > $$TMP_DIR/repo/argocd/overlays/prd/application-prd.yaml; \
+	printf "resources:\n  - application-prd.yaml\n" > $$TMP_DIR/repo/argocd/overlays/prd/kustomization.yaml; \
+	cd $$TMP_DIR/repo; \
+	git config user.name "Luban CI"; \
+	git config user.email "ci@luban.com"; \
+	git add .; \
+	git commit -m "Update GitOps content (app base/overlays, argocd overlays)"; \
+	if [ -z "$$GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN is required"; exit 1; fi; \
+	GIT_ASKPASS=$$(mktemp); \
+	printf '#!/bin/sh\necho $$GITHUB_TOKEN\n' > $$GIT_ASKPASS; \
+	chmod +x $$GIT_ASKPASS; \
+	GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=$$GIT_ASKPASS git pull --rebase || true; \
+	GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=$$GIT_ASKPASS git push origin main; \
+	echo "GitOps content pushed to $$GITOPS_REPO_URL"
+
+gitops-repo-verify: ## Verify GitOps repo structure
+	@GITHUB_OWNER=$${GITHUB_OWNER:-metasync}; \
+	GITOPS_REPO_NAME=$${GITOPS_REPO_NAME:-luban-hello-world-py-gitops}; \
+	GITOPS_REPO_URL=https://github.com/$$GITHUB_OWNER/$$GITOPS_REPO_NAME.git; \
+	TMP_DIR=$$(mktemp -d); \
+	git clone $$GITOPS_REPO_URL $$TMP_DIR/repo >/dev/null 2>&1; \
+	echo "Tree under app/:"; \
+	find $$TMP_DIR/repo/app -maxdepth 2 -type f -print | sed 's#^.*/repo/##'; \
+	echo "Tree under argocd/:"; \
+	find $$TMP_DIR/repo/argocd -maxdepth 2 -type f -print | sed 's#^.*/repo/##'
+
+argocd-apply-snd: ## Apply Argo CD Application from per-app GitOps snd overlay
+	@GITOPS_REPO_URL=$${GITOPS_REPO_URL:-https://github.com/metasync/luban-hello-world-py-gitops.git}; \
+	printf "apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata:\n  name: luban-hello-world-py-snd\n  namespace: argocd\nspec:\n  project: devops-snd\n  source:\n    repoURL: %s\n    targetRevision: main\n    path: app/overlays/snd\n  destination:\n    server: https://kubernetes.default.svc\n    namespace: luban-ci\n  syncPolicy:\n    automated:\n      prune: true\n      selfHeal: true\n    syncOptions:\n    - CreateNamespace=true\n" "$$GITOPS_REPO_URL" | kubectl apply -f -
+
+argocd-apply-prd: ## Apply Argo CD Application from per-app GitOps prd overlay
+	@GITOPS_REPO_URL=$${GITOPS_REPO_URL:-https://github.com/metasync/luban-hello-world-py-gitops.git}; \
+	printf "apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata:\n  name: luban-hello-world-py-prd\n  namespace: argocd\nspec:\n  project: devops-prd\n  source:\n    repoURL: %s\n    targetRevision: main\n    path: app/overlays/prd\n  destination:\n    server: https://kubernetes.default.svc\n    namespace: luban-ci\n  syncPolicy:\n    automated:\n      prune: true\n      selfHeal: true\n    syncOptions:\n    - CreateNamespace=true\n" "$$GITOPS_REPO_URL" | kubectl apply -f -

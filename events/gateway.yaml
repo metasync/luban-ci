@@ -1,0 +1,55 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: webhook-tls-cert
+  namespace: gateway
+spec:
+  secretName: webhook-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  issuerRef:
+    name: local-ca-issuer
+    kind: Issuer
+  commonName: webhook.luban.k8s.orb.local
+  dnsNames:
+  - webhook.luban.k8s.orb.local
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: webhook-gateway
+  namespace: gateway
+spec:
+  gatewayClassName: envoy
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: webhook.luban.k8s.orb.local
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: webhook-tls
+    allowedRoutes:
+      namespaces:
+        from: All
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: webhook-route
+  namespace: luban-ci
+spec:
+  parentRefs:
+  - name: webhook-gateway
+    namespace: gateway
+  hostnames:
+  - webhook.luban.k8s.orb.local
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: github-event-source-eventsource-svc
+      port: 12000

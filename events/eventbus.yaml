@@ -1,0 +1,9 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+  namespace: luban-ci
+spec:
+  nats:
+    native:
+      auth: token

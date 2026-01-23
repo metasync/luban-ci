@@ -37,14 +37,14 @@ This plan breaks down the implementation of `luban-ci` into iterative, testable 
 2.  `manifests/ci-kpack-workflow-template.yaml`: Workflow using `kp` CLI to trigger builds.
 3.  **Verification:** Trigger kpack builds via Argo Workflows and verify image creation.
 
-## Phase 5: CI Pipeline - Trigger (Argo Events) [Next]
+## Phase 5: CI Pipeline - Trigger (Argo Events) [Completed]
 **Goal:** Connect GitHub events to the Build Workflow.
 **Deliverables:**
 1.  `events/event-source.yaml`: Configuration for GitHub Webhooks.
 2.  `events/sensor.yaml`: Sensor to trigger the Build Workflow on push events.
 3.  **Verification:** Push a commit to a test repo and verify the workflow starts automatically.
 
-## Phase 6: CD Pipeline - Deploy (Argo CD) [Planned]
+## Phase 6: CD Pipeline - Deploy (Argo CD) [Completed]
 **Goal:** Close the loop by updating the deployment when a new image is built.
 **Deliverables:**
 1.  `argocd/application.yaml`: Argo CD Application manifest for the test app.

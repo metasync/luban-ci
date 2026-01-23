@@ -84,6 +84,15 @@ make pipeline-run
 ```
 *Note: This defaults to the kpack workflow (`pipeline-run-kpack`). Use `make pipeline-run-dind` for the DinD version.*
 
+### Webhook Trigger
+The pipeline is configured to run automatically on GitHub push events.
+To test locally (simulate webhook):
+1. Expose the EventSource service:
+   ```bash
+   kubectl port-forward svc/github-event-source-eventsource-svc 12000:12000 -n luban-ci
+   ```
+2. Send a POST request to `http://localhost:12000/push` with `X-GitHub-Event: push` header and JSON payload.
+
 Watch the workflow status:
 ```bash
 kubectl get wf -n luban-ci -w
