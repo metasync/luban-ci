@@ -289,14 +289,9 @@ gitops-repo-push: ## Push argocd and app (kustomize) to per-app GitOps repo
 	rm -f $$TMP_DIR/repo/app/deployment.yaml $$TMP_DIR/repo/app/kustomization.yaml || true; \
 	rm -f $$TMP_DIR/repo/argocd/application.yaml $$TMP_DIR/repo/argocd/kustomization.yaml || true; \
 	mkdir -p $$TMP_DIR/repo/app/base; \
-	if curl -fsS -o $$TMP_DIR/app/base/deployment.yaml https://raw.githubusercontent.com/$$GITHUB_OWNER/$$GITOPS_REPO_NAME/main/app/deployment.yaml; then echo "Fetched existing deployment.yaml"; else \
-	  if [ -f manifests/apps/luban-hello-world-py/deployment.yaml ]; then cp manifests/apps/luban-hello-world-py/deployment.yaml $$TMP_DIR/repo/app/base/; else \
-	    echo "Generating minimal deployment.yaml"; \
-	    cat > $$TMP_DIR/repo/app/base/deployment.yaml <<'EOF'\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: luban-hello-world-py\n  namespace: luban-ci\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: luban-hello-world-py\n  template:\n    metadata:\n      labels:\n        app: luban-hello-world-py\n    spec:\n      containers:\n      - name: app\n        image: quay.io/luban-ci/luban-hello-world-py:main\n        ports:\n        - containerPort: 8080\nEOF\n; fi; fi; \
-	if curl -fsS -o $$TMP_DIR/app/base/service.yaml https://raw.githubusercontent.com/$$GITHUB_OWNER/$$GITOPS_REPO_NAME/main/app/service.yaml; then echo "Fetched existing service.yaml"; else \
-	  if [ -f manifests/apps/luban-hello-world-py/service.yaml ]; then cp manifests/apps/luban-hello-world-py/service.yaml $$TMP_DIR/repo/app/base/; else \
-	    echo "Generating minimal service.yaml"; \
-	    cat > $$TMP_DIR/repo/app/base/service.yaml <<'EOF'\napiVersion: v1\nkind: Service\nmetadata:\n  name: luban-hello-world-py\n  namespace: luban-ci\nspec:\n  type: ClusterIP\n  selector:\n    app: luban-hello-world-py\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\nEOF\n; fi; fi; \
+	echo "Generating minimal deployment and service manifests in app/base"; \
+	cat > $$TMP_DIR/repo/app/base/deployment.yaml <<'EOF'\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: luban-hello-world-py\n  namespace: luban-ci\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: luban-hello-world-py\n  template:\n    metadata:\n      labels:\n        app: luban-hello-world-py\n    spec:\n      containers:\n      - name: app\n        image: quay.io/luban-ci/luban-hello-world-py:main\n        ports:\n        - containerPort: 8080\nEOF\n; \
+	cat > $$TMP_DIR/repo/app/base/service.yaml <<'EOF'\napiVersion: v1\nkind: Service\nmetadata:\n  name: luban-hello-world-py\n  namespace: luban-ci\nspec:\n  type: ClusterIP\n  selector:\n    app: luban-hello-world-py\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\nEOF\n; \
 	printf "resources:\n  - deployment.yaml\n  - service.yaml\n" > $$TMP_DIR/repo/app/base/kustomization.yaml; \
 	mkdir -p $$TMP_DIR/repo/app/overlays/snd $$TMP_DIR/repo/app/overlays/prd; \
 	printf "resources:\n  - ../../base\n" > $$TMP_DIR/repo/app/overlays/snd/kustomization.yaml; \
@@ -323,6 +318,24 @@ gitops-repo-push: ## Push argocd and app (kustomize) to per-app GitOps repo
 	GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=$$GIT_ASKPASS git push origin main; \
 	echo "GitOps content pushed to $$GITOPS_REPO_URL"
 
+gitops-repo-clean: ## Remove stray non-kustomize files from GitOps repo roots
+	@GITHUB_OWNER=$${GITHUB_OWNER:-metasync}; \
+	GITOPS_REPO_NAME=$${GITOPS_REPO_NAME:-luban-hello-world-py-gitops}; \
+	GITOPS_REPO_URL=https://github.com/$$GITHUB_OWNER/$$GITOPS_REPO_NAME.git; \
+	TMP_DIR=$$(mktemp -d); \
+	git clone $$GITOPS_REPO_URL $$TMP_DIR/repo >/dev/null 2>&1; \
+	cd $$TMP_DIR/repo; \
+	rm -f app/deployment.yaml app/kustomization.yaml argocd/application.yaml argocd/kustomization.yaml || true; \
+	git config user.name "Luban CI"; \
+	git config user.email "ci@luban.com"; \
+	git add -A; \
+	git commit -m "Remove stray non-kustomize root files" || true; \
+	if [ -z "$$GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN is required"; exit 1; fi; \
+	GIT_ASKPASS=$$(mktemp); \
+	printf '#!/bin/sh\necho $$GITHUB_TOKEN\n' > $$GIT_ASKPASS; \
+	chmod +x $$GIT_ASKPASS; \
+	GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=$$GIT_ASKPASS git push origin main || true; \
+	echo "GitOps repo cleaned: $$GITOPS_REPO_URL"
 gitops-repo-verify: ## Verify GitOps repo structure
 	@GITHUB_OWNER=$${GITHUB_OWNER:-metasync}; \
 	GITOPS_REPO_NAME=$${GITOPS_REPO_NAME:-luban-hello-world-py-gitops}; \
