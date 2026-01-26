@@ -21,6 +21,8 @@ spec:
               kind: Workflow
               metadata:
                 generateName: luban-ci-pipeline-
+                labels:
+                  app: placeholder  # Will be overwritten by parameter mapping
               spec:
                 serviceAccountName: luban-ci-sa
                 workflowTemplateRef:
@@ -33,8 +35,8 @@ spec:
                       value: "main"
                     - name: app_name
                       value: ""
-                    - name: gitops_repo_url
-                      value: "https://github.com/metasync/luban-hello-world-py-gitops.git"
+                    - name: git_ref
+                      value: ""
           parameters:
             - src:
                 dependencyName: github-dep
@@ -50,4 +52,14 @@ spec:
                 dependencyName: github-dep
                 dataKey: body.repository.name
               dest: spec.arguments.parameters.2.value
+              operation: overwrite
+            - src:
+                dependencyName: github-dep
+                dataKey: body.repository.name
+              dest: metadata.labels.app
+              operation: overwrite
+            - src:
+                dependencyName: github-dep
+                dataKey: body.ref
+              dest: spec.arguments.parameters.3.value
               operation: overwrite

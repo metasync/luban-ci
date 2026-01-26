@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workflow-semaphores
+  namespace: luban-ci
+data:
+  kpack-builds: "2"

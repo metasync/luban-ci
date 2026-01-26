@@ -1,0 +1,68 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: argocd-project-setup-template
+  namespace: luban-ci
+spec:
+  entrypoint: create-projects
+  serviceAccountName: luban-ci-sa
+  arguments:
+    parameters:
+    - name: project_name
+    - name: environments
+      value: '["snd", "prd"]'
+    - name: source_repos
+      value: '["https://github.com/metasync/*"]'
+    - name: developer_groups
+      value: '[]'
+    - name: admin_groups
+      value: '[]'
+  templates:
+  - name: create-projects
+    steps:
+    - - name: create-project
+        template: create-project-resource
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{item}}"
+        withParam: "{{workflow.parameters.environments}}"
+
+  - name: create-project-resource
+    inputs:
+      parameters:
+      - name: environment
+    resource:
+      action: create
+      manifest: |
+        apiVersion: argoproj.io/v1alpha1
+        kind: AppProject
+        metadata:
+          name: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
+          namespace: argocd
+        spec:
+          description: {{workflow.parameters.project_name}} team project for {{inputs.parameters.environment}} environment
+          sourceRepos: {{workflow.parameters.source_repos}}
+          destinations:
+          - namespace: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
+            server: https://kubernetes.default.svc
+          - namespace: gateway
+            server: https://kubernetes.default.svc
+          clusterResourceWhitelist:
+          - group: '*'
+            kind: '*'
+          namespaceResourceWhitelist:
+          - group: '*'
+            kind: '*'
+          roles:
+          - name: project-developer
+            description: Developer role with read and sync access
+            groups: {{workflow.parameters.developer_groups}}
+            policies:
+            - "p, proj:{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}:project-developer, applications, get, {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}/*, allow"
+            - "p, proj:{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}:project-developer, applications, sync, {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}/*, allow"
+          - name: project-admin
+            description: Admin role with full access
+            groups: {{workflow.parameters.admin_groups}}
+            policies:
+            - "p, proj:{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}:project-admin, applications, *, {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}/*, allow"

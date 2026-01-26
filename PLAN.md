@@ -24,11 +24,8 @@ This plan breaks down the implementation of `luban-ci` into iterative, testable 
 1.  `builder.toml`: Configuration linking the stack and the python-uv buildpack.
 2.  **Verification:** Create the builder image and use it to build the sample Python app. Ensure the resulting image runs successfully.
 
-## Phase 4: CI Pipeline - Build (Argo Workflows + DinD) [Completed]
-**Goal:** Automate the build process using Argo Workflows (Docker-in-Docker approach).
-**Deliverables:**
-1.  `manifests/ci-dind-workflow-template.yaml`: Argo WorkflowTemplate that runs `pack build` using the Trusted Builder (DinD).
-2.  **Verification:** Manually submit a workflow that clones a repo, builds the image, and pushes it to Quay.io.
+## Phase 4: CI Pipeline - Build (Legacy DinD) [Removed]
+This phase used Docker-in-Docker with Argo Workflows and has been retired in favor of kpack. The system now uses kpack exclusively for builds.
 
 ## Phase 4b: CI Pipeline - kpack Integration [Completed]
 **Goal:** Migrate to Kubernetes-native builds using kpack.

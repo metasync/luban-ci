@@ -8,11 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Gateway**: Transitioned to a Shared Gateway architecture. Webhooks now use `luban-gateway` via the `luban-ci` wildcard listener instead of a dedicated `webhook-gateway`.
+- **Testing**: Replaced shell-based `webhook-test` with a robust Python script (`test/webhook_test.py`) for better reliability and correct signature generation.
 - **Sample App**: Moved `sample-app` to a separate repository `luban-hello-world-py`.
 - **Workflow**: Updated CI workflows to point to the new `luban-hello-world-py` repository.
 - **Workflow**: Removed `sub_path` usage in default workflows as the app is now at the repository root.
 
 ### Fixed
+- **Gateway**: Resolved port conflicts by consolidating webhook ingress traffic through the shared `luban-gateway`.
+- **Webhook**: Fixed HMAC signature validation failures by ensuring correct payload formatting and adding required headers.
 - **Testing**: Fixed `make test` failure by updating kpack workflow to tag images with git revision (matching `make test` expectation).
 - **Testing**: Fixed `make test` target to use correct application name and revision.
 

@@ -11,12 +11,25 @@ spec:
     - name: repo_url
       value: "https://github.com/metasync/luban-hello-world-py.git"
     - name: revision
-      value: "main"
+      value: ""
     - name: app_name
       value: "luban-hello-world-py"
-    - name: quay_namespace
+    - name: registry_server
+      value: "quay.io"
+    - name: registry_namespace
       value: "luban-ci"
     - name: sub_path
       value: ""
-    - name: gitops_repo_url
-      value: "https://github.com/metasync/luban-hello-world-py-gitops.git"
+    - name: gitops_root_url
+      value: "https://github.com"
+    - name: gitops_organization
+      value: "metasync"
+    - name: gitops_branch
+      value: "develop"
+    - name: deploy_env
+      value: "snd"
+    - name: git_ref
+      value: ""
+      # value: "refs/heads/main"
+    - name: tag
+      value: "0.1.0"

@@ -6,16 +6,36 @@ metadata:
 spec:
   entrypoint: ci-pipeline
   serviceAccountName: luban-ci-sa
+  synchronization:
+    semaphore:
+      configMapKeyRef:
+        name: workflow-semaphores
+        key: kpack-builds
   arguments:
     parameters:
     - name: repo_url
     - name: revision
     - name: app_name
-    - name: quay_namespace
+    - name: registry_server
+      value: "quay.io"
+    - name: registry_namespace
       value: "luban-ci"
     - name: sub_path
       value: ""
-    - name: gitops_repo_url
+    - name: gitops_root_url
+      value: "https://github.com"
+    - name: gitops_organization
+      value: "metasync"
+    - name: gitops_branch
+      value: "develop"
+    - name: deploy_env
+      value: "snd"
+    - name: git_ref
+      value: ""
+    - name: tag
+      value: ""
+    - name: gitops_cli_image
+      value: "quay.io/luban-ci/gitops-utils:0.1.0"
 
   volumeClaimTemplates:
   - metadata:
@@ -38,7 +58,7 @@ spec:
 
   - name: git-checkout
     container:
-      image: alpine/git
+      image: "{{workflow.parameters.gitops_cli_image}}"
       command: [sh, -c]
       args:
       - |
@@ -84,45 +104,94 @@ spec:
         if [ -n "$SUB_PATH" ]; then
           SUB_PATH_FLAG="--sub-path $SUB_PATH"
         fi
-
-        kp image save {{workflow.parameters.app_name}} \
-          --tag quay.io/{{workflow.parameters.quay_namespace}}/{{workflow.parameters.app_name}}:{{workflow.parameters.revision}} \
+        
+        IMAGE_TAG="$REVISION"
+        if [ -n "$TAG" ]; then
+          IMAGE_TAG="$TAG"
+        elif printf "%s" "$GIT_REF" | grep -q '^refs/tags/'; then
+          IMAGE_TAG="${GIT_REF#refs/tags/}"
+        fi
+        TAG_ARGS=""
+        if [ "$IMAGE_TAG" != "$REVISION" ]; then
+          TAG_ARGS="--tag ${registry_server}/${registry_namespace}/${APP_NAME}:$IMAGE_TAG"
+        fi
+        
+        kp image save "$APP_NAME" \
+          --tag ${registry_server}/${registry_namespace}/${APP_NAME}:$REVISION \
+          $TAG_ARGS \
           --builder luban-builder \
-          --git {{workflow.parameters.repo_url}} \
-          --git-revision {{workflow.parameters.revision}} \
+          --git "$REPO_URL" \
+          --git-revision "$REVISION" \
           $SUB_PATH_FLAG \
           --service-account luban-ci-sa \
           --namespace luban-ci \
           --wait
+      env:
+      - name: REPO_URL
+        value: "{{workflow.parameters.repo_url}}"
+      - name: REVISION
+        value: "{{workflow.parameters.revision}}"
+      - name: APP_NAME
+        value: "{{workflow.parameters.app_name}}"
+      - name: TAG
+        value: "{{workflow.parameters.tag}}"
+      - name: GIT_REF
+        value: "{{workflow.parameters.git_ref}}"
+      - name: registry_server
+        value: "{{workflow.parameters.registry_server}}"
+      - name: registry_namespace
+        value: "{{workflow.parameters.registry_namespace}}"
       volumeMounts:
       - name: workdir
         mountPath: /workdir
 
   - name: git-update
     container:
-      image: alpine/git
+      image: "{{workflow.parameters.gitops_cli_image}}"
       command: [sh, -c]
       args:
       - |
-        # Configure git credentials
         git config --global credential.helper store
         echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
-        
         git config --global user.email "ci@luban.com"
         git config --global user.name "Luban CI"
 
+        GITOPS_REPO_URL="${GITOPS_ROOT_URL}/${GITOPS_ORGANIZATION}/${APP_NAME}-gitops.git"
         echo "Cloning ${GITOPS_REPO_URL}..."
         git clone ${GITOPS_REPO_URL} /workdir/gitops
         cd /workdir/gitops
+        if git show-ref --verify --quiet "refs/heads/${GITOPS_BRANCH}"; then \
+          git checkout ${GITOPS_BRANCH}; \
+        else \
+          if git ls-remote --exit-code --heads origin ${GITOPS_BRANCH} >/dev/null 2>&1; then \
+            git checkout -b ${GITOPS_BRANCH} origin/${GITOPS_BRANCH}; \
+          else \
+            git checkout -b ${GITOPS_BRANCH}; \
+            git push -u origin ${GITOPS_BRANCH}; \
+          fi; \
+        fi
         
-        echo "Updating deployment manifest..."
-        sed -i "s|image: quay.io/${QUAY_NAMESPACE}/${APP_NAME}:.*|image: quay.io/${QUAY_NAMESPACE}/${APP_NAME}:${REVISION}|g" app/base/deployment.yaml
+        KUST_PATH="app/overlays/${DEPLOY_ENV}/kustomization.yaml"
+        APP_IMAGE_NAME="${registry_server}/${registry_namespace}/${APP_NAME}"
+        export APP_IMAGE_NAME
+        IMAGE_TAG="$REVISION"
+        if [ -n "$TAG" ]; then
+          IMAGE_TAG="$TAG"
+        elif printf "%s" "$GIT_REF" | grep -q '^refs/tags/'; then
+          IMAGE_TAG="${GIT_REF#refs/tags/}"
+        fi
+        export IMAGE_TAG
+        if yq -e '.images[] | select(.name == env(APP_IMAGE_NAME))' "$KUST_PATH" >/dev/null 2>&1; then
+          yq -i '(.images[] | select(.name == env(APP_IMAGE_NAME))).newTag = env(IMAGE_TAG)' "$KUST_PATH"
+        else
+          yq -i '.images[0].newTag = env(IMAGE_TAG)' "$KUST_PATH"
+        fi
         
         if git diff --quiet; then
           echo "No changes to commit."
         else
-          git add app/base/deployment.yaml
-          git commit -m "Update ${APP_NAME} image tag to ${REVISION}"
+          git add "$KUST_PATH"
+          git commit -m "Update ${APP_NAME} ${DEPLOY_ENV} image tag to ${IMAGE_TAG}"
           git push
         fi
       env:
@@ -136,14 +205,26 @@ spec:
           secretKeyRef:
             name: github-creds
             key: token
-      - name: GITOPS_REPO_URL
-        value: "{{workflow.parameters.gitops_repo_url}}"
       - name: APP_NAME
         value: "{{workflow.parameters.app_name}}"
-      - name: QUAY_NAMESPACE
-        value: "{{workflow.parameters.quay_namespace}}"
       - name: REVISION
         value: "{{workflow.parameters.revision}}"
+      - name: TAG
+        value: "{{workflow.parameters.tag}}"
+      - name: GIT_REF
+        value: "{{workflow.parameters.git_ref}}"
+      - name: GITOPS_ROOT_URL
+        value: "{{workflow.parameters.gitops_root_url}}"
+      - name: GITOPS_ORGANIZATION
+        value: "{{workflow.parameters.gitops_organization}}"
+      - name: GITOPS_BRANCH
+        value: "{{workflow.parameters.gitops_branch}}"
+      - name: DEPLOY_ENV
+        value: "{{workflow.parameters.deploy_env}}"
+      - name: registry_server
+        value: "{{workflow.parameters.registry_server}}"
+      - name: registry_namespace
+        value: "{{workflow.parameters.registry_namespace}}"
       volumeMounts:
       - name: workdir
         mountPath: /workdir
