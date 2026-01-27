@@ -3,13 +3,17 @@ kind: ServiceAccount
 metadata:
   name: luban-ci-sa
   namespace: luban-ci
+imagePullSecrets:
+- name: quay-creds
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: luban-ci-role
-  namespace: luban-ci
+  name: luban-ci-cluster-role
 rules:
+- apiGroups: [""]
+  resources: ["secrets", "serviceaccounts", "namespaces"]
+  verbs: ["get", "list", "watch", "create", "patch", "update"]
 - apiGroups: [""]
   resources: ["pods", "pods/log"]
   verbs: ["get", "list", "watch"]
@@ -24,17 +28,16 @@ rules:
   verbs: ["get", "list", "watch", "create", "patch", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: luban-ci-rb
-  namespace: luban-ci
+  name: luban-ci-crb
 subjects:
 - kind: ServiceAccount
   name: luban-ci-sa
   namespace: luban-ci
 roleRef:
-  kind: Role
-  name: luban-ci-role
+  kind: ClusterRole
+  name: luban-ci-cluster-role
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -44,7 +47,7 @@ metadata:
   namespace: argocd
 rules:
 - apiGroups: ["argoproj.io"]
-  resources: ["appprojects"]
+  resources: ["appprojects", "applications"]
   verbs: ["create", "get", "list", "watch", "patch", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

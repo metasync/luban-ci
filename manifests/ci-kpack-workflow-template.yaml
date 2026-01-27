@@ -35,7 +35,7 @@ spec:
     - name: tag
       value: ""
     - name: gitops_cli_image
-      value: "quay.io/luban-ci/gitops-utils:0.1.0"
+      value: "quay.io/luban-ci/gitops-utils:0.3.3"
 
   volumeClaimTemplates:
   - metadata:
@@ -55,6 +55,10 @@ spec:
         template: build-push
     - - name: update-gitops
         template: git-update
+        arguments:
+          parameters:
+          - name: image_tag
+            value: "{{steps.build-and-push.outputs.parameters.image_tag}}"
 
   - name: git-checkout
     container:
@@ -90,8 +94,13 @@ spec:
         mountPath: /workdir
 
   - name: build-push
+    outputs:
+      parameters:
+      - name: image_tag
+        valueFrom:
+          path: /tmp/image_tag
     container:
-      image: kpack/kp:latest
+      image: "{{workflow.parameters.gitops_cli_image}}"
       command: [sh, -c]
       args:
       - |
@@ -111,6 +120,11 @@ spec:
         elif printf "%s" "$GIT_REF" | grep -q '^refs/tags/'; then
           IMAGE_TAG="${GIT_REF#refs/tags/}"
         fi
+        
+        # Strip 'v' prefix if present (e.g., v0.1.0 -> 0.1.0)
+        IMAGE_TAG="${IMAGE_TAG#v}"
+        echo -n "$IMAGE_TAG" > /tmp/image_tag
+        
         TAG_ARGS=""
         if [ "$IMAGE_TAG" != "$REVISION" ]; then
           TAG_ARGS="--tag ${registry_server}/${registry_namespace}/${APP_NAME}:$IMAGE_TAG"
@@ -146,6 +160,9 @@ spec:
         mountPath: /workdir
 
   - name: git-update
+    inputs:
+      parameters:
+      - name: image_tag
     container:
       image: "{{workflow.parameters.gitops_cli_image}}"
       command: [sh, -c]
@@ -174,12 +191,7 @@ spec:
         KUST_PATH="app/overlays/${DEPLOY_ENV}/kustomization.yaml"
         APP_IMAGE_NAME="${registry_server}/${registry_namespace}/${APP_NAME}"
         export APP_IMAGE_NAME
-        IMAGE_TAG="$REVISION"
-        if [ -n "$TAG" ]; then
-          IMAGE_TAG="$TAG"
-        elif printf "%s" "$GIT_REF" | grep -q '^refs/tags/'; then
-          IMAGE_TAG="${GIT_REF#refs/tags/}"
-        fi
+        IMAGE_TAG="{{inputs.parameters.image_tag}}"
         export IMAGE_TAG
         if yq -e '.images[] | select(.name == env(APP_IMAGE_NAME))' "$KUST_PATH" >/dev/null 2>&1; then
           yq -i '(.images[] | select(.name == env(APP_IMAGE_NAME))).newTag = env(IMAGE_TAG)' "$KUST_PATH"

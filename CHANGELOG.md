@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.0] - 2026-01-28
+
+### Changed
+- **Buildpack**: Updated `python-uv` buildpack to `0.0.8`.
+- **Buildpack**: Removed `Procfile` parsing logic. The buildpack no longer sets a default start command.
+- **Buildpack**: Optimized `bin/build` script to rely on standard CNB `launch=true` mechanism for `PATH` configuration, removing redundant `PATH` manipulation.
+- **Deployment**: Applications using this buildpack should now specify their start command using `args` in Kubernetes manifests (e.g., `args: ["uv", "run", ...]`) to ensure the CNB launcher is correctly invoked.
+
+### Fixed
+- **Buildpack**: Fixed issue where `uv` might not be in `PATH` during launch by ensuring correct layer metadata.
+- **Builder**: Resolved `manifest unknown` error for run image during Kpack builder creation by ensuring `luban-kpack-builder:al2023-run-image` is published.
+
 ## [v0.4.0] - 2026-01-26
 
 ### Changed

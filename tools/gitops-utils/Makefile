@@ -8,6 +8,7 @@ export
 build: ## Build gitops utils tooling image
 	@docker build --platform linux/amd64 \
 		--build-arg ARGO_VERSION=$(ARGO_CLI_VERSION) \
+		--build-arg KP_VERSION=$(KP_VERSION) \
 		-t $(REGISTRY_SERVER)/$(REGISTRY_NAMESPACE)/gitops-utils:$(GITOPS_UTILS_VERSION) .
 
 push: ## Push gitops-utils tooling image (build if missing)

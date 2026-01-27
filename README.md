@@ -93,13 +93,25 @@ make pipeline-run
 - Default registry_server is quay.io, registry_namespace is luban-ci.
 - Override per run by passing parameters to the workflow or environment variables used by the Makefile.
 
+### Application Deployment Configuration
+- **Start Command**: The `python-uv` buildpack does not set a default start command. You must specify the command in your Kubernetes Deployment manifest.
+- **Using `args` vs `command`**: It is **strongly recommended** to use `args` (which corresponds to Docker `CMD`) instead of `command` (Docker `ENTRYPOINT`).
+  - Using `args` allows the CNB Launcher (the default entrypoint) to run first. The Launcher sets up the runtime environment (including adding `uv` to `PATH`) before executing your arguments.
+  - Example:
+    ```yaml
+    containers:
+      - name: app
+        image: quay.io/my-org/my-app:latest
+        args: ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0"]
+    ```
+
 ### GitOps CLI Tooling
 - To avoid installing git and yq on every workflow run, build and push a small tooling image (gitops-utils):
   ```bash
   make tools-image-build
   make tools-image-push
   ```
-- The workflow uses a parameter `gitops_cli_image` (default: quay.io/luban-ci/gitops-utils:0.1.0) for checkout/update steps. Override if needed.
+- The workflow uses a parameter `gitops_cli_image` (default: quay.io/luban-ci/gitops-utils:0.3.3) for checkout/update steps. Override if needed.
 
 ### Concurrency Control
 - Recommended: Argo Workflows Semaphores

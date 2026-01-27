@@ -17,16 +17,82 @@ spec:
       value: '[]'
     - name: admin_groups
       value: '[]'
+    - name: gitops_utils_image
+      value: "quay.io/luban-ci/gitops-utils:0.3.3"
   templates:
   - name: create-projects
     steps:
-    - - name: create-project
-        template: create-project-resource
+    - - name: ensure-project
+        template: ensure-project
         arguments:
           parameters:
           - name: environment
             value: "{{item}}"
         withParam: "{{workflow.parameters.environments}}"
+
+  - name: ensure-project
+    inputs:
+      parameters:
+      - name: environment
+    steps:
+    - - name: check-exists
+        template: check-project-exists
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{inputs.parameters.environment}}"
+    - - name: create-project
+        template: create-project-resource
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{inputs.parameters.environment}}"
+        when: "{{steps.check-exists.outputs.result}} == false"
+    - - name: ensure-pull-secret
+        template: ensure-pull-secret
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{inputs.parameters.environment}}"
+
+  - name: ensure-pull-secret
+    inputs:
+      parameters:
+      - name: environment
+    script:
+      image: "{{workflow.parameters.gitops_utils_image}}"
+      command: [sh]
+      source: |
+        TARGET_NS="{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}"
+        
+        echo "Ensuring namespace $TARGET_NS exists..."
+        kubectl create ns $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
+        
+        echo "Copying quay-creds to $TARGET_NS..."
+        kubectl get secret quay-creds -n luban-ci -o json | \
+        jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | \
+        kubectl apply -n $TARGET_NS -f -
+        
+        echo "Patching default ServiceAccount in $TARGET_NS..."
+        kubectl patch sa default -n $TARGET_NS -p '{"imagePullSecrets": [{"name": "quay-creds"}]}'
+
+  - name: check-project-exists
+    inputs:
+      parameters:
+      - name: environment
+    script:
+      image: "{{workflow.parameters.gitops_utils_image}}"
+      command: [sh]
+      source: |
+        PROJECT_NAME="{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}"
+        echo "Checking if ArgoCD project $PROJECT_NAME exists..." >&2
+        if kubectl get appproject $PROJECT_NAME -n argocd > /dev/null 2>&1; then
+          echo "Project $PROJECT_NAME already exists." >&2
+          echo "true"
+        else
+          echo "Project $PROJECT_NAME does not exist." >&2
+          echo "false"
+        fi
 
   - name: create-project-resource
     inputs:

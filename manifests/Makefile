@@ -16,6 +16,7 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@echo "Deploying Workflow Templates..."
 	@kubectl apply -f ci-kpack-workflow-template.yaml
 	@kubectl apply -f argocd-project-workflow-template.yaml
+	@kubectl apply -f argocd-app-workflow-template.yaml
 	@echo "Deploying Cleanup CronWorkflow..."
 	@kubectl apply -f workflow-cleanup-cron.yaml
 	@echo "Pipeline deployed."

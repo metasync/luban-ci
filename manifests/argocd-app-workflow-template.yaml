@@ -1,0 +1,135 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: argocd-app-setup-template
+  namespace: luban-ci
+spec:
+  entrypoint: create-applications
+  serviceAccountName: luban-ci-sa
+  arguments:
+    parameters:
+    - name: project_name
+    - name: application_name
+    - name: environment
+      value: "snd"
+    - name: gitops_root_url
+      value: "https://github.com"
+    - name: gitops_organization
+      value: "metasync"
+    - name: gitops_utils_image
+      value: "quay.io/luban-ci/gitops-utils:0.3.3"
+  templates:
+  - name: create-applications
+    steps:
+    - - name: determine-revision
+        template: determine-revision
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{workflow.parameters.environment}}"
+
+    - - name: ensure-application
+        template: ensure-application
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{steps.determine-revision.outputs.parameters.environment}}"
+          - name: revision
+            value: "{{steps.determine-revision.outputs.parameters.revision}}"
+
+  - name: determine-revision
+    inputs:
+      parameters:
+      - name: environment
+    outputs:
+      parameters:
+      - name: environment
+        valueFrom:
+          path: /tmp/environment
+      - name: revision
+        valueFrom:
+          path: /tmp/revision
+    script:
+      image: alpine:latest
+      command: [sh]
+      source: |
+        ENV="{{inputs.parameters.environment}}"
+        if [ "$ENV" = "snd" ]; then
+          echo -n "snd" > /tmp/environment
+          echo -n "develop" > /tmp/revision
+        elif [ "$ENV" = "prd" ]; then
+          echo -n "prd" > /tmp/environment
+          echo -n "main" > /tmp/revision
+        else
+          echo "Error: Unknown environment '$ENV'. Allowed values are 'snd' or 'prd'." >&2
+          exit 1
+        fi
+
+  - name: ensure-application
+    inputs:
+      parameters:
+      - name: environment
+      - name: revision
+    steps:
+    - - name: check-exists
+        template: check-app-exists
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{inputs.parameters.environment}}"
+    - - name: create-app
+        template: create-app-resource
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{inputs.parameters.environment}}"
+          - name: revision
+            value: "{{inputs.parameters.revision}}"
+        when: "{{steps.check-exists.outputs.result}} == false"
+
+  - name: check-app-exists
+    inputs:
+      parameters:
+      - name: environment
+    script:
+      image: "{{workflow.parameters.gitops_utils_image}}"
+      command: [sh]
+      source: |
+        APP_NAME="{{inputs.parameters.environment}}-{{workflow.parameters.application_name}}"
+        echo "Checking if ArgoCD application $APP_NAME exists..." >&2
+        if kubectl get application $APP_NAME -n argocd > /dev/null 2>&1; then
+          echo "Application $APP_NAME already exists." >&2
+          echo "true"
+        else
+          echo "Application $APP_NAME does not exist." >&2
+          echo "false"
+        fi
+
+  - name: create-app-resource
+    inputs:
+      parameters:
+      - name: environment
+      - name: revision
+    resource:
+      action: create
+      manifest: |
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: {{inputs.parameters.environment}}-{{workflow.parameters.application_name}}
+          namespace: argocd
+        spec:
+          project: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
+          source:
+            repoURL: {{workflow.parameters.gitops_root_url}}/{{workflow.parameters.gitops_organization}}/{{workflow.parameters.application_name}}-gitops.git
+            targetRevision: {{inputs.parameters.revision}}
+            path: app/overlays/{{inputs.parameters.environment}}
+          destination:
+            server: https://kubernetes.default.svc
+            namespace: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+            syncOptions:
+              - CreateNamespace=true

@@ -61,6 +61,7 @@ export PATH="$uv_layer/bin:$PATH"
 # 2. Configure uv paths
 # We want Python toolchains to be cached and available at launch
 python_layer="$CNB_LAYERS_DIR/python"
+mkdir -p "$python_layer"
 export UV_PYTHON_INSTALL_DIR="$python_layer"
 
 # Write layer metadata for python
@@ -108,31 +109,10 @@ else
 fi
 
 # 5. Set launch configuration
-# We default to using 'uv run' which handles venv activation and python path
-# But we need to define what to run.
-# Ideally read from Procfile, but for now we default to what the user requested for the sample app.
-# Or better: inspect pyproject.toml scripts?
+echo "Configuring launch..."
 
-# For flexibility, let's check if there is a Procfile.
-if [[ -f "Procfile" ]]; then
-    # Parse Procfile (simple grep/sed)
-    web_cmd=$(grep "^web:" Procfile | cut -d: -f2- | xargs)
-    if [[ -n "$web_cmd" ]]; then
-        command="$web_cmd"
-    fi
-fi
-
-# Fallback for the sample app
-if [[ -z "$command" ]]; then
-    command="uv run uvicorn main:app --host 0.0.0.0 --port 8080"
-fi
-
-# Use explicit list for command to satisfy TOML requirements and ensure correct execution
-cat <<EOF > "$CNB_LAYERS_DIR/launch.toml"
-[[processes]]
-type = "web"
-command = ["/bin/bash", "-c", "$command"]
-default = true
-EOF
+# We don't set a default process via Procfile anymore.
+# Users should provide the start command via Kubernetes Deployment 'command' or 'args'.
+echo "No default launch process set. Please specify an args or command in your container configuration."
 
 echo "Build complete."

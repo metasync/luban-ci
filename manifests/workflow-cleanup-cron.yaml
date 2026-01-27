@@ -16,7 +16,7 @@ spec:
     templates:
     - name: cleanup
       container:
-        image: quay.io/luban-ci/gitops-utils:0.1.0
+        image: quay.io/luban-ci/gitops-utils:0.3.3
         command: [sh, -c]
         args:
         - |
