@@ -1,0 +1,188 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: gitops-helper-template
+  namespace: luban-ci
+spec:
+  arguments:
+    parameters:
+      - name: gitops_utils_image
+        value: "quay.io/luban-ci/gitops-utils:0.3.3"
+        
+  templates:
+    # --- Task: Get Repo URL ---
+    # Inputs: git_provider, git_organization, application_name
+    # Outputs: repo_url
+    - name: get-repo-url
+      inputs:
+        parameters:
+          - name: git_provider
+          - name: git_organization
+          - name: application_name
+      outputs:
+        parameters:
+          - name: repo_url
+            valueFrom:
+              path: /tmp/repo_url
+      script:
+        image: "{{workflow.parameters.gitops_utils_image}}"
+        command: [sh]
+        source: |
+          PROVIDER="{{inputs.parameters.git_provider}}"
+          ORG="{{inputs.parameters.git_organization}}"
+          APP="{{inputs.parameters.application_name}}"
+          
+          if [ "$PROVIDER" = "github" ]; then
+            echo -n "https://github.com/$ORG/$APP-gitops.git" > /tmp/repo_url
+          elif [ "$PROVIDER" = "gitlab" ]; then
+            echo -n "https://gitlab.com/$ORG/$APP-gitops.git" > /tmp/repo_url
+          else
+            echo "Error: Unknown git provider '$PROVIDER'" >&2
+            exit 1
+          fi
+
+    # --- Task: Get Source Repos (Whitelist) ---
+    # Inputs: git_provider, git_organization
+    # Outputs: gitops_repos (JSON list)
+    # Refactored to reuse get-repo-url logic with wildcard
+    - name: get-source-repos
+      inputs:
+        parameters:
+          - name: git_provider
+          - name: git_organization
+      outputs:
+        parameters:
+          - name: gitops_repos
+            valueFrom:
+              parameter: "{{steps.wrap.outputs.parameters.list}}"
+      steps:
+        - - name: get-pattern
+            template: get-repo-url
+            arguments:
+              parameters:
+                - name: git_provider
+                  value: "{{inputs.parameters.git_provider}}"
+                - name: git_organization
+                  value: "{{inputs.parameters.git_organization}}"
+                - name: application_name
+                  value: "*"
+        
+        - - name: wrap
+            template: wrap-in-list
+            arguments:
+              parameters:
+                - name: item
+                  value: "{{steps.get-pattern.outputs.parameters.repo_url}}"
+
+    # --- Task: Wrap Item in JSON List ---
+    - name: wrap-in-list
+      inputs:
+        parameters:
+          - name: item
+      outputs:
+        parameters:
+          - name: list
+            valueFrom:
+              path: /tmp/list
+      script:
+        image: "{{workflow.parameters.gitops_utils_image}}"
+        command: [sh]
+        source: |
+          ITEM="{{inputs.parameters.item}}"
+          echo -n "[\"$ITEM\"]" > /tmp/list
+
+    # --- Task: Get Revision (Branch Strategy) ---
+    # Inputs: environment
+    # Outputs: environment, revision
+    - name: get-revision
+      inputs:
+        parameters:
+          - name: environment
+      outputs:
+        parameters:
+          - name: environment
+            valueFrom:
+              path: /tmp/environment
+          - name: revision
+            valueFrom:
+              path: /tmp/revision
+      script:
+        image: "{{workflow.parameters.gitops_utils_image}}"
+        command: [sh]
+        source: |
+          ENV="{{inputs.parameters.environment}}"
+          if [ "$ENV" = "snd" ]; then
+            echo -n "snd" > /tmp/environment
+            echo -n "develop" > /tmp/revision
+          elif [ "$ENV" = "prd" ]; then
+            echo -n "prd" > /tmp/environment
+            echo -n "main" > /tmp/revision
+          else
+            echo "Error: Unknown environment '$ENV'. Allowed values are 'snd' or 'prd'." >&2
+            exit 1
+          fi
+
+    # --- Task: Extract Organization from URL ---
+    # Inputs: repo_url, git_provider
+    # Outputs: organization
+    - name: extract-org-from-url
+      inputs:
+        parameters:
+          - name: repo_url
+          - name: git_provider
+      outputs:
+        parameters:
+          - name: organization
+            valueFrom:
+              path: /tmp/organization
+      script:
+        image: "{{workflow.parameters.gitops_utils_image}}"
+        command: [sh]
+        source: |
+          URL="{{inputs.parameters.repo_url}}"
+          PROVIDER="{{inputs.parameters.git_provider}}"
+          
+          # Remove .git suffix
+          CLEAN_URL="${URL%.git}"
+          
+          if [ "$PROVIDER" = "github" ]; then
+            # Expected format: https://github.com/ORG/REPO
+            # Remove protocol and domain
+            PATH_PART=$(echo "$CLEAN_URL" | sed -e 's|^https://github.com/||')
+            # Extract first segment (ORG)
+            ORG=$(echo "$PATH_PART" | cut -d'/' -f1)
+            echo -n "$ORG" > /tmp/organization
+          elif [ "$PROVIDER" = "gitlab" ]; then
+             # Similar for GitLab
+            PATH_PART=$(echo "$CLEAN_URL" | sed -e 's|^https://gitlab.com/||')
+            ORG=$(echo "$PATH_PART" | cut -d'/' -f1)
+            echo -n "$ORG" > /tmp/organization
+          else
+            echo "Error: Provider '$PROVIDER' extraction not implemented." >&2
+            exit 1
+          fi
+
+    # --- Task: Determine Git Organization ---
+    # Inputs: git_organization, project_name
+    # Outputs: organization
+    - name: determine-git-org
+      inputs:
+        parameters:
+          - name: git_organization
+          - name: project_name
+      outputs:
+        parameters:
+          - name: organization
+            valueFrom:
+              path: /tmp/organization
+      script:
+        image: "{{workflow.parameters.gitops_utils_image}}"
+        command: [sh]
+        source: |
+          GIT_ORG="{{inputs.parameters.git_organization}}"
+          PROJECT="{{inputs.parameters.project_name}}"
+          if [ -z "$GIT_ORG" ]; then
+            echo -n "$PROJECT" > /tmp/organization
+          else
+            echo -n "$GIT_ORG" > /tmp/organization
+          fi

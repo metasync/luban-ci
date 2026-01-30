@@ -14,9 +14,14 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@echo "Applying Argo Workflow semaphores..."
 	@kubectl apply -f argo-semaphore.yaml
 	@echo "Deploying Workflow Templates..."
-	@kubectl apply -f ci-kpack-workflow-template.yaml
+	@kubectl apply -f luban-ci-kpack-workflow-template.yaml
 	@kubectl apply -f argocd-project-workflow-template.yaml
 	@kubectl apply -f argocd-app-workflow-template.yaml
+	@kubectl apply -f harbor-project-workflow-template.yaml
+	@kubectl apply -f gitops-repo-workflow-template.yaml
+	@kubectl apply -f gitops-helper-workflow-template.yaml
+	@kubectl apply -f luban-project-workflow-template.yaml
+	@kubectl apply -f luban-app-workflow-template.yaml
 	@echo "Deploying Cleanup CronWorkflow..."
 	@kubectl apply -f workflow-cleanup-cron.yaml
 	@echo "Pipeline deployed."

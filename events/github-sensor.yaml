@@ -37,6 +37,10 @@ spec:
                       value: ""
                     - name: git_ref
                       value: ""
+                    - name: git_provider
+                      value: "github"
+                    - name: git_creds_secret
+                      value: "github-creds"
           parameters:
             - src:
                 dependencyName: github-dep

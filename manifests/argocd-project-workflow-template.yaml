@@ -9,31 +9,70 @@ spec:
   arguments:
     parameters:
     - name: project_name
-    - name: environments
-      value: '["snd", "prd"]'
-    - name: source_repos
-      value: '["https://github.com/metasync/*"]'
+      description: "Name of the project/team (e.g., 'payment')"
+    - name: environment
+      description: "Target environment (e.g., 'snd', 'prd')"
+      value: "snd"
+    - name: git_organization
+      description: "Git Organization/User (defaults to project_name if empty)"
+      value: ""
+    - name: git_provider
+      description: "Git Provider (e.g., 'github', 'gitlab')"
+      value: "github"
     - name: developer_groups
+      description: "List of OIDC groups for developer access (JSON array)"
       value: '[]'
     - name: admin_groups
+      description: "List of OIDC groups for admin access (JSON array)"
       value: '[]'
+    - name: image_pull_secret
+      description: "Name of the secret to copy to project namespaces"
+      value: "harbor-ro-creds"
     - name: gitops_utils_image
+      description: "Image for GitOps utility tools"
       value: "quay.io/luban-ci/gitops-utils:0.3.3"
   templates:
   - name: create-projects
+    inputs:
+      parameters:
+      - name: environment
     steps:
+    - - name: determine-git-org
+        templateRef:
+          name: gitops-helper-template
+          template: determine-git-org
+        arguments:
+          parameters:
+            - name: git_organization
+              value: "{{workflow.parameters.git_organization}}"
+            - name: project_name
+              value: "{{workflow.parameters.project_name}}"
+
+    - - name: determine-repos
+        templateRef:
+          name: gitops-helper-template
+          template: get-source-repos
+        arguments:
+          parameters:
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: git_organization
+            value: "{{steps.determine-git-org.outputs.parameters.organization}}"
+
     - - name: ensure-project
         template: ensure-project
         arguments:
           parameters:
           - name: environment
-            value: "{{item}}"
-        withParam: "{{workflow.parameters.environments}}"
+            value: "{{inputs.parameters.environment}}"
+          - name: gitops_repos
+            value: "{{steps.determine-repos.outputs.parameters.gitops_repos}}"
 
   - name: ensure-project
     inputs:
       parameters:
       - name: environment
+      - name: gitops_repos
     steps:
     - - name: check-exists
         template: check-project-exists
@@ -47,6 +86,8 @@ spec:
           parameters:
           - name: environment
             value: "{{inputs.parameters.environment}}"
+          - name: gitops_repos
+            value: "{{inputs.parameters.gitops_repos}}"
         when: "{{steps.check-exists.outputs.result}} == false"
     - - name: ensure-pull-secret
         template: ensure-pull-secret
@@ -68,13 +109,13 @@ spec:
         echo "Ensuring namespace $TARGET_NS exists..."
         kubectl create ns $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
         
-        echo "Copying quay-creds to $TARGET_NS..."
-        kubectl get secret quay-creds -n luban-ci -o json | \
+        echo "Copying {{workflow.parameters.image_pull_secret}} to $TARGET_NS..."
+        kubectl get secret {{workflow.parameters.image_pull_secret}} -n luban-ci -o json | \
         jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | \
         kubectl apply -n $TARGET_NS -f -
         
         echo "Patching default ServiceAccount in $TARGET_NS..."
-        kubectl patch sa default -n $TARGET_NS -p '{"imagePullSecrets": [{"name": "quay-creds"}]}'
+        kubectl patch sa default -n $TARGET_NS -p '{"imagePullSecrets": [{"name": "{{workflow.parameters.image_pull_secret}}"}]}'
 
   - name: check-project-exists
     inputs:
@@ -98,6 +139,7 @@ spec:
     inputs:
       parameters:
       - name: environment
+      - name: gitops_repos
     resource:
       action: create
       manifest: |
@@ -108,7 +150,7 @@ spec:
           namespace: argocd
         spec:
           description: {{workflow.parameters.project_name}} team project for {{inputs.parameters.environment}} environment
-          sourceRepos: {{workflow.parameters.source_repos}}
+          sourceRepos: {{inputs.parameters.gitops_repos}}
           destinations:
           - namespace: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
             server: https://kubernetes.default.svc

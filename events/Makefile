@@ -8,8 +8,8 @@ export
 deploy: ## Deploy Argo Events (EventBus, EventSource, Sensor)
 	@echo "Deploying Argo Events..."
 	@kubectl apply -f eventbus.yaml
-	@kubectl apply -f event-source.yaml
-	@kubectl apply -f sensor.yaml
+	@kubectl apply -f github-event-source.yaml
+	@kubectl apply -f github-sensor.yaml
 	@kubectl apply -f gateway.yaml
 	@echo "Argo Events deployed."
 

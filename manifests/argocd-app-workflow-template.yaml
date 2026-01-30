@@ -9,24 +9,56 @@ spec:
   arguments:
     parameters:
     - name: project_name
-    - name: application_name
+      description: "Name of the project/team (e.g., 'payment')"
+    - name: app_name
+      description: "Name of the application (e.g., 'cart-service')"
     - name: environment
+      description: "Target environment (e.g., 'snd', 'prd')"
       value: "snd"
-    - name: gitops_root_url
-      value: "https://github.com"
-    - name: gitops_organization
-      value: "metasync"
+    - name: git_organization
+      description: "Git Organization/User (defaults to project_name if empty)"
+      value: ""
+    - name: git_provider
+      description: "Git Provider (e.g., 'github', 'gitlab')"
+      value: "github"
     - name: gitops_utils_image
+      description: "Image for GitOps utility tools"
       value: "quay.io/luban-ci/gitops-utils:0.3.3"
   templates:
   - name: create-applications
     steps:
+    - - name: determine-git-org
+        templateRef:
+          name: gitops-helper-template
+          template: determine-git-org
+        arguments:
+          parameters:
+            - name: git_organization
+              value: "{{workflow.parameters.git_organization}}"
+            - name: project_name
+              value: "{{workflow.parameters.project_name}}"
+
     - - name: determine-revision
-        template: determine-revision
+        templateRef:
+          name: gitops-helper-template
+          template: get-revision
         arguments:
           parameters:
           - name: environment
             value: "{{workflow.parameters.environment}}"
+
+    - - name: determine-repo-url
+        templateRef:
+          name: gitops-helper-template
+          template: get-repo-url
+        arguments:
+          parameters:
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: git_organization
+            value: "{{steps.determine-git-org.outputs.parameters.organization}}"
+          - name: application_name
+            value: "{{workflow.parameters.app_name}}"
 
     - - name: ensure-application
         template: ensure-application
@@ -36,40 +68,15 @@ spec:
             value: "{{steps.determine-revision.outputs.parameters.environment}}"
           - name: revision
             value: "{{steps.determine-revision.outputs.parameters.revision}}"
-
-  - name: determine-revision
-    inputs:
-      parameters:
-      - name: environment
-    outputs:
-      parameters:
-      - name: environment
-        valueFrom:
-          path: /tmp/environment
-      - name: revision
-        valueFrom:
-          path: /tmp/revision
-    script:
-      image: alpine:latest
-      command: [sh]
-      source: |
-        ENV="{{inputs.parameters.environment}}"
-        if [ "$ENV" = "snd" ]; then
-          echo -n "snd" > /tmp/environment
-          echo -n "develop" > /tmp/revision
-        elif [ "$ENV" = "prd" ]; then
-          echo -n "prd" > /tmp/environment
-          echo -n "main" > /tmp/revision
-        else
-          echo "Error: Unknown environment '$ENV'. Allowed values are 'snd' or 'prd'." >&2
-          exit 1
-        fi
+          - name: repo_url
+            value: "{{steps.determine-repo-url.outputs.parameters.repo_url}}"
 
   - name: ensure-application
     inputs:
       parameters:
       - name: environment
       - name: revision
+      - name: repo_url
     steps:
     - - name: check-exists
         template: check-app-exists
@@ -85,6 +92,8 @@ spec:
             value: "{{inputs.parameters.environment}}"
           - name: revision
             value: "{{inputs.parameters.revision}}"
+          - name: repo_url
+            value: "{{inputs.parameters.repo_url}}"
         when: "{{steps.check-exists.outputs.result}} == false"
 
   - name: check-app-exists
@@ -95,7 +104,7 @@ spec:
       image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh]
       source: |
-        APP_NAME="{{inputs.parameters.environment}}-{{workflow.parameters.application_name}}"
+        APP_NAME="{{inputs.parameters.environment}}-{{workflow.parameters.app_name}}"
         echo "Checking if ArgoCD application $APP_NAME exists..." >&2
         if kubectl get application $APP_NAME -n argocd > /dev/null 2>&1; then
           echo "Application $APP_NAME already exists." >&2
@@ -110,18 +119,19 @@ spec:
       parameters:
       - name: environment
       - name: revision
+      - name: repo_url
     resource:
       action: create
       manifest: |
         apiVersion: argoproj.io/v1alpha1
         kind: Application
         metadata:
-          name: {{inputs.parameters.environment}}-{{workflow.parameters.application_name}}
+          name: {{inputs.parameters.environment}}-{{workflow.parameters.app_name}}
           namespace: argocd
         spec:
           project: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
           source:
-            repoURL: {{workflow.parameters.gitops_root_url}}/{{workflow.parameters.gitops_organization}}/{{workflow.parameters.application_name}}-gitops.git
+            repoURL: {{inputs.parameters.repo_url}}
             targetRevision: {{inputs.parameters.revision}}
             path: app/overlays/{{inputs.parameters.environment}}
           destination:

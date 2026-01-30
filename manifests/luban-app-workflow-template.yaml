@@ -1,0 +1,108 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: luban-app-setup-template
+  namespace: luban-ci
+spec:
+  entrypoint: setup-luban-application
+  serviceAccountName: luban-ci-sa
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 100Mi
+  arguments:
+    parameters:
+      - name: project_name
+        description: "Name of the project/team (e.g., 'payment')"
+      - name: app_name
+        description: "Name of the application (e.g., 'cart-service')"
+      - name: environment
+        description: "Target environment (e.g., 'snd', 'prd')"
+        value: "snd"
+      - name: git_organization
+        description: "Git Organization/User (defaults to project_name if empty)"
+        value: ""
+      - name: git_provider
+        description: "Git Provider (e.g., 'github', 'gitlab')"
+        value: "github"
+      - name: container_port
+        description: "Container port to expose"
+        value: "8080"
+      - name: service_port
+        description: "Service port to expose"
+        value: "80"
+      - name: domain_suffix
+        description: "Domain suffix for Ingress"
+        value: "apps.k8s.orb.local"
+      - name: gitops_provisioner_image
+        description: "Image for GitOps provisioner tool"
+        value: "quay.io/luban-ci/gitops-provisioner:0.1.5"
+      - name: gitops_utils_image
+        description: "Image for GitOps utility tools"
+        value: "quay.io/luban-ci/gitops-utils:0.3.3"
+
+  templates:
+    - name: setup-luban-application
+      dag:
+        tasks:
+          - name: determine-git-org
+            templateRef:
+              name: gitops-helper-template
+              template: determine-git-org
+            arguments:
+              parameters:
+                - name: git_organization
+                  value: "{{workflow.parameters.git_organization}}"
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+
+          # 1. Provision GitOps Repository (Cookiecutter -> GitHub)
+          - name: provision-gitops-repo
+            dependencies: [determine-git-org]
+            templateRef:
+              name: gitops-repo-provision-template
+              template: provision-gitops-repo
+            arguments:
+              parameters:
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+                - name: application_name
+                  value: "{{workflow.parameters.app_name}}"
+                - name: git_organization
+                  value: "{{tasks.determine-git-org.outputs.parameters.organization}}"
+                - name: git_provider
+                  value: "{{workflow.parameters.git_provider}}"
+                - name: gitops_provisioner_image
+                  value: "{{workflow.parameters.gitops_provisioner_image}}"
+                - name: gitops_utils_image
+                  value: "{{workflow.parameters.gitops_utils_image}}"
+                # Pass through optional configs
+                - name: container_port
+                  value: "{{workflow.parameters.container_port}}"
+                - name: service_port
+                  value: "{{workflow.parameters.service_port}}"
+                - name: domain_suffix
+                  value: "{{workflow.parameters.domain_suffix}}"
+
+          # 3. Setup ArgoCD Application
+          - name: setup-argocd-app
+            dependencies: [provision-gitops-repo, determine-git-org]
+            templateRef:
+              name: argocd-app-setup-template
+              template: create-applications
+            arguments:
+              parameters:
+                - name: app_name
+                  value: "{{workflow.parameters.app_name}}"
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+                - name: environment
+                  value: "{{workflow.parameters.environment}}"
+                - name: git_organization
+                  value: "{{tasks.determine-git-org.outputs.parameters.organization}}"
+                - name: git_provider
+                  value: "{{workflow.parameters.git_provider}}"

@@ -14,22 +14,21 @@ spec:
       value: ""
     - name: app_name
       value: "luban-hello-world-py"
-    - name: registry_server
-      value: "quay.io"
-    - name: registry_namespace
-      value: "luban-ci"
     - name: sub_path
       value: ""
-    - name: gitops_root_url
-      value: "https://github.com"
-    - name: gitops_organization
-      value: "metasync"
-    - name: gitops_branch
-      value: "develop"
-    - name: deploy_env
-      value: "snd"
     - name: git_ref
       value: ""
       # value: "refs/heads/main"
     - name: tag
       value: "0.1.0"
+    - name: git_provider
+      value: "github"
+    - name: git_creds_secret
+      value: "github-creds"
+    - name: registry_server
+      value: "harbor.k8s.orb.local"
+    - name: gitops_branch
+      value: "develop"
+    - name: deploy_env
+      value: "snd"
+    

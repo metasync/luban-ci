@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.0] - 2026-01-31
+
+### Changed
+- **Workflow**: Fixed "User cannot get resource secrets" error in `gitops-repo-workflow-template` by explicitly defining the container `command`, bypassing Argo's image entrypoint lookup.
+- **Workflow**: Removed unused `default_image` parameter from `gitops-repo-workflow-template` and `luban-app-workflow-template` interfaces.
+- **Workflow**: Enhanced `push-to-github` script to handle repository existence gracefully (idempotency) and added fallback support for User vs Organization endpoints.
+- **Workflow**: Enforced naming convention: GitOps repositories are now strictly named `<app-name>-gitops`.
+- **Provisioner**: Updated `gitops-provisioner` to `v0.1.5`, removing the deprecated `--default-image` argument from `entrypoint.py`.
+- **Documentation**: Comprehensive update to `README.md`, documenting the Project vs App setup workflows, naming conventions, and environment mappings.
+
 ## [v0.5.0] - 2026-01-28
 
 ### Changed

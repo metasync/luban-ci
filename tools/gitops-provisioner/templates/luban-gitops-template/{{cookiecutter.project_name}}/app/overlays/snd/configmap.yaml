@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{cookiecutter.app_name}}-config
+data:
+  APP_ENV: "snd"
+  LOG_LEVEL: "debug"

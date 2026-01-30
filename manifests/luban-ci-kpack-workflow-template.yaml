@@ -14,27 +14,37 @@ spec:
   arguments:
     parameters:
     - name: repo_url
+      description: "URL of the source code repository"
     - name: revision
+      description: "Commit revision to build"
     - name: app_name
-    - name: registry_server
-      value: "quay.io"
-    - name: registry_namespace
-      value: "luban-ci"
+      description: "Name of the application"
     - name: sub_path
+      description: "Sub-path within the repository to build"
       value: ""
-    - name: gitops_root_url
-      value: "https://github.com"
-    - name: gitops_organization
-      value: "metasync"
-    - name: gitops_branch
-      value: "develop"
-    - name: deploy_env
-      value: "snd"
     - name: git_ref
+      description: "Git reference (branch or tag)"
       value: ""
     - name: tag
+      description: "Explicit image tag to use (overrides revision)"
       value: ""
-    - name: gitops_cli_image
+    - name: git_provider
+      description: "Git Provider (e.g., 'github', 'gitlab')"
+      value: "github"
+    - name: git_creds_secret
+      description: "Name of the secret containing git credentials"
+      value: "github-creds"
+    - name: registry_server
+      description: "Registry server to push image to"
+      value: "harbor.k8s.orb.local"
+    - name: gitops_branch
+      description: "Branch in GitOps repo to update (usually 'develop')"
+      value: "develop"
+    - name: deploy_env
+      description: "Deployment environment (e.g., 'snd', 'prd')"
+      value: "snd"
+    - name: gitops_utils_image
+      description: "Image for GitOps utility tools"
       value: "quay.io/luban-ci/gitops-utils:0.3.3"
 
   volumeClaimTemplates:
@@ -49,41 +59,78 @@ spec:
   templates:
   - name: ci-pipeline
     steps:
+    # 1. Determine Organization from Repo URL
+    - - name: determine-org
+        templateRef:
+          name: gitops-helper-template
+          template: extract-org-from-url
+        arguments:
+          parameters:
+          - name: repo_url
+            value: "{{workflow.parameters.repo_url}}"
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+
     - - name: checkout
         template: git-checkout
     - - name: build-and-push
         template: build-push
+        arguments:
+          parameters:
+          - name: registry_namespace
+            value: "{{steps.determine-org.outputs.parameters.organization}}"
+    
+    # New step: Determine GitOps Repo URL
+    - - name: determine-gitops-url
+        templateRef:
+          name: gitops-helper-template
+          template: get-repo-url
+        arguments:
+          parameters:
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: git_organization
+            value: "{{steps.determine-org.outputs.parameters.organization}}"
+          - name: application_name
+            value: "{{workflow.parameters.app_name}}"
+
     - - name: update-gitops
         template: git-update
         arguments:
           parameters:
           - name: image_tag
             value: "{{steps.build-and-push.outputs.parameters.image_tag}}"
+          - name: gitops_repo_url
+            value: "{{steps.determine-gitops-url.outputs.parameters.repo_url}}"
+          - name: registry_namespace
+            value: "{{steps.determine-org.outputs.parameters.organization}}"
 
   - name: git-checkout
     container:
-      image: "{{workflow.parameters.gitops_cli_image}}"
+      image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh, -c]
       args:
       - |
         # Configure git credentials
         git config --global credential.helper store
-        echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
+        # Extract domain from REPO_URL
+        DOMAIN=$(echo "$REPO_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+        echo "https://${GIT_USERNAME}:${GIT_TOKEN}@${DOMAIN}" > ~/.git-credentials
 
         echo "Cloning ${REPO_URL}..."
         git clone ${REPO_URL} /workdir/repo
         cd /workdir/repo
         git checkout ${REVISION}
       env:
-      - name: GITHUB_USERNAME
+      - name: GIT_USERNAME
         valueFrom:
           secretKeyRef:
-            name: github-creds
+            name: "{{workflow.parameters.git_creds_secret}}"
             key: username
-      - name: GITHUB_TOKEN
+      - name: GIT_TOKEN
         valueFrom:
           secretKeyRef:
-            name: github-creds
+            name: "{{workflow.parameters.git_creds_secret}}"
             key: token
       - name: REPO_URL
         value: "{{workflow.parameters.repo_url}}"
@@ -94,13 +141,16 @@ spec:
         mountPath: /workdir
 
   - name: build-push
+    inputs:
+      parameters:
+      - name: registry_namespace
     outputs:
       parameters:
       - name: image_tag
         valueFrom:
           path: /tmp/image_tag
     container:
-      image: "{{workflow.parameters.gitops_cli_image}}"
+      image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh, -c]
       args:
       - |
@@ -154,7 +204,7 @@ spec:
       - name: registry_server
         value: "{{workflow.parameters.registry_server}}"
       - name: registry_namespace
-        value: "{{workflow.parameters.registry_namespace}}"
+        value: "{{inputs.parameters.registry_namespace}}"
       volumeMounts:
       - name: workdir
         mountPath: /workdir
@@ -163,17 +213,20 @@ spec:
     inputs:
       parameters:
       - name: image_tag
+      - name: gitops_repo_url
+      - name: registry_namespace
     container:
-      image: "{{workflow.parameters.gitops_cli_image}}"
+      image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh, -c]
       args:
       - |
         git config --global credential.helper store
-        echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
+        # Extract domain from GITOPS_REPO_URL
+        DOMAIN=$(echo "$GITOPS_REPO_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+        echo "https://${GIT_USERNAME}:${GIT_TOKEN}@${DOMAIN}" > ~/.git-credentials
         git config --global user.email "ci@luban.com"
         git config --global user.name "Luban CI"
 
-        GITOPS_REPO_URL="${GITOPS_ROOT_URL}/${GITOPS_ORGANIZATION}/${APP_NAME}-gitops.git"
         echo "Cloning ${GITOPS_REPO_URL}..."
         git clone ${GITOPS_REPO_URL} /workdir/gitops
         cd /workdir/gitops
@@ -207,15 +260,15 @@ spec:
           git push
         fi
       env:
-      - name: GITHUB_USERNAME
+      - name: GIT_USERNAME
         valueFrom:
           secretKeyRef:
-            name: github-creds
+            name: "{{workflow.parameters.git_creds_secret}}"
             key: username
-      - name: GITHUB_TOKEN
+      - name: GIT_TOKEN
         valueFrom:
           secretKeyRef:
-            name: github-creds
+            name: "{{workflow.parameters.git_creds_secret}}"
             key: token
       - name: APP_NAME
         value: "{{workflow.parameters.app_name}}"
@@ -225,10 +278,8 @@ spec:
         value: "{{workflow.parameters.tag}}"
       - name: GIT_REF
         value: "{{workflow.parameters.git_ref}}"
-      - name: GITOPS_ROOT_URL
-        value: "{{workflow.parameters.gitops_root_url}}"
-      - name: GITOPS_ORGANIZATION
-        value: "{{workflow.parameters.gitops_organization}}"
+      - name: GITOPS_REPO_URL
+        value: "{{inputs.parameters.gitops_repo_url}}"
       - name: GITOPS_BRANCH
         value: "{{workflow.parameters.gitops_branch}}"
       - name: DEPLOY_ENV
@@ -236,7 +287,7 @@ spec:
       - name: registry_server
         value: "{{workflow.parameters.registry_server}}"
       - name: registry_namespace
-        value: "{{workflow.parameters.registry_namespace}}"
+        value: "{{inputs.parameters.registry_namespace}}"
       volumeMounts:
       - name: workdir
         mountPath: /workdir

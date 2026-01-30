@@ -44,6 +44,29 @@ secrets: ## Create/Update Kubernetes secrets from env files
 		--docker-username="$(QUAY_USERNAME)" \
 		--docker-password="$(QUAY_PASSWORD)" \
 		--docker-email="$(REGISTRY_EMAIL)"
+	@echo "Creating Harbor secrets..."
+	@kubectl delete secret harbor-creds -n $(K8S_NAMESPACE) --ignore-not-found
+	@kubectl create secret docker-registry harbor-creds \
+		-n $(K8S_NAMESPACE) \
+		--docker-server=$(HARBOR_SERVER) \
+		--docker-username='$(HARBOR_USERNAME)' \
+		--docker-password='$(HARBOR_PASSWORD)' \
+		--docker-email="$(REGISTRY_EMAIL)"
+	@echo "Creating Harbor Read-Only secrets..."
+	@kubectl delete secret harbor-ro-creds -n $(K8S_NAMESPACE) --ignore-not-found
+	@kubectl create secret docker-registry harbor-ro-creds \
+		-n $(K8S_NAMESPACE) \
+		--docker-server=$(HARBOR_SERVER) \
+		--docker-username='$(HARBOR_RO_USERNAME)' \
+		--docker-password='$(HARBOR_RO_PASSWORD)' \
+		--docker-email="$(REGISTRY_EMAIL)"
+	@echo "Creating Harbor API secrets..."
+	@kubectl delete secret harbor-api-creds -n $(K8S_NAMESPACE) --ignore-not-found
+	@kubectl create secret generic harbor-api-creds \
+		-n $(K8S_NAMESPACE) \
+		--from-literal=HARBOR_SERVER=$(HARBOR_SERVER) \
+		--from-literal=HARBOR_USERNAME='$(HARBOR_USERNAME)' \
+		--from-literal=HARBOR_PASSWORD='$(HARBOR_PASSWORD)'
 	@echo "Creating GitHub secrets..."
 	@kubectl delete secret github-creds -n $(K8S_NAMESPACE) --ignore-not-found
 	@kubectl create secret generic github-creds \
@@ -77,9 +100,11 @@ builder-push: ## Check remote, build (if needed), tag and push Builder Image
 
 tools-image-build: ## Build gitops-utils tooling image
 	@$(MAKE) -C tools/gitops-utils build
+	@$(MAKE) -C tools/gitops-provisioner build
 
 tools-image-push: ## Push gitops-utils tooling image (build if missing)
 	@$(MAKE) -C tools/gitops-utils push
+	@$(MAKE) -C tools/gitops-provisioner push
 
 # --- Pipeline Management ---
 

@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: snd-{{cookiecutter.project_name}}
+
+patches:
+  - target:
+      kind: HTTPRoute
+      name: {{cookiecutter.app_name}}
+    patch: |-
+      - op: replace
+        path: /spec/hostnames/0
+        value: "{{cookiecutter.app_name}}.snd.{{cookiecutter.domain_suffix}}"
+  - path: configmap.yaml
+
+# Explicitly defining images allows Kustomize to override the tag
+# This is often used by CI/CD pipelines (e.g., `kustomize edit set image ...`)
+images:
+  - name: quay.io/luban-ci/luban-hello-world-py
+    newTag: latest

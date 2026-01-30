@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{cookiecutter.app_name}}
+spec:
+  replicas: 1
+  # Selector and template labels are injected by Kustomize (commonLabels/labels transformer)
+  template:
+    spec:
+      containers:
+        - name: app
+          image: quay.io/luban-ci/luban-hello-world-py:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: {{cookiecutter.container_port}}
+          envFrom:
+            - configMapRef:
+                name: {{cookiecutter.app_name}}-config
+          args:
+            - uv
+            - run
+            - uvicorn
+            - main:app
+            - --reload
+            - --host
+            - 0.0.0.0
+            - --port
+            - "${APP_PORT}"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

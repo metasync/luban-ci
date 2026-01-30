@@ -14,6 +14,30 @@ Luban CI is a GitOps-based Continuous Integration system running on Kubernetes, 
 - **Python Support**: Custom buildpack for Python with `uv` for fast dependency management.
   - Supports custom `uv` version via `.uv-version` file.
 
+## Naming Conventions & Architecture
+
+Luban CI enforces strict naming conventions to simplify configuration and ensure consistency across the platform.
+
+### Relationship Map (GitHub Example)
+
+| Concept | Naming Pattern | Example (Organization: `metasync`) |
+| :--- | :--- | :--- |
+| **Git Organization** | `<org>` | `metasync` |
+| **Source Code Repo** | `<org>/<app-name>` | `metasync/cart-service` |
+| **GitOps Repo** | `<org>/<app-name>-gitops` | `metasync/cart-service-gitops` |
+| **Registry Namespace** | `<org>` | `metasync` (e.g., `harbor.io/metasync/cart-service`) |
+| **ArgoCD Project** | `<env>-<project-name>` | `snd-payment` (where `payment` is the Team/Project) |
+| **ArgoCD Application** | `<env>-<app-name>` | `snd-cart-service` |
+
+### Environment Mapping
+
+- **Sandbox (`snd`)**:
+  - Tracks the `develop` branch of the GitOps repository.
+  - Deploys to the `<snd>-<project>` namespace (e.g., `snd-payment`).
+- **Production (`prd`)**:
+  - Tracks the `main` branch of the GitOps repository.
+  - Deploys to the `<prd>-<project>` namespace (e.g., `prd-payment`).
+
 ## Prerequisites
 
 - **Kubernetes Cluster**: OrbStack (recommended for local) or any K8s cluster.
@@ -111,7 +135,7 @@ make pipeline-run
   make tools-image-build
   make tools-image-push
   ```
-- The workflow uses a parameter `gitops_cli_image` (default: quay.io/luban-ci/gitops-utils:0.3.3) for checkout/update steps. Override if needed.
+- The workflow uses a parameter `gitops_utils_image` (default: quay.io/luban-ci/gitops-utils:0.3.3) for checkout/update steps. Override if needed.
 
 ### Concurrency Control
 - Recommended: Argo Workflows Semaphores
@@ -122,19 +146,38 @@ make pipeline-run
   - Limits concurrent nodes within a single workflow. Our pipeline is sequential, so this is less impactful.
   - For parallel DAG/steps, set `spec.parallelism` in the Workflow/WorkflowTemplate.
 
-### Argo Project Setup
-- A WorkflowTemplate is provided to create Argo CD AppProjects dynamically:
-  - Template: [argocd-project-workflow-template.yaml](file:///Users/chi/Workspace/projects/luban/luban-ci/manifests/argocd-project-workflow-template.yaml)
-  - Parameters:
-    - project_name: required (domain/team name)
-    - environments: optional array, default ["snd", "prd"]
-    - source_repos: optional array, default ["https://github.com/metasync/*"]
-    - developer_groups: optional array (OIDC group names), default []
-    - admin_groups: optional array (OIDC group names), default []
-  - Creates AppProject named "<environment>-<project_name>" in namespace "argocd" with destinations and whitelists matching the devops baseline.
-  - Configures roles:
-    - project-developer: read/sync access, mapped to developer_groups
-    - project-admin: full access, mapped to admin_groups
+## Project & Application Setup
+
+### Luban Project Setup (Team/Domain Level)
+This Master Workflow initializes the infrastructure for a new Team or Domain.
+- **Template**: [luban-project-workflow-template.yaml](file:///Users/chi/Workspace/projects/luban/luban-ci/manifests/luban-project-workflow-template.yaml)
+- **What it does**:
+  1.  **Harbor Project**: Creates a container registry project (e.g., `payment`) to store images.
+  2.  **ArgoCD Projects**: Creates AppProjects for each environment (e.g., `snd-payment`, `prd-payment`) to manage permissions and resource whitelists.
+  3.  **Namespaces**: Creates the Kubernetes namespaces for the environments.
+- **Parameters**:
+  - `project_name`: (Required) The name of the team or domain (e.g., `payment`).
+  - `environments`: (Optional) List of environments to setup (default: `["snd", "prd"]`).
+  - `git_organization`: (Optional) The GitHub Org/User where source code lives.
+  - `developer_groups`: (Optional) OIDC groups for read/write access.
+  - `admin_groups`: (Optional) OIDC groups for admin access.
+
+### Luban App Setup (Service Level)
+This Workflow bootstraps a new microservice within an existing Project/Team.
+- **Template**: [luban-app-workflow-template.yaml](file:///Users/chi/Workspace/projects/luban/luban-ci/manifests/luban-app-workflow-template.yaml)
+- **What it does**:
+  1.  **GitOps Repository**:
+      - Provisions a new Git repository named `<app_name>-gitops` (e.g., `cart-service-gitops`).
+      - Uses the standard `luban-gitops-template` (Cookiecutter).
+      - Pushes the initial state to GitHub (branches: `main`, `develop`).
+  2.  **ArgoCD Application**:
+      - Creates an ArgoCD Application resource pointing to the new GitOps repo.
+      - Connects it to the correct ArgoCD Project (e.g., `snd-payment`).
+- **Parameters**:
+  - `project_name`: (Required) The name of the team/domain this app belongs to (e.g., `payment`).
+  - `app_name`: (Required) The name of the service (e.g., `cart-service`).
+  - `git_organization`: (Optional) Auto-detected if not provided.
+  - `gitops_provisioner_image`: (Internal) The image used to render templates (default: `quay.io/luban-ci/gitops-provisioner:0.1.5`).
 
 ### Workflow Cleanup
 - A CronWorkflow runs every 15 minutes to delete completed workflows (Succeeded, Failed, Error) to reclaim resources.
@@ -178,4 +221,5 @@ make test
 - `buildpacks/`: Custom Buildpacks source code (e.g., `python-uv`).
 - `stack/`: Dockerfiles for Base, Run, and Build images.
 - `manifests/`: Kubernetes manifests (Argo Workflows, RBAC).
+- `tools/`: Utility tools (GitOps provisioner, CLI utils).
 - `Makefile`: Main entry point for all operations.

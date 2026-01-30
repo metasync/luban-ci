@@ -1,0 +1,79 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: harbor-project-setup-template
+  namespace: luban-ci
+spec:
+  entrypoint: create-project
+  serviceAccountName: luban-ci-sa
+  arguments:
+    parameters:
+    - name: project_name
+      description: "Name of the Harbor project to create"
+    - name: public
+      description: "Whether the project should be public"
+      value: "false"
+    - name: harbor_url
+      description: "Internal URL of the Harbor core service"
+      value: "http://harbor-core.harbor.svc"
+    - name: gitops_utils_image
+      description: "Image for GitOps utility tools"
+      value: "quay.io/luban-ci/gitops-utils:0.3.3"
+  templates:
+    - name: create-project
+      inputs:
+        parameters:
+          - name: project_name
+          - name: public
+          - name: harbor_url
+      container:
+        image: "{{workflow.parameters.gitops_utils_image}}"
+        command: [sh, -c]
+        args:
+          - |
+            PROJECT_NAME="{{inputs.parameters.project_name}}"
+            HARBOR_URL="{{inputs.parameters.harbor_url}}"
+            PUBLIC="{{inputs.parameters.public}}"
+
+            echo "Creating project '$PROJECT_NAME' on $HARBOR_URL..."
+            
+            PAYLOAD=$(cat <<EOF
+            {
+              "project_name": "$PROJECT_NAME",
+              "public": $PUBLIC,
+              "metadata": {
+                "public": "$PUBLIC"
+              }
+            }
+            EOF
+            )
+
+            RESPONSE=$(curl -k -s -w "%{http_code}" -o /dev/null -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
+              -X POST "$HARBOR_URL/api/v2.0/projects" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD")
+
+            if [ "$RESPONSE" -eq 201 ]; then
+                echo "Project created successfully."
+            elif [ "$RESPONSE" -eq 409 ]; then
+                echo "Project already exists."
+            else
+                echo "Failed to create project. HTTP status: $RESPONSE"
+                # Print body for debugging
+                curl -k -s -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
+                  -X POST "$HARBOR_URL/api/v2.0/projects" \
+                  -H "Content-Type: application/json" \
+                  -d "$PAYLOAD"
+                exit 1
+            fi
+        env:
+          - name: HARBOR_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: harbor-api-creds
+                key: HARBOR_USERNAME
+          - name: HARBOR_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: harbor-api-creds
+                key: HARBOR_PASSWORD
