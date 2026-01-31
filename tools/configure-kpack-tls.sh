@@ -41,10 +41,12 @@ echo "Updating kpack-config in namespace ${KPACK_NAMESPACE}..."
 # Create/Update ConfigMap
 # We include ca-certs for build-time trust
 # We also include insecure-registries as a fallback/compatibility measure
+# We try both 'ca-certs' and 'ca-certificates' keys to be safe
 kubectl create configmap ${KPACK_CONFIG} \
     -n ${KPACK_NAMESPACE} \
     --from-file=ca-certs=/tmp/kpack-ca.crt \
-    --from-literal="insecure-registries=harbor.k8s.orb.local" \
+    --from-file=ca-certificates=/tmp/kpack-ca.crt \
+    --from-literal="insecure-registries=harbor.k8s.orb.local,harbor.k8s.orb.local:443" \
     --dry-run=client -o yaml | kubectl apply -f -
 
 rm /tmp/kpack-ca.crt
