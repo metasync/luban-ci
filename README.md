@@ -74,7 +74,13 @@ Luban CI enforces strict naming conventions to simplify configuration and ensure
       secrets/
       ```
 
-2.  **Initialize Secrets**:
+2.  **Fix DNS (OrbStack only)**:
+    If running on OrbStack, patch CoreDNS to resolve local ingress domains:
+    ```bash
+    make fix-dns
+    ```
+
+3.  **Initialize Secrets**:
     Apply credentials to the Kubernetes cluster:
     ```bash
     make secrets

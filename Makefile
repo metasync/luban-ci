@@ -75,6 +75,10 @@ secrets: ## Create/Update Kubernetes secrets from env files
 		--from-literal=token="$(GITHUB_TOKEN)"
 	@echo "Secrets setup complete."
 
+.PHONY: fix-dns
+fix-dns: ## Patch CoreDNS for OrbStack (fix harbor.k8s.orb.local resolution)
+	@./tools/patch-coredns.sh
+
 # --- Buildpack Management ---
 
 buildpack-package: ## Package and publish the custom buildpack to Quay.io
