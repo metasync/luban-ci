@@ -5,6 +5,10 @@ metadata:
   namespace: luban-ci
 imagePullSecrets:
 - name: quay-creds
+- name: harbor-creds
+secrets:
+- name: quay-creds
+- name: harbor-creds
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
