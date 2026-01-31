@@ -36,7 +36,7 @@ spec:
       value: "github-creds"
     - name: registry_server
       description: "Registry server to push image to"
-      value: "harbor.k8s.orb.local"
+      value: "harbor.orb.metasync.cc"
     - name: gitops_branch
       description: "Branch in GitOps repo to update (usually 'develop')"
       value: "develop"

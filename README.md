@@ -74,19 +74,7 @@ Luban CI enforces strict naming conventions to simplify configuration and ensure
       secrets/
       ```
 
-2.  **Fix DNS (OrbStack only)**:
-    If running on OrbStack, patch CoreDNS to resolve local ingress domains:
-    ```bash
-    make fix-dns
-    ```
-
-3.  **Configure Kpack TLS (OrbStack only)**:
-    Configure Kpack to trust the local Harbor certificate authority:
-    ```bash
-    make configure-kpack
-    ```
-
-4.  **Initialize Secrets**:
+2.  **Initialize Secrets**:
     Apply credentials to the Kubernetes cluster:
     ```bash
     make secrets

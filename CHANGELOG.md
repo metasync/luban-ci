@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.4] - 2026-01-31
+
+### Changed
+- **Infrastructure**: Migrated Harbor and CI workflows to use the public domain `harbor.orb.metasync.cc` with a valid Let's Encrypt wildcard certificate (managed via Cloudflare DNS-01).
+- **Cleanup**: Removed local TLS configuration tools (`tools/configure-kpack-tls.sh`) as they are no longer needed with valid certificates.
+- **DNS**: Updated `tools/patch-coredns.sh` to resolve the new public domain to the local LoadBalancer IP.
+
 ## [v0.6.3] - 2026-01-31
 
 ### Added

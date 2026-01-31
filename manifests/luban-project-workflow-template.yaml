@@ -18,7 +18,7 @@ spec:
         value: "false"
       - name: harbor_url
         description: "External URL of the Harbor core service"
-        value: "https://harbor.k8s.orb.local"
+        value: "https://harbor.orb.metasync.cc"
       - name: git_organization
         description: "Git Organization/User (defaults to project_name if empty)"
         value: ""

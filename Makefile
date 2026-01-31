@@ -73,15 +73,12 @@ secrets: ## Create/Update Kubernetes secrets from env files
 		-n $(K8S_NAMESPACE) \
 		--from-literal=username="$(GITHUB_USERNAME)" \
 		--from-literal=token="$(GITHUB_TOKEN)"
+	@echo "Creating Cloudflare API secrets..."
+	@kubectl create secret generic cloudflare-api-token \
+		-n cert-manager \
+		--from-literal=api-token='$(CLOUDFLARE_API_TOKEN)' \
+		--dry-run=client -o yaml | kubectl apply -f -
 	@echo "Secrets setup complete."
-
-.PHONY: fix-dns
-fix-dns: ## Patch CoreDNS for OrbStack (fix harbor.k8s.orb.local resolution)
-	@./tools/patch-coredns.sh
-
-.PHONY: configure-kpack
-configure-kpack: ## Configure Kpack to trust local Harbor CA
-	@./tools/configure-kpack-tls.sh
 
 # --- Buildpack Management ---
 
