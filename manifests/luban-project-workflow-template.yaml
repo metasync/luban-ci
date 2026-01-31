@@ -17,8 +17,8 @@ spec:
         description: "Whether the Harbor project should be public"
         value: "false"
       - name: harbor_url
-        description: "Internal URL of the Harbor core service"
-        value: "http://harbor-core.harbor.svc"
+        description: "External URL of the Harbor core service"
+        value: "https://harbor.k8s.orb.local"
       - name: git_organization
         description: "Git Organization/User (defaults to project_name if empty)"
         value: ""

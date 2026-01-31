@@ -14,8 +14,8 @@ spec:
       description: "Whether the project should be public"
       value: "false"
     - name: harbor_url
-      description: "Internal URL of the Harbor core service"
-      value: "http://harbor-core.harbor.svc"
+      description: "External URL of the Harbor core service"
+      value: "https://harbor.k8s.orb.local"
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
       value: "quay.io/luban-ci/gitops-utils:0.3.3"

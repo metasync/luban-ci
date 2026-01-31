@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.2] - 2026-01-31
+
+### Changed
+- **Consistency**: Updated `harbor-project-workflow-template` and `luban-project-workflow-template` to default to the external Harbor URL `https://harbor.k8s.orb.local`, aligning with the CI pipeline and production architecture.
+
 ## [v0.6.1] - 2026-01-31
 
 ### Fixed
