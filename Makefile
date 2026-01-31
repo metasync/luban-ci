@@ -79,6 +79,10 @@ secrets: ## Create/Update Kubernetes secrets from env files
 fix-dns: ## Patch CoreDNS for OrbStack (fix harbor.k8s.orb.local resolution)
 	@./tools/patch-coredns.sh
 
+.PHONY: configure-kpack
+configure-kpack: ## Configure Kpack to trust local Harbor CA
+	@./tools/configure-kpack-tls.sh
+
 # --- Buildpack Management ---
 
 buildpack-package: ## Package and publish the custom buildpack to Quay.io

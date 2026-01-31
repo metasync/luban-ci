@@ -80,7 +80,13 @@ Luban CI enforces strict naming conventions to simplify configuration and ensure
     make fix-dns
     ```
 
-3.  **Initialize Secrets**:
+3.  **Configure Kpack TLS (OrbStack only)**:
+    Configure Kpack to trust the local Harbor certificate authority:
+    ```bash
+    make configure-kpack
+    ```
+
+4.  **Initialize Secrets**:
     Apply credentials to the Kubernetes cluster:
     ```bash
     make secrets
