@@ -15,7 +15,9 @@ endif
         secrets \
         stack-build stack-push \
         builder-build builder-push \
-        pipeline-deploy pipeline-run pipeline-clean \
+        pipeline-deploy pipeline-clean pipeline-logs \
+        events-deploy events-webhook-secret \
+        test-ci-pipeline test-events-webhook test-events-webhook-py \
         clean
 
 help: ## Show this help message
@@ -29,7 +31,8 @@ all: secrets \
     builder-push \
     tools-image-push \
     pipeline-deploy \
-    events-deploy ## Setup secrets, push images, deploy pipeline and events
+    events-deploy \
+    events-webhook-secret ## Setup secrets, push images, deploy pipeline and events
 
 # --- Secrets Management ---
 
@@ -116,35 +119,43 @@ tools-image-push: ## Push gitops-utils tooling image (build if missing)
 pipeline-deploy: ## Deploy Argo Workflow Template and RBAC
 	@$(MAKE) -C manifests deploy
 
-pipeline-run: pipeline-run-kpack ## Trigger the kpack CI Workflow (default)
-
-pipeline-run-kpack: ## Trigger the kpack CI Workflow
-	@$(MAKE) -C test pipeline-run
-
-pipeline-logs: ## Show logs for the latest kpack build of the app
-	@$(MAKE) -C test pipeline-logs
-
 pipeline-clean: ## Delete all workflows
+	@echo "Cleaning up workflows..."
 	@$(MAKE) -C manifests clean
 
-# --- Development & Testing ---
-
-clean: pipeline-clean ## Cleanup local artifacts
-	@echo "Cleaning up..."
-	@rm -rf .venv
-	@docker image prune -f
-
-prune: ## Prune local Docker images
-	@echo "Pruning local Docker images..."
-	@docker image prune -f
+pipeline-logs: ## Show logs for the latest kpack build of the app. Usage: make pipeline-logs APP_NAME=my-app
+	@$(MAKE) -C manifests logs
 
 # --- Events Management ---
 
 events-deploy: ## Deploy Argo Events (EventBus, EventSource, Sensor)
 	@$(MAKE) -C events deploy
 
-events-webhook-secret: ## Generate and create GitHub webhook secret in K8s
+events-webhook-secret: ## Ensure GitHub webhook secret exists (skip if present)
 	@$(MAKE) -C events webhook-secret
 
-events-webhook-test: ## Send signed push payload via gateway to trigger Workflow
-	@$(MAKE) -C test webhook-test
+events-webhook-secret-rotate: ## Force generate and rotate GitHub webhook secret
+	@$(MAKE) -C events webhook-secret-rotate
+
+# --- Development & Testing ---
+
+test-ci-pipeline: test-ci-pipeline-kpack ## Trigger the kpack CI Workflow (default)
+
+test-ci-pipeline-kpack: ## Trigger the kpack CI Workflow
+	@$(MAKE) -C test test-ci-pipeline
+
+test-events-webhook: ## Send signed push payload via gateway to trigger Workflow
+	@$(MAKE) -C test test-webhook
+
+test-events-webhook-py: ## Send signed push payload via gateway to trigger Workflow (Python)
+	@$(MAKE) -C test test-webhook-py
+
+venv-clean: ## Cleanup virtual environment
+	@echo "Removing virtual environment..."
+	@rm -rf .venv
+
+docker-image-prune: ## Prune local Docker images
+	@echo "Pruning local Docker images..."
+	@docker image prune -f
+
+clean: pipeline-clean venv-clean docker-image-prune ## Cleanup local artifacts

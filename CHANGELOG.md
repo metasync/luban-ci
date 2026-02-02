@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.6] - 2026-02-02
+
+### Added
+- **Buildpack**: Updated `python-uv` to `v0.0.9`, introducing support for `pyproject.toml` entrypoint detection.
+  - Automatically parses `[project.scripts]` to generate a `launch.toml` with `uv run <script_name>` as the default process.
+  - Supports common script names: `app` or `start`.
+- **Testing**: Added comprehensive `make` targets for testing the CI pipeline and webhooks:
+  - `test-ci-pipeline`: Triggers the CI workflow via Argo CLI with customizable parameters.
+  - `test-events-webhook`: Simulates a GitHub push event using a shell script (dependency-free).
+  - `test-events-webhook-py`: Simulates a GitHub push event using Python.
+- **Documentation**: Added a dedicated "Development & Testing" section to `README.md`.
+
+### Changed
+- **Makefile**: Refactored test targets (`test-ci-pipeline-run` -> `test-ci-pipeline`) and exposed them in the root Makefile for easier access.
+- **Testing**: Updated webhook test scripts to support environment variable overrides (`APP_NAME`, `REPO_URL`, etc.).
+- **Buildpack**: Reverted `Procfile` support in favor of `pyproject.toml` or explicit Kubernetes `args`.
+
 ## [v0.6.5] - 2026-02-02
 
 ### Architecture

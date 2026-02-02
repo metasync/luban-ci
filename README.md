@@ -38,6 +38,34 @@ Luban CI enforces strict naming conventions to simplify configuration and ensure
   - Tracks the `main` branch of the GitOps repository.
   - Deploys to the `<prd>-<project>` namespace (e.g., `prd-payment`).
 
+## GitOps Workflow
+
+Luban CI promotes a structured GitOps workflow to ensure consistency, security, and traceability across environments.
+
+### Branches
+- **`develop`**: Sandbox development; default working branch for developers.
+- **`main`**: Production; merged via PR from `develop`.
+
+### Environments
+- **`snd` (Sandbox)**: Deploys from `develop`.
+- **`prd` (Production)**: Deploys from `main`.
+
+### Structure
+The GitOps repository follows a standard Kustomize structure:
+- **`app/base`**: Contains common resources (Deployment, Service, HTTPRoute).
+- **`app/overlays/snd`**: Configures the Sandbox environment (e.g., `namespace: snd-payment`).
+- **`app/overlays/prd`**: Configures the Production environment (e.g., `namespace: prd-payment`).
+
+### Developer Flow
+1.  **Work**: Developer clones the repository and works on the `develop` branch.
+2.  **Validate**: Changes pushed to `develop` are automatically deployed to the **Sandbox** environment via Argo CD for validation.
+3.  **Promote**: Developer opens a Pull Request (PR) from `develop` → `main`.
+4.  **Deploy**: Upon merge, the changes are automatically deployed to the **Production** environment from the `main` branch.
+
+### Notes
+- **Labels**: Managed centrally via Kustomization to ensure consistency.
+- **Gateway**: Applications use the shared `luban-gateway` in the `gateway` namespace.
+
 ## Prerequisites
 
 - **Kubernetes Cluster**: OrbStack (recommended for local) or any K8s cluster.
@@ -100,6 +128,39 @@ Luban CI enforces strict naming conventions to simplify configuration and ensure
     make pipeline-deploy
     ```
 
+## Project & Application Setup
+
+### Luban Project Setup (Team/Domain Level)
+This Master Workflow initializes the infrastructure for a new Team or Domain.
+- **Template**: [luban-project-workflow-template.yaml](manifests/luban-project-workflow-template.yaml)
+- **What it does**:
+  1.  **Harbor Project**: Creates a container registry project (e.g., `payment`) to store images.
+  2.  **ArgoCD Projects**: Creates AppProjects for each environment (e.g., `snd-payment`, `prd-payment`) to manage permissions and resource whitelists.
+  3.  **Namespaces**: Creates the Kubernetes namespaces for the environments.
+- **Parameters**:
+  - `project_name`: (Required) The name of the team or domain (e.g., `payment`).
+  - `environments`: (Optional) List of environments to setup (default: `["snd", "prd"]`).
+  - `git_organization`: (Optional) The GitHub Org/User where source code lives.
+  - `developer_groups`: (Optional) OIDC groups for read/write access.
+  - `admin_groups`: (Optional) OIDC groups for admin access.
+
+### Luban App Setup (Service Level)
+This Workflow bootstraps a new microservice within an existing Project/Team.
+- **Template**: [luban-app-workflow-template.yaml](manifests/luban-app-workflow-template.yaml)
+- **What it does**:
+  1.  **GitOps Repository**:
+      - Provisions a new Git repository named `<app_name>-gitops` (e.g., `cart-service-gitops`).
+      - Uses the standard `luban-gitops-template` (Cookiecutter).
+      - Pushes the initial state to GitHub (branches: `main`, `develop`).
+  2.  **ArgoCD Application**:
+      - Creates an ArgoCD Application resource pointing to the new GitOps repo.
+      - Connects it to the correct ArgoCD Project (e.g., `snd-payment`).
+- **Parameters**:
+  - `project_name`: (Required) The name of the team/domain this app belongs to (e.g., `payment`).
+  - `app_name`: (Required) The name of the service (e.g., `cart-service`).
+  - `git_organization`: (Optional) Auto-detected if not provided.
+  - `gitops_provisioner_image`: (Internal) The image used to render templates (default: `quay.io/luban-ci/gitops-provisioner:0.1.5`).
+
 ## Usage
 
 ### Run CI Pipeline
@@ -107,11 +168,6 @@ Trigger the end-to-end CI pipeline (Checkout -> Build -> Push):
 ```bash
 make pipeline-run
 ```
-
-### GitOps Branch Strategy
-- Sandbox (snd) tracks the develop branch in the per-app GitOps repo.
-- Production (prd) tracks the main branch; promotion is via PR that bumps app/overlays/prd/kustomization.yaml newTag.
-- CI updates app/overlays/snd/kustomization.yaml newTag in develop to the tag (if present) or the commit revision.
 
 ### Registry Configuration
 - Default registry_server and image_pull_secret are managed in the `luban-config` ConfigMap.
@@ -130,15 +186,24 @@ make pipeline-run
     - `domain_suffix`: Suffix for app ingress (e.g., `apps.metasync.cc`).
 
 ### Application Deployment Configuration
-- **Start Command**: The `python-uv` buildpack does not set a default start command. You must specify the command in your Kubernetes Deployment manifest.
+- **Start Command**: The `python-uv` buildpack supports two ways to define the start command:
+  1.  **pyproject.toml (Recommended)**: If your project has a `[project.scripts]` section in `pyproject.toml`, the buildpack will automatically detect the entry point and set it as the default start command (e.g., `uv run my-app`). It supports common script names like `app` or `start`.
+  2.  **Kubernetes Manifest**: You can explicitly specify the command in your Kubernetes Deployment manifest using `args`.
 - **Using `args` vs `command`**: It is **strongly recommended** to use `args` (which corresponds to Docker `CMD`) instead of `command` (Docker `ENTRYPOINT`).
   - Using `args` allows the CNB Launcher (the default entrypoint) to run first. The Launcher sets up the runtime environment (including adding `uv` to `PATH`) before executing your arguments.
+  - **Note**: It is preferred to specify scripts in `project.scripts` in `pyproject.toml` rather than using `args` manually.
   - Example:
     ```yaml
     containers:
       - name: app
         image: quay.io/my-org/my-app:latest
-        args: ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0"]
+        args:
+          - uv
+          - run
+          - uvicorn
+          - main:app
+          - --host
+          - 0.0.0.0
     ```
 
 ### GitOps CLI Tooling
@@ -151,81 +216,58 @@ make pipeline-run
 
 ### Concurrency Control
 - Recommended: Argo Workflows Semaphores
-  - A ConfigMap defines a named semaphore and its limit. This repo includes [argo-semaphore.yaml](file:///Users/chi/Workspace/projects/luban/luban-ci/manifests/argo-semaphore.yaml) with kpack-builds: "2".
+  - A ConfigMap defines a named semaphore and its limit. This repo includes [argo-semaphore.yaml](manifests/argo-semaphore.yaml) with kpack-builds: "2".
   - The CI WorkflowTemplate references this semaphore via `spec.synchronization.semaphore.configMapKeyRef`.
   - Increase or decrease `kpack-builds` in the ConfigMap to control how many workflows (and thus kpack builds) run concurrently.
 - Optional: Workflow spec.parallelism
   - Limits concurrent nodes within a single workflow. Our pipeline is sequential, so this is less impactful.
   - For parallel DAG/steps, set `spec.parallelism` in the Workflow/WorkflowTemplate.
 
-## Project & Application Setup
-
-### Luban Project Setup (Team/Domain Level)
-This Master Workflow initializes the infrastructure for a new Team or Domain.
-- **Template**: [luban-project-workflow-template.yaml](file:///Users/chi/Workspace/projects/luban/luban-ci/manifests/luban-project-workflow-template.yaml)
-- **What it does**:
-  1.  **Harbor Project**: Creates a container registry project (e.g., `payment`) to store images.
-  2.  **ArgoCD Projects**: Creates AppProjects for each environment (e.g., `snd-payment`, `prd-payment`) to manage permissions and resource whitelists.
-  3.  **Namespaces**: Creates the Kubernetes namespaces for the environments.
-- **Parameters**:
-  - `project_name`: (Required) The name of the team or domain (e.g., `payment`).
-  - `environments`: (Optional) List of environments to setup (default: `["snd", "prd"]`).
-  - `git_organization`: (Optional) The GitHub Org/User where source code lives.
-  - `developer_groups`: (Optional) OIDC groups for read/write access.
-  - `admin_groups`: (Optional) OIDC groups for admin access.
-
-### Luban App Setup (Service Level)
-This Workflow bootstraps a new microservice within an existing Project/Team.
-- **Template**: [luban-app-workflow-template.yaml](file:///Users/chi/Workspace/projects/luban/luban-ci/manifests/luban-app-workflow-template.yaml)
-- **What it does**:
-  1.  **GitOps Repository**:
-      - Provisions a new Git repository named `<app_name>-gitops` (e.g., `cart-service-gitops`).
-      - Uses the standard `luban-gitops-template` (Cookiecutter).
-      - Pushes the initial state to GitHub (branches: `main`, `develop`).
-  2.  **ArgoCD Application**:
-      - Creates an ArgoCD Application resource pointing to the new GitOps repo.
-      - Connects it to the correct ArgoCD Project (e.g., `snd-payment`).
-- **Parameters**:
-  - `project_name`: (Required) The name of the team/domain this app belongs to (e.g., `payment`).
-  - `app_name`: (Required) The name of the service (e.g., `cart-service`).
-  - `git_organization`: (Optional) Auto-detected if not provided.
-  - `gitops_provisioner_image`: (Internal) The image used to render templates (default: `quay.io/luban-ci/gitops-provisioner:0.1.5`).
-
 ### Workflow Cleanup
 - A CronWorkflow runs every 15 minutes to delete completed workflows (Succeeded, Failed, Error) to reclaim resources.
-- Manifest: [workflow-cleanup-cron.yaml](file:///Users/chi/Workspace/projects/luban/luban-ci/manifests/workflow-cleanup-cron.yaml)
+- Manifest: [workflow-cleanup-cron.yaml](manifests/workflow-cleanup-cron.yaml)
 - Deployed automatically with `make pipeline-deploy`.
 
-### Webhook Trigger
-The pipeline is configured to run automatically on GitHub push events via the `luban-gateway`.
-To test locally (simulate webhook):
+## Development & Testing
 
-1.  Ensure the Gateway is running (managed by `luban-bootstrapper`) and `luban-ci` listener is active.
-2.  Run the webhook test command:
-    ```bash
-    make events-webhook-test
-    ```
-    This script (`test/webhook_test.py`) will:
-    - Retrieve the shared webhook secret from Kubernetes.
-    - Construct a valid GitHub push event payload (defaulting to `v0.1.0` tag).
-    - Sign the payload with HMAC-SHA256.
-    - Send the request to `https://webhook.luban.k8s.orb.local/push` via the Gateway.
+Luban CI provides a set of `test-` prefixed make targets to facilitate development and testing of the CI pipelines and event triggers.
 
-Watch the workflow status:
+### Trigger CI Pipeline
+Manually trigger the kpack CI workflow (via Argo CLI) with custom parameters.
 ```bash
-kubectl get wf -n luban-ci -w
+# Default parameters (from test/Makefile.env)
+make test-ci-pipeline
+
+# Override parameters
+make test-ci-pipeline APP_NAME=my-app REPO_URL=https://github.com/myorg/my-app.git TAG=v2.0.0
+```
+
+### Simulate Webhook Event
+Send a signed GitHub push event payload to the local Gateway to verify the entire event-to-pipeline flow.
+
+**Prerequisites**:
+1.  Gateway is running (`luban-gateway` in `gateway` namespace).
+2.  Webhook secret is configured (`make events-webhook-secret`).
+3.  Gateway URL is accessible (default: `https://webhook.luban.metasync.cc/push`).
+
+**Usage**:
+```bash
+# Option 1: Python script (requires python3)
+make test-events-webhook-py
+
+# Option 2: Shell script (requires curl, openssl)
+make test-events-webhook
+```
+
+Both commands support environment variable overrides:
+```bash
+make test-events-webhook APP_NAME=my-app TAG=v1.2.3
 ```
 
 ### Check Build Logs
-View the logs of the latest kpack build:
+View the logs of the latest kpack build for a specific application:
 ```bash
-make pipeline-logs
-```
-
-### Test Result
-Verify the pushed application image locally:
-```bash
-make test
+make pipeline-logs APP_NAME=my-app
 ```
 
 ## Directory Structure
@@ -234,4 +276,5 @@ make test
 - `stack/`: Dockerfiles for Base, Run, and Build images.
 - `manifests/`: Kubernetes manifests (Argo Workflows, RBAC).
 - `tools/`: Utility tools (GitOps provisioner, CLI utils).
+- `test/`: Test scripts and Makefile.
 - `Makefile`: Main entry point for all operations.

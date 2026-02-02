@@ -111,8 +111,34 @@ fi
 # 5. Set launch configuration
 echo "Configuring launch..."
 
-# We don't set a default process via Procfile anymore.
-# Users should provide the start command via Kubernetes Deployment 'command' or 'args'.
-echo "No default launch process set. Please specify an args or command in your container configuration."
+# Handle launch configuration from pyproject.toml [project.scripts]
+if [[ -f "pyproject.toml" ]]; then
+    echo "pyproject.toml found. Checking for [project.scripts]..."
+
+    # Use helper script to detect entry point
+    # CNB_BUILDPACK_DIR is provided by lifecycle
+    SCRIPT_NAME=$("$CNB_BUILDPACK_DIR/bin/detect_entrypoint.py")
+
+    if [[ -n "$SCRIPT_NAME" ]]; then
+        echo "Found entry point script: $SCRIPT_NAME"
+        echo "Setting default process 'web' to: uv run $SCRIPT_NAME"
+        
+        cat <<EOF > "$CNB_LAYERS_DIR/launch.toml"
+[[processes]]
+type = "web"
+command = ["uv", "run", "$SCRIPT_NAME"]
+default = true
+EOF
+    else
+        echo "No [project.scripts] found or unable to determine entry point."
+        # We don't set a default process via Procfile anymore.
+        # Users should provide the start command via Kubernetes Deployment 'command' or 'args'.
+        echo "No default launch process set. Please specify an args or command in your container configuration."
+    fi
+else
+    # We don't set a default process via Procfile anymore.
+    # Users should provide the start command via Kubernetes Deployment 'command' or 'args'.
+    echo "No pyproject.toml found. Please specify an args or command in your container configuration."
+fi
 
 echo "Build complete."

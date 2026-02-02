@@ -3,7 +3,7 @@
 include Makefile.env
 export
 
-.PHONY: deploy clean
+.PHONY: deploy clean logs
 
 deploy: ## Deploy Argo Workflow Template and RBAC
 	@echo "Deploying Workflow RBAC..."
@@ -30,3 +30,7 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 
 clean: ## Delete all workflows
 	@kubectl delete wf --all -n $(K8S_NAMESPACE)
+
+logs: ## Show logs for the latest kpack build of the app
+	@echo "Fetching logs for $(APP_NAME) in $(K8S_NAMESPACE)..."
+	@kp build logs $(APP_NAME) -n $(K8S_NAMESPACE)

@@ -20,5 +20,4 @@ cache/
 .idea/
 *.swp
 
-# Tests
-test/
+

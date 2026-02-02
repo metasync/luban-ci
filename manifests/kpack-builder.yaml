@@ -4,7 +4,7 @@ metadata:
   name: luban-store
 spec:
   sources:
-  - image: quay.io/luban-ci/python-uv:0.0.8
+  - image: quay.io/luban-ci/python-uv:0.0.9
 ---
 apiVersion: kpack.io/v1alpha2
 kind: Builder
