@@ -13,9 +13,13 @@ spec:
     - name: public
       description: "Whether the project should be public"
       value: "false"
-    - name: harbor_url
-      description: "External URL of the Harbor core service"
-      value: "https://harbor.orb.metasync.cc"
+    - name: registry_server
+      description: "Registry server domain (e.g. harbor.example.com)"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: registry_server
+          optional: true
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
       value: "quay.io/luban-ci/gitops-utils:0.3.3"
@@ -25,14 +29,15 @@ spec:
         parameters:
           - name: project_name
           - name: public
-          - name: harbor_url
+          - name: registry_server
       container:
         image: "{{workflow.parameters.gitops_utils_image}}"
         command: [sh, -c]
         args:
           - |
             PROJECT_NAME="{{inputs.parameters.project_name}}"
-            HARBOR_URL="{{inputs.parameters.harbor_url}}"
+            REGISTRY_SERVER="{{inputs.parameters.registry_server}}"
+            HARBOR_URL="https://${REGISTRY_SERVER}"
             PUBLIC="{{inputs.parameters.public}}"
 
             echo "Creating project '$PROJECT_NAME' on $HARBOR_URL..."

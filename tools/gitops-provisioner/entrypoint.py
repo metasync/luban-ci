@@ -13,6 +13,8 @@ def main():
     parser.add_argument('--container-port', required=True, help='Port exposed by the container')
     parser.add_argument('--service-port', required=True, help='Port exposed by the service')
     parser.add_argument('--domain-suffix', required=True, help='Domain suffix for ingress/routes')
+    parser.add_argument('--default-image-name', required=False, help='Default image name')
+    parser.add_argument('--default-image-tag', required=False, help='Default image tag')
     
     args = parser.parse_args()
 
@@ -26,6 +28,11 @@ def main():
         "service_port": args.service_port,
         "domain_suffix": args.domain_suffix
     }
+    
+    if args.default_image_name:
+        extra_context["default_image_name"] = args.default_image_name
+    if args.default_image_tag:
+        extra_context["default_image_tag"] = args.default_image_tag
 
     print(f"Provisioning GitOps repo for {args.project_name}...")
     print(f"Context: {extra_context}")

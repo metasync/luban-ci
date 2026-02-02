@@ -20,20 +20,46 @@ spec:
         value: "github"
       - name: gitops_provisioner_image
         description: "Image for the template rendering tool"
-        value: "quay.io/luban-ci/gitops-provisioner:0.1.5"
+        value: "quay.io/luban-ci/gitops-provisioner:0.1.7"
       - name: gitops_utils_image
         description: "Image for git/api operations"
         value: "quay.io/luban-ci/gitops-utils:0.3.3"
       # Configuration (Defaults Managed Here)
       - name: container_port
         description: "Port exposed by the container"
-        value: "8080"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: default_container_port
+            optional: true
       - name: service_port
         description: "Port exposed by the service"
-        value: "80"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: default_service_port
+            optional: true
       - name: domain_suffix
         description: "Domain suffix for ingress/routes"
-        value: "apps.k8s.orb.local"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: domain_suffix
+            optional: true
+      - name: default_image_name
+        description: "Default placeholder image name"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: default_image_name
+            optional: true
+      - name: default_image_tag
+        description: "Default placeholder image tag"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: default_image_tag
+            optional: true
 
   templates:
     - name: provision-gitops-repo
@@ -48,6 +74,8 @@ spec:
           - name: container_port
           - name: service_port
           - name: domain_suffix
+          - name: default_image_name
+          - name: default_image_tag
       
       dag:
         tasks:
@@ -67,6 +95,10 @@ spec:
                   value: "{{inputs.parameters.service_port}}"
                 - name: domain_suffix
                   value: "{{inputs.parameters.domain_suffix}}"
+                - name: default_image_name
+                  value: "{{inputs.parameters.default_image_name}}"
+                - name: default_image_tag
+                  value: "{{inputs.parameters.default_image_tag}}"
 
           - name: push-to-github
             dependencies: [render-template]
@@ -93,6 +125,8 @@ spec:
           - name: container_port
           - name: service_port
           - name: domain_suffix
+          - name: default_image_name
+          - name: default_image_tag
       container:
         image: "{{inputs.parameters.gitops_provisioner_image}}"
         imagePullPolicy: Always
@@ -111,6 +145,10 @@ spec:
           - "{{inputs.parameters.service_port}}"
           - "--domain-suffix"
           - "{{inputs.parameters.domain_suffix}}"
+          - "--default-image-name"
+          - "{{inputs.parameters.default_image_name}}"
+          - "--default-image-tag"
+          - "{{inputs.parameters.default_image_tag}}"
         volumeMounts:
           - name: workdir
             mountPath: /workdir

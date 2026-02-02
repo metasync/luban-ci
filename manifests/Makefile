@@ -13,6 +13,8 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f kpack-builder.yaml
 	@echo "Applying Argo Workflow semaphores..."
 	@kubectl apply -f argo-semaphore.yaml
+	@echo "Applying Luban Configuration..."
+	@kubectl apply -f luban-config.yaml
 	@echo "Deploying Workflow Templates..."
 	@kubectl apply -f luban-ci-kpack-workflow-template.yaml
 	@kubectl apply -f argocd-project-workflow-template.yaml

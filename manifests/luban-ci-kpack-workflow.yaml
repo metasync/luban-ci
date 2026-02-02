@@ -13,7 +13,8 @@ spec:
     - name: revision
       value: ""
     - name: app_name
-      value: "luban-hello-world-py"
+      # value: "luban-hello-world-py"
+      value: sample-app
     - name: sub_path
       value: ""
     - name: git_ref
@@ -26,7 +27,7 @@ spec:
     - name: git_creds_secret
       value: "github-creds"
     - name: registry_server
-      value: "harbor.k8s.orb.local"
+      value: "harbor.luban.metasync.cc"
     - name: gitops_branch
       value: "develop"
     - name: deploy_env

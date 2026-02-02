@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: quay.io/luban-ci/luban-hello-world-py:latest
+          image: {{cookiecutter.default_image_name}}:{{cookiecutter.default_image_tag}}
           imagePullPolicy: Always
           ports:
             - name: http

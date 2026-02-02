@@ -16,9 +16,13 @@ spec:
       - name: public
         description: "Whether the Harbor project should be public"
         value: "false"
-      - name: harbor_url
-        description: "External URL of the Harbor core service"
-        value: "https://harbor.orb.metasync.cc"
+      - name: registry_server
+        description: "Registry server domain"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: registry_server
+            optional: true
       - name: git_organization
         description: "Git Organization/User (defaults to project_name if empty)"
         value: ""
@@ -33,7 +37,11 @@ spec:
         value: '[]'
       - name: image_pull_secret
         description: "Name of the secret to copy to project namespaces"
-        value: "harbor-ro-creds"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: image_pull_secret
+            optional: true
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
         value: "quay.io/luban-ci/gitops-utils:0.3.3"
@@ -50,8 +58,8 @@ spec:
                   value: "{{workflow.parameters.project_name}}"
                 - name: public
                   value: "{{workflow.parameters.public}}"
-                - name: harbor_url
-                  value: "{{workflow.parameters.harbor_url}}"
+                - name: registry_server
+                  value: "{{workflow.parameters.registry_server}}"
 
           - name: setup-argocd-project
             templateRef:

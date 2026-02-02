@@ -36,7 +36,11 @@ spec:
       value: "github-creds"
     - name: registry_server
       description: "Registry server to push image to"
-      value: "harbor.orb.metasync.cc"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: registry_server
+          optional: true
     - name: gitops_branch
       description: "Branch in GitOps repo to update (usually 'develop')"
       value: "develop"
@@ -46,6 +50,20 @@ spec:
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
       value: "quay.io/luban-ci/gitops-utils:0.3.3"
+    - name: default_image_name
+      description: "Default placeholder image name to replace"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: default_image_name
+          optional: true
+    - name: default_image_tag
+      description: "Default placeholder image tag to replace"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: default_image_tag
+          optional: true
 
   volumeClaimTemplates:
   - metadata:
@@ -104,6 +122,10 @@ spec:
             value: "{{steps.determine-gitops-url.outputs.parameters.repo_url}}"
           - name: registry_namespace
             value: "{{steps.determine-org.outputs.parameters.organization}}"
+          - name: default_image_name
+            value: "{{workflow.parameters.default_image_name}}"
+          - name: default_image_tag
+            value: "{{workflow.parameters.default_image_tag}}"
 
   - name: git-checkout
     container:
@@ -215,6 +237,8 @@ spec:
       - name: image_tag
       - name: gitops_repo_url
       - name: registry_namespace
+      - name: default_image_name
+      - name: default_image_tag
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh, -c]
@@ -242,20 +266,56 @@ spec:
         fi
         
         KUST_PATH="app/overlays/${DEPLOY_ENV}/kustomization.yaml"
+        BASE_DIR="app/base"
         APP_IMAGE_NAME="${registry_server}/${registry_namespace}/${APP_NAME}"
         export APP_IMAGE_NAME
         IMAGE_TAG="{{inputs.parameters.image_tag}}"
         export IMAGE_TAG
+        DEFAULT_IMAGE_NAME="{{inputs.parameters.default_image_name}}"
+        
+        echo "Updating GitOps repo..."
+        
+        # 1. Replace Placeholder Image Name (Day 1 Migration)
+        if [ -n "$DEFAULT_IMAGE_NAME" ]; then
+           echo "Checking for default image placeholder: $DEFAULT_IMAGE_NAME"
+           
+           # Replace in Base (Deployment and Kustomization)
+           if [ -d "$BASE_DIR" ]; then
+              if grep -r "$DEFAULT_IMAGE_NAME" "$BASE_DIR" >/dev/null 2>&1; then
+                 echo "Replacing placeholder in Base..."
+                 find "$BASE_DIR" -name "*.yaml" -type f -exec sed -i "s|$DEFAULT_IMAGE_NAME|$APP_IMAGE_NAME|g" {} +
+              fi
+           fi
+           
+           # Replace in Overlay (Kustomization)
+           if [ -f "$KUST_PATH" ]; then
+              if grep "$DEFAULT_IMAGE_NAME" "$KUST_PATH" >/dev/null 2>&1; then
+                 echo "Replacing placeholder in Overlay..."
+                 sed -i "s|$DEFAULT_IMAGE_NAME|$APP_IMAGE_NAME|g" "$KUST_PATH"
+              fi
+           fi
+        fi
+        
+        # 2. Update Image Tag
+        echo "Updating image tag to $IMAGE_TAG..."
         if yq -e '.images[] | select(.name == env(APP_IMAGE_NAME))' "$KUST_PATH" >/dev/null 2>&1; then
-          yq -i '(.images[] | select(.name == env(APP_IMAGE_NAME))).newTag = env(IMAGE_TAG)' "$KUST_PATH"
+           yq -i '(.images[] | select(.name == env(APP_IMAGE_NAME))).newTag = env(IMAGE_TAG)' "$KUST_PATH"
         else
-          yq -i '.images[0].newTag = env(IMAGE_TAG)' "$KUST_PATH"
+           # Fallback: Initialize images list if empty or missing
+           if [ "$(yq '.images | length' "$KUST_PATH")" = "0" ]; then
+              echo "Initializing Overlay images list..."
+              yq -i ".images += [{\"name\": env(APP_IMAGE_NAME), \"newTag\": env(IMAGE_TAG)}]" "$KUST_PATH"
+           else
+              # Images list exists but no match found. Append new entry.
+              echo "Image entry not found. Appending..."
+              yq -i ".images += [{\"name\": env(APP_IMAGE_NAME), \"newTag\": env(IMAGE_TAG)}]" "$KUST_PATH"
+           fi
         fi
         
         if git diff --quiet; then
           echo "No changes to commit."
         else
-          git add "$KUST_PATH"
+          git add .
           git commit -m "Update ${APP_NAME} ${DEPLOY_ENV} image tag to ${IMAGE_TAG}"
           git push
         fi

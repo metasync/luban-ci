@@ -114,8 +114,20 @@ make pipeline-run
 - CI updates app/overlays/snd/kustomization.yaml newTag in develop to the tag (if present) or the commit revision.
 
 ### Registry Configuration
-- Default registry_server is quay.io, registry_namespace is luban-ci.
+- Default registry_server and image_pull_secret are managed in the `luban-config` ConfigMap.
 - Override per run by passing parameters to the workflow or environment variables used by the Makefile.
+
+### Configuration Management
+- **`luban-config` ConfigMap**: Central configuration for all workflows.
+  - Located in `manifests/luban-config.yaml`.
+  - Keys:
+    - `registry_server`: Domain of the registry (e.g., `harbor.luban.metasync.cc`).
+    - `image_pull_secret`: Name of the secret for pulling images (e.g., `harbor-ro-creds`).
+    - `default_image_name`: Placeholder image name (e.g., `quay.io/luban-ci/luban-hello-world-py`).
+    - `default_image_tag`: Placeholder image tag (e.g., `latest`).
+    - `default_container_port`: Default app port (e.g., `8000`).
+    - `default_service_port`: Default service port (e.g., `80`).
+    - `domain_suffix`: Suffix for app ingress (e.g., `apps.metasync.cc`).
 
 ### Application Deployment Configuration
 - **Start Command**: The `python-uv` buildpack does not set a default start command. You must specify the command in your Kubernetes Deployment manifest.

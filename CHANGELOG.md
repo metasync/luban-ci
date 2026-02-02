@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.5] - 2026-02-02
+
+### Architecture
+- **ConfigMap Driven**: Transitioned to using `luban-config` ConfigMap as the single source of truth for platform configuration (ports, domains, registry, secrets).
+- **Consistency**: Refactored all workflow templates (`luban-project`, `luban-app`, `argocd-project`, `harbor-project`) to consume values from `luban-config`.
+
+### Changed
+- **Workflow**: Updated `luban-ci-kpack-workflow-template` to robustly handle "Day 1" GitOps updates by performing a one-time global replacement of the placeholder image name in all manifests.
+- **Provisioner**: Updated `gitops-provisioner` to `v0.1.7`, adding support for split `default_image_name` and `default_image_tag` parameters.
+- **Template**: Updated Cookiecutter template to use parameterized default image instead of hardcoded `quay.io` value.
+- **Fix**: Resolved issue where GitOps repo update failed to replace the default image name in `base/deployment.yaml` and `overlays/kustomization.yaml`.
+
 ## [v0.6.4] - 2026-01-31
 
 ### Changed

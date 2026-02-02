@@ -31,16 +31,28 @@ spec:
         value: "github"
       - name: container_port
         description: "Container port to expose"
-        value: "8080"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: default_container_port
+            optional: true
       - name: service_port
         description: "Service port to expose"
-        value: "80"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: default_service_port
+            optional: true
       - name: domain_suffix
         description: "Domain suffix for Ingress"
-        value: "apps.k8s.orb.local"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: domain_suffix
+            optional: true
       - name: gitops_provisioner_image
         description: "Image for GitOps provisioner tool"
-        value: "quay.io/luban-ci/gitops-provisioner:0.1.5"
+        value: "quay.io/luban-ci/gitops-provisioner:0.1.7"
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
         value: "quay.io/luban-ci/gitops-utils:0.3.3"

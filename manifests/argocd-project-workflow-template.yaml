@@ -27,7 +27,11 @@ spec:
       value: '[]'
     - name: image_pull_secret
       description: "Name of the secret to copy to project namespaces"
-      value: "harbor-ro-creds"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: image_pull_secret
+          optional: true
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
       value: "quay.io/luban-ci/gitops-utils:0.3.3"

@@ -4,7 +4,12 @@ set -e
 # Configuration
 GATEWAY_NAMESPACE="gateway"
 GATEWAY_SERVICE="luban-gateway"
-DOMAIN="harbor.orb.metasync.cc"
+DOMAINS=(
+    "harbor.luban.metasync.cc"
+    "argocd.luban.metasync.cc"
+    "argo-workflows.luban.metasync.cc"
+    "webhook.luban.metasync.cc"
+)
 COREDNS_NAMESPACE="kube-system"
 COREDNS_CM="coredns"
 
@@ -18,29 +23,28 @@ fi
 
 echo "Found LoadBalancer IP: ${LB_IP}"
 
-# Check if entry already exists in CoreDNS
+# Check current config
 CURRENT_HOSTS=$(kubectl get cm ${COREDNS_CM} -n ${COREDNS_NAMESPACE} -o jsonpath='{.data.NodeHosts}')
+NEW_HOSTS="$CURRENT_HOSTS"
+UPDATED=false
 
-if echo "$CURRENT_HOSTS" | grep -q "${DOMAIN}"; then
-    echo "CoreDNS already has an entry for ${DOMAIN}."
-    
-    # Optional: Update IP if it changed
-    EXISTING_IP=$(echo "$CURRENT_HOSTS" | grep "${DOMAIN}" | awk '{print $1}')
-    if [ "$EXISTING_IP" != "$LB_IP" ]; then
-        echo "WARNING: Existing entry points to ${EXISTING_IP}, but current LB IP is ${LB_IP}."
-        echo "Updating entry..."
-        # Logic to update would be complex with sed, simpler to warn or append new
+for DOMAIN in "${DOMAINS[@]}"; do
+    if echo "$CURRENT_HOSTS" | grep -q "${DOMAIN}"; then
+        echo "CoreDNS already has an entry for ${DOMAIN}."
     else
-        echo "Entry is up to date."
-        exit 0
+        echo "Adding ${DOMAIN} -> ${LB_IP}..."
+        NEW_HOSTS="${NEW_HOSTS}
+${LB_IP} ${DOMAIN}"
+        UPDATED=true
     fi
+done
+
+if [ "$UPDATED" = "false" ]; then
+    echo "All entries are up to date."
+    exit 0
 fi
 
-echo "Patching CoreDNS to add ${DOMAIN} -> ${LB_IP}..."
-
-# Append the new entry
-NEW_HOSTS="${CURRENT_HOSTS}
-${LB_IP} ${DOMAIN}"
+echo "Patching CoreDNS..."
 
 # Apply patch
 cat <<EOF > /tmp/coredns-patch.yaml
