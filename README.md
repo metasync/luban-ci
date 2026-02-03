@@ -165,7 +165,15 @@ This Workflow bootstraps a new microservice within an existing Project/Team.
   - `setup_source_repo`: (Optional) Whether to provision the source code repository (`yes`, `no`). Default: `yes`.
   - `gitops_provisioner_image`: (Internal) The image used to render templates (default: `quay.io/luban-ci/gitops-provisioner:0.1.11`).
 
-## Usage
+### Environment Promotion
+To promote an application from `snd` to `prd`, use the `luban-promotion-template`:
+- **Workflow**: `luban-promotion-template`
+- **Parameters**:
+  - `project_name`: (Required) Name of the project.
+  - `app_name`: (Required) Name of the application.
+  - `git_organization`: (Optional) Auto-detected if not provided.
+
+This workflow extracts the current image tag from the `develop` branch (`snd` overlay), creates a new promotion branch from `main`, and opens a Pull Request to `main` (`prd` overlay) in the application's GitOps repository.
 
 ### Run CI Pipeline
 Trigger the end-to-end CI pipeline (Checkout -> Build -> Push):

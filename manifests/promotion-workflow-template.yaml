@@ -1,0 +1,187 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: luban-promotion-template
+  namespace: luban-ci
+spec:
+  entrypoint: promote-snd-to-prd
+  serviceAccountName: luban-ci-sa
+  arguments:
+    parameters:
+      - name: project_name
+        description: "Name of the project/team (e.g., 'payment')"
+      - name: app_name
+        description: "Name of the application (e.g., 'cart-service')"
+      - name: git_organization
+        description: "Git Organization/User (defaults to project_name if empty)"
+        value: ""
+      - name: git_provider
+        description: "Git Provider (e.g., 'github', 'gitlab')"
+        value: "github"
+      - name: git_creds_secret
+        description: "Name of the secret containing git credentials"
+        value: "github-creds"
+      - name: gitops_utils_image
+        description: "Image for GitOps utility tools"
+        value: "quay.io/luban-ci/gitops-utils:0.3.3"
+      - name: registry_server
+        description: "Registry server domain"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: registry_server
+            optional: true
+
+  templates:
+    - name: promote-snd-to-prd
+      inputs:
+        parameters:
+          - name: project_name
+          - name: app_name
+          - name: git_organization
+          - name: git_provider
+          - name: git_creds_secret
+          - name: gitops_utils_image
+          - name: registry_server
+      container:
+        image: "{{inputs.parameters.gitops_utils_image}}"
+        command: [sh, -c]
+        args:
+          - |
+            set -e
+            set -x
+
+            # 1. Calculate derived parameters
+            ORG="{{inputs.parameters.git_organization}}"
+            if [ -z "$ORG" ]; then
+              ORG="{{inputs.parameters.project_name}}"
+            fi
+            
+            GITOPS_REPO_NAME="{{inputs.parameters.app_name}}-gitops"
+            GITOPS_REPO_URL="https://{{inputs.parameters.git_provider}}.com/${ORG}/${GITOPS_REPO_NAME}.git"
+            
+            # 2. Configure Git
+            git config --global credential.helper store
+            DOMAIN=$(echo "$GITOPS_REPO_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+            echo "https://${GIT_USERNAME}:${GIT_TOKEN}@${DOMAIN}" > ~/.git-credentials
+            git config --global user.email "ci@luban.com"
+            git config --global user.name "Luban CI"
+            git config --global --add safe.directory "*"
+
+            # 3. Clone and extract tag from 'develop' (snd)
+            echo "Cloning GitOps repo (develop branch)..."
+            git clone -b develop ${GITOPS_REPO_URL} /tmp/gitops
+            cd /tmp/gitops
+
+            SND_KUST="app/overlays/snd/kustomization.yaml"
+            if [ ! -f "$SND_KUST" ]; then
+              echo "Error: $SND_KUST not found in develop branch."
+              exit 1
+            fi
+
+            # Calculate the image name we expect
+            REGISTRY_NAMESPACE="${ORG}"
+            APP_IMAGE_NAME="{{inputs.parameters.registry_server}}/${REGISTRY_NAMESPACE}/{{inputs.parameters.app_name}}"
+            export APP_IMAGE_NAME
+
+            echo "Target Image Name: $APP_IMAGE_NAME"
+
+            # Extract image tag from snd
+            IMAGE_TAG=$(yq '.images[] | select(.name == env(APP_IMAGE_NAME)) | .newTag' "$SND_KUST")
+
+            if [ "$IMAGE_TAG" = "null" ] || [ -z "$IMAGE_TAG" ]; then
+              echo "Warning: Could not find tag for $APP_IMAGE_NAME in $SND_KUST using explicit name."
+              echo "Falling back to first image in list..."
+              IMAGE_TAG=$(yq '.images[0].newTag' "$SND_KUST")
+              # Also update APP_IMAGE_NAME to match what we found if it was different
+              EXTRACTED_NAME=$(yq '.images[0].name' "$SND_KUST")
+              if [ "$EXTRACTED_NAME" != "null" ] && [ -n "$EXTRACTED_NAME" ]; then
+                APP_IMAGE_NAME="$EXTRACTED_NAME"
+              fi
+            fi
+
+            if [ "$IMAGE_TAG" = "null" ] || [ -z "$IMAGE_TAG" ]; then
+              echo "Error: Could not extract image tag from $SND_KUST"
+              yq . "$SND_KUST"
+              exit 1
+            fi
+
+            echo "Promoting Image: $APP_IMAGE_NAME"
+            echo "Promoting Tag:   $IMAGE_TAG"
+
+            # 4. Switch to 'main' (prd) and create promotion branch
+            echo "Switching to main branch..."
+            git fetch origin main
+            git checkout main
+
+            PROMOTE_BRANCH="promote/{{inputs.parameters.app_name}}-${IMAGE_TAG}"
+            echo "Creating promotion branch: $PROMOTE_BRANCH"
+            git checkout -b "$PROMOTE_BRANCH"
+
+            PRD_KUST="app/overlays/prd/kustomization.yaml"
+            if [ ! -f "$PRD_KUST" ]; then
+              echo "Error: $PRD_KUST not found in main branch."
+              exit 1
+            fi
+
+            # Update the tag in prd
+            export APP_IMAGE_NAME
+            export IMAGE_TAG
+            
+            if yq -e '.images[] | select(.name == env(APP_IMAGE_NAME))' "$PRD_KUST" >/dev/null 2>&1; then
+               yq -i '(.images[] | select(.name == env(APP_IMAGE_NAME))).newTag = env(IMAGE_TAG)' "$PRD_KUST"
+            else
+               echo "Image entry not found in PRD. Appending..."
+               yq -i ".images += [{\"name\": env(APP_IMAGE_NAME), \"newTag\": env(IMAGE_TAG)}]" "$PRD_KUST"
+            fi
+
+            # 5. Commit and Push Branch
+            if git diff --quiet; then
+              echo "No changes to promote. PRD is already up to date with SND tag."
+            else
+              git add .
+              git commit -m "Promote {{inputs.parameters.app_name}} from snd to prd (tag: ${IMAGE_TAG})"
+              git push origin "$PROMOTE_BRANCH" --force
+              
+              # 6. Create Pull Request via GitHub API
+              echo "Creating Pull Request..."
+              PR_TITLE="Promote {{inputs.parameters.app_name}} to prd (${IMAGE_TAG})"
+              PR_BODY="Automated promotion request from snd (develop) to prd (main).<br><br>**App**: {{inputs.parameters.app_name}}<br>**Tag**: ${IMAGE_TAG}"
+              
+              # Replace newlines with <br> for JSON body if needed, or just use literal \n
+              
+              PR_RESP=$(curl -X POST -s -w "\n%{http_code}" \
+                -H "Authorization: token $GIT_TOKEN" \
+                -H "Accept: application/vnd.github.v3+json" \
+                https://api.github.com/repos/${ORG}/${GITOPS_REPO_NAME}/pulls \
+                -d "{
+                  \"title\": \"$PR_TITLE\",
+                  \"body\": \"$PR_BODY\",
+                  \"head\": \"$PROMOTE_BRANCH\",
+                  \"base\": \"main\"
+                }")
+                
+              PR_HTTP_CODE=$(echo "$PR_RESP" | tail -n1)
+              if [ "$PR_HTTP_CODE" -eq 201 ]; then
+                echo "✅ Pull Request created successfully!"
+              elif [ "$PR_HTTP_CODE" -eq 422 ]; then
+                echo "⚠️ Pull Request already exists or no changes found between branches."
+              else
+                echo "❌ Error creating Pull Request. Status: $PR_HTTP_CODE"
+                echo "$PR_RESP"
+                exit 1
+              fi
+            fi
+        env:
+          - name: GIT_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: "{{inputs.parameters.git_creds_secret}}"
+                key: username
+          - name: GIT_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: "{{inputs.parameters.git_creds_secret}}"
+                key: token
+          - name: APP_NAME
+            value: "{{inputs.parameters.app_name}}"
