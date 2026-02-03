@@ -3,7 +3,7 @@
 include Makefile.env
 export
 
-.PHONY: deploy clean logs
+.PHONY: deploy clean logs tunnel-setup
 
 deploy: ## Deploy Argo Workflow Template and RBAC
 	@echo "Deploying Workflow RBAC..."
@@ -21,7 +21,7 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f argocd-app-workflow-template.yaml
 	@kubectl apply -f harbor-project-workflow-template.yaml
 	@kubectl apply -f gitops-repo-workflow-template.yaml
-	@kubectl apply -f gitops-helper-workflow-template.yaml
+	@kubectl apply -f source-repo-workflow-template.yaml
 	@kubectl apply -f luban-project-workflow-template.yaml
 	@kubectl apply -f luban-app-workflow-template.yaml
 	@echo "Deploying Cleanup CronWorkflow..."
@@ -34,3 +34,6 @@ clean: ## Delete all workflows
 logs: ## Show logs for the latest kpack build of the app
 	@echo "Fetching logs for $(APP_NAME) in $(K8S_NAMESPACE)..."
 	@kp build logs $(APP_NAME) -n $(K8S_NAMESPACE)
+
+tunnel-setup: ## Setup Cloudflare Tunnel for webhook exposure (optional)
+	@./tunnel/setup.sh

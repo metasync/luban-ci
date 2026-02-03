@@ -1,0 +1,234 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: source-repo-provision-template
+  namespace: luban-ci
+spec:
+  entrypoint: provision-source-repo
+  serviceAccountName: luban-ci-sa
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 100Mi
+  arguments:
+    parameters:
+      - name: project_name
+        description: "Name of the project/team (e.g. dataops)"
+      - name: application_name
+        description: "Name of the application"
+      - name: git_organization
+        description: "Git Organization/User"
+        value: "metasync"
+      - name: git_provider
+        description: "Git Provider (github, gitlab, etc.)"
+        value: "github"
+      - name: gitsrc_provisioner_image
+        description: "Image for the template rendering tool"
+        value: "quay.io/luban-ci/gitsrc-provisioner:0.1.0"
+      - name: gitops_utils_image
+        description: "Image for git/api operations"
+        value: "quay.io/luban-ci/gitops-utils:0.3.3"
+      - name: webhook_url
+        description: "Webhook URL for CI integration"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: webhook_url
+            optional: true
+
+  templates:
+    - name: provision-source-repo
+      inputs:
+        parameters:
+          - name: project_name
+          - name: application_name
+          - name: git_organization
+          - name: git_provider
+          - name: gitsrc_provisioner_image
+          - name: gitops_utils_image
+          - name: webhook_url
+      
+      dag:
+        tasks:
+          - name: render-template
+            template: render-template
+            arguments:
+              parameters:
+                - name: project_name
+                  value: "{{inputs.parameters.project_name}}"
+                - name: application_name
+                  value: "{{inputs.parameters.application_name}}"
+                - name: gitsrc_provisioner_image
+                  value: "{{inputs.parameters.gitsrc_provisioner_image}}"
+
+          - name: push-to-github
+            dependencies: [render-template]
+            template: push-to-github
+            when: "{{inputs.parameters.git_provider}} == github"
+            arguments:
+              parameters:
+                - name: project_name
+                  value: "{{inputs.parameters.project_name}}"
+                - name: application_name
+                  value: "{{inputs.parameters.application_name}}"
+                - name: git_organization
+                  value: "{{inputs.parameters.git_organization}}"
+                - name: gitops_utils_image
+                  value: "{{inputs.parameters.gitops_utils_image}}"
+                - name: webhook_url
+                  value: "{{inputs.parameters.webhook_url}}"
+
+    - name: render-template
+      inputs:
+        parameters:
+          - name: project_name
+          - name: application_name
+          - name: gitsrc_provisioner_image
+      container:
+        image: "{{inputs.parameters.gitsrc_provisioner_image}}"
+        imagePullPolicy: Always
+        command: ["python3", "/entrypoint.py"]
+        args:
+          - "--project-name"
+          - "{{inputs.parameters.project_name}}"
+          - "--application-name"
+          - "{{inputs.parameters.application_name}}"
+          - "--output-dir"
+          - "/workdir"
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+
+    - name: push-to-github
+      inputs:
+        parameters:
+          - name: project_name
+          - name: application_name
+          - name: git_organization
+          - name: gitops_utils_image
+          - name: webhook_url
+      script:
+        image: "{{inputs.parameters.gitops_utils_image}}"
+        imagePullPolicy: Always
+        command: [sh]
+        env:
+          - name: GITHUB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: github-creds
+                key: token
+          - name: WEBHOOK_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: github-webhook-secret
+                key: secret
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+        source: |
+          #!/bin/sh
+          set -e
+          set -x
+          
+          # Calculate derived parameters in shell for robustness
+          GIT_ORG="{{inputs.parameters.git_organization}}"
+          if [ -z "$GIT_ORG" ]; then
+            GIT_ORG="{{inputs.parameters.project_name}}"
+          fi
+
+          REPO_DIR="/workdir/{{inputs.parameters.application_name}}"
+          REPO_NAME="{{inputs.parameters.application_name}}"
+          WEBHOOK_URL="{{inputs.parameters.webhook_url}}"
+          
+          if [ ! -d "$REPO_DIR" ]; then
+            echo "Error: Directory $REPO_DIR does not exist."
+            ls -R /workdir
+            exit 1
+          fi
+
+          cd "$REPO_DIR"
+
+          # 1. Create Remote Repository
+          echo "Creating repository $GIT_ORG/$REPO_NAME..."
+          
+          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            https://api.github.com/repos/$GIT_ORG/$REPO_NAME)
+
+          if [ "$HTTP_CODE" -eq 404 ]; then
+             echo "Repo not found, creating..."
+             # Try Org first
+             CREATE_RESP=$(curl -X POST -s -w "\n%{http_code}" \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/orgs/$GIT_ORG/repos \
+              -d "{\"name\":\"$REPO_NAME\", \"private\":false}")
+
+             CREATE_HTTP_CODE=$(echo "$CREATE_RESP" | tail -n1)
+             
+             # Fallback to User
+             if [ "$CREATE_HTTP_CODE" -eq 404 ]; then
+                echo "Org creation failed (404). Checking user..."
+                CURRENT_USER=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user | grep '"login":' | head -n1 | cut -d'"' -f4)
+                
+                if [ "$CURRENT_USER" = "$GIT_ORG" ]; then
+                   echo "Creating repository for user $CURRENT_USER..."
+                   CREATE_RESP=$(curl -X POST -s -w "\n%{http_code}" \
+                     -H "Authorization: token $GITHUB_TOKEN" \
+                     -H "Accept: application/vnd.github.v3+json" \
+                     https://api.github.com/user/repos \
+                     -d "{\"name\":\"$REPO_NAME\", \"private\":false}")
+                   CREATE_HTTP_CODE=$(echo "$CREATE_RESP" | tail -n1)
+                fi
+             fi
+
+             if [ "$CREATE_HTTP_CODE" -ne 201 ]; then
+                echo "Error creating repo. Status: $CREATE_HTTP_CODE"
+                exit 1
+             fi
+          elif [ "$HTTP_CODE" -eq 200 ]; then
+             echo "Repository already exists."
+          fi
+
+          # 2. Configure Webhook
+          echo "Configuring Webhook..."
+          HOOK_CONFIG="{\"name\":\"web\",\"active\":true,\"events\":[\"push\"],\"config\":{\"url\":\"$WEBHOOK_URL\",\"content_type\":\"json\",\"secret\":\"$WEBHOOK_SECRET\",\"insecure_ssl\":\"0\"}}"
+          
+          # Check if hook exists
+          HOOKS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/$GIT_ORG/$REPO_NAME/hooks)
+          
+          if echo "$HOOKS" | grep -q "$WEBHOOK_URL"; then
+             echo "Webhook already exists."
+          else
+             echo "Creating webhook..."
+             curl -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/$GIT_ORG/$REPO_NAME/hooks \
+              -d "$HOOK_CONFIG"
+          fi
+
+          # 3. Initialize and Push
+          echo "Initializing Git..."
+          unset GIT_DIR
+          unset GIT_WORK_TREE
+          
+          git init
+          git config --global user.email "luban-ci@metasync.io"
+          git config --global user.name "Luban CI"
+          git config --global --add safe.directory "*"
+          
+          git branch -M main
+          git add .
+          git commit -m "Initial Source Code"
+
+          git remote add origin https://${GITHUB_TOKEN}@github.com/$GIT_ORG/$REPO_NAME.git
+          
+          echo "Pushing to remote..."
+          git push -u origin main --force
+          
+          echo "✅ Source Repo Provisioned!"

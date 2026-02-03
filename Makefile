@@ -18,6 +18,7 @@ endif
         pipeline-deploy pipeline-clean pipeline-logs \
         events-deploy events-webhook-secret \
         test-ci-pipeline test-events-webhook test-events-webhook-py \
+        tunnel-setup \
         clean
 
 help: ## Show this help message
@@ -109,10 +110,12 @@ builder-push: ## Check remote, build (if needed), tag and push Builder Image
 tools-image-build: ## Build gitops-utils tooling image
 	@$(MAKE) -C tools/gitops-utils build
 	@$(MAKE) -C tools/gitops-provisioner build
+	@$(MAKE) -C tools/gitsrc-provisioner build
 
 tools-image-push: ## Push gitops-utils tooling image (build if missing)
 	@$(MAKE) -C tools/gitops-utils push
 	@$(MAKE) -C tools/gitops-provisioner push
+	@$(MAKE) -C tools/gitsrc-provisioner push
 
 # --- Pipeline Management ---
 
@@ -149,6 +152,9 @@ test-events-webhook: ## Send signed push payload via gateway to trigger Workflow
 
 test-events-webhook-py: ## Send signed push payload via gateway to trigger Workflow (Python)
 	@$(MAKE) -C test test-webhook-py
+
+tunnel-setup: ## Setup Cloudflare Tunnel for webhook exposure (optional)
+	@$(MAKE) -C manifests tunnel-setup
 
 venv-clean: ## Cleanup virtual environment
 	@echo "Removing virtual environment..."

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.7] - 2026-02-03
+
+### Added
+- **Developer Experience**: Added `setup_source_repo` parameter with `yes`/`no` enum to `luban-app-setup-template`, allowing optional source repo provisioning.
+- **Infrastructure**: Integrated `source-repo-workflow-template.yaml` into the automated deployment pipeline (Makefile).
+
+### Changed
+- **Robustness**: Refactored all workflow templates to use native shell logic instead of complex Argo expressions for parameter derivation (e.g., Git organization fallback, URL construction).
+- **Documentation**: Updated `README.md` and `PLAN.md` to reflect new architecture and features.
+
+### Fixed
+- **Stability**: Standardized enum values to lowercase and fixed case-sensitive `when` conditions in workflows.
+- **Build**: Resolved `kp` image tagging issues by using explicit shell logic in `luban-ci-kpack-workflow-template`, preventing positional argument errors.
+
 ## [v0.6.6] - 2026-02-02
 
 ### Added

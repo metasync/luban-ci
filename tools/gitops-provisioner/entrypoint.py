@@ -5,7 +5,6 @@ from cookiecutter.main import cookiecutter
 
 def main():
     parser = argparse.ArgumentParser(description='GitOps Repo Provisioner')
-    # All arguments are now required as defaults are handled by the caller (Argo Workflow)
     parser.add_argument('--project-name', required=True, help='Name of the project/repo')
     parser.add_argument('--application-name', required=True, help='Name of the application')
     parser.add_argument('--output-dir', required=True, help='Directory to output the rendered template')
@@ -34,7 +33,7 @@ def main():
     if args.default_image_tag:
         extra_context["default_image_tag"] = args.default_image_tag
 
-    print(f"Provisioning GitOps repo for {args.project_name}...")
+    print(f"Provisioning GitOps repo for app {args.application_name} in project {args.project_name}...")
     print(f"Context: {extra_context}")
     
     try:
@@ -44,7 +43,7 @@ def main():
             output_dir=args.output_dir,
             extra_context=extra_context
         )
-        print(f"Successfully generated template in {args.output_dir}/{args.project_name}")
+        print(f"Successfully generated template in {args.output_dir}/{args.application_name}-gitops")
     except Exception as e:
         print(f"Error generating template: {e}")
         sys.exit(1)

@@ -20,4 +20,6 @@ cache/
 .idea/
 *.swp
 
-
+# Cloudflare Tunnel
+manifests/tunnel/cloudflared-config.yaml
+.cloudflared/

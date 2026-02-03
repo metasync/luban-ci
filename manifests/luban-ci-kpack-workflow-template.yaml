@@ -77,51 +77,19 @@ spec:
   templates:
   - name: ci-pipeline
     steps:
-    # 1. Determine Organization from Repo URL
-    - - name: determine-org
-        templateRef:
-          name: gitops-helper-template
-          template: extract-org-from-url
-        arguments:
-          parameters:
-          - name: repo_url
-            value: "{{workflow.parameters.repo_url}}"
-          - name: git_provider
-            value: "{{workflow.parameters.git_provider}}"
-
     - - name: checkout
         template: git-checkout
-    - - name: build-and-push
-        template: build-push
-        arguments:
-          parameters:
-          - name: registry_namespace
-            value: "{{steps.determine-org.outputs.parameters.organization}}"
+    - - name: build-push-by-commit
+        template: build-push-by-commit
+        when: "'{{workflow.parameters.git_ref}}' !~ '^refs/tags/'"
+      - name: build-push-by-tag
+        template: build-push-by-tag
+        when: "'{{workflow.parameters.git_ref}}' =~ '^refs/tags/'"
     
-    # New step: Determine GitOps Repo URL
-    - - name: determine-gitops-url
-        templateRef:
-          name: gitops-helper-template
-          template: get-repo-url
-        arguments:
-          parameters:
-          - name: git_provider
-            value: "{{workflow.parameters.git_provider}}"
-          - name: git_organization
-            value: "{{steps.determine-org.outputs.parameters.organization}}"
-          - name: application_name
-            value: "{{workflow.parameters.app_name}}"
-
     - - name: update-gitops
         template: git-update
         arguments:
           parameters:
-          - name: image_tag
-            value: "{{steps.build-and-push.outputs.parameters.image_tag}}"
-          - name: gitops_repo_url
-            value: "{{steps.determine-gitops-url.outputs.parameters.repo_url}}"
-          - name: registry_namespace
-            value: "{{steps.determine-org.outputs.parameters.organization}}"
           - name: default_image_name
             value: "{{workflow.parameters.default_image_name}}"
           - name: default_image_tag
@@ -162,10 +130,7 @@ spec:
       - name: workdir
         mountPath: /workdir
 
-  - name: build-push
-    inputs:
-      parameters:
-      - name: registry_namespace
+  - name: build-push-by-commit
     outputs:
       parameters:
       - name: image_tag
@@ -176,42 +141,54 @@ spec:
       command: [sh, -c]
       args:
       - |
-        # Create or Update kpack Image resource and wait for build
-        echo "Upserting kpack Image for {{workflow.parameters.app_name}}..."
+        # Calculate derived parameters in shell for robustness
+        REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
         
-        # Prepare optional flags
-        SUB_PATH="{{workflow.parameters.sub_path}}"
-        SUB_PATH_FLAG=""
-        if [ -n "$SUB_PATH" ]; then
-          SUB_PATH_FLAG="--sub-path $SUB_PATH"
-        fi
+        # Build for Regular Commit
+        echo "Processing regular commit build for {{workflow.parameters.app_name}}..."
         
-        IMAGE_TAG="$REVISION"
-        if [ -n "$TAG" ]; then
-          IMAGE_TAG="$TAG"
-        elif printf "%s" "$GIT_REF" | grep -q '^refs/tags/'; then
-          IMAGE_TAG="${GIT_REF#refs/tags/}"
-        fi
-        
-        # Strip 'v' prefix if present (e.g., v0.1.0 -> 0.1.0)
-        IMAGE_TAG="${IMAGE_TAG#v}"
+        # Use explicit tag if provided, otherwise use revision
+        IMAGE_TAG="${TAG:-$REVISION}"
         echo -n "$IMAGE_TAG" > /tmp/image_tag
         
-        TAG_ARGS=""
-        if [ "$IMAGE_TAG" != "$REVISION" ]; then
-          TAG_ARGS="--tag ${registry_server}/${registry_namespace}/${APP_NAME}:$IMAGE_TAG"
-        fi
+        echo "Source Revision:  $REVISION"
+        echo "Target Image Tag: $IMAGE_TAG"
+
+        BASE_IMAGE_NAME="${registry_server}/${REGISTRY_NAMESPACE}/${APP_NAME}"
         
-        kp image save "$APP_NAME" \
-          --tag ${registry_server}/${registry_namespace}/${APP_NAME}:$REVISION \
-          $TAG_ARGS \
-          --builder luban-builder \
-          --git "$REPO_URL" \
-          --git-revision "$REVISION" \
-          $SUB_PATH_FLAG \
-          --service-account luban-ci-sa \
-          --namespace luban-ci \
-          --wait
+        # Prepare optional sub-path
+        SUB_PATH_FLAG=""
+        if [ -n "{{workflow.parameters.sub_path}}" ]; then
+          SUB_PATH_FLAG="--sub-path {{workflow.parameters.sub_path}}"
+        fi
+
+        # Execute the save command
+        if ! kubectl get image "$APP_NAME" -n luban-ci >/dev/null 2>&1; then
+          echo "Image resource $APP_NAME does not exist. Using 'save' with --additional-tag..."
+          kp image save "$APP_NAME" \
+            --tag "${BASE_IMAGE_NAME}:latest" \
+            --additional-tag "${BASE_IMAGE_NAME}:${IMAGE_TAG}" \
+            --builder luban-builder \
+            --git "$REPO_URL" \
+            --git-revision "$REVISION" \
+            $SUB_PATH_FLAG \
+            --service-account luban-ci-sa \
+            --namespace luban-ci \
+            --wait
+        else
+          echo "Image resource $APP_NAME exists. Using 'save' with --replace-additional-tag..."
+          kp image save "$APP_NAME" \
+            --tag "${BASE_IMAGE_NAME}:latest" \
+            --replace-additional-tag "${BASE_IMAGE_NAME}:${IMAGE_TAG}" \
+            --builder luban-builder \
+            --git "$REPO_URL" \
+            --git-revision "$REVISION" \
+            $SUB_PATH_FLAG \
+            --service-account luban-ci-sa \
+            --namespace luban-ci \
+            --wait
+        fi
+
       env:
       - name: REPO_URL
         value: "{{workflow.parameters.repo_url}}"
@@ -221,12 +198,112 @@ spec:
         value: "{{workflow.parameters.app_name}}"
       - name: TAG
         value: "{{workflow.parameters.tag}}"
+      - name: registry_server
+        value: "{{workflow.parameters.registry_server}}"
+      volumeMounts:
+      - name: workdir
+        mountPath: /workdir
+
+  - name: build-push-by-tag
+    outputs:
+      parameters:
+      - name: image_tag
+        valueFrom:
+          path: /tmp/image_tag
+    container:
+      image: "{{workflow.parameters.gitops_utils_image}}"
+      command: [sh, -c]
+      args:
+      - |
+        # Calculate derived parameters in shell for robustness
+        REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
+
+        # Tag Push Workflow
+        echo "Processing tag push for {{workflow.parameters.app_name}}..."
+        
+        # Extract tag name and strip 'v' prefix (e.g. refs/tags/v1.0.0 -> 1.0.0)
+        IMAGE_TAG="${GIT_REF#refs/tags/}"
+        IMAGE_TAG="${IMAGE_TAG#v}"
+        echo -n "$IMAGE_TAG" > /tmp/image_tag
+        
+        echo "Source Revision:  $REVISION"
+        echo "Target Image Tag: $IMAGE_TAG"
+
+        BASE_IMAGE_NAME="${registry_server}/${REGISTRY_NAMESPACE}/${APP_NAME}"
+        
+        # Prepare optional sub-path
+        SUB_PATH_FLAG=""
+        if [ -n "{{workflow.parameters.sub_path}}" ]; then
+          SUB_PATH_FLAG="--sub-path {{workflow.parameters.sub_path}}"
+        fi
+
+        echo "Detected Git Tag Push ($GIT_REF). Updating tags..."
+        
+        # 1. Update Image resource (Metadata only)
+        # Use the determined TAG_FLAG to set tags:
+        # 1. The commit revision tag (traceability)
+        # 2. The release version tag (usability)
+        if ! kubectl get image "$APP_NAME" -n luban-ci >/dev/null 2>&1; then
+          echo "Image resource $APP_NAME does not exist. Using 'save' with --additional-tag..."
+          kp image save "$APP_NAME" \
+            --tag "${BASE_IMAGE_NAME}:latest" \
+            --additional-tag "${BASE_IMAGE_NAME}:${REVISION}" \
+            --additional-tag "${BASE_IMAGE_NAME}:${IMAGE_TAG}" \
+            --builder luban-builder \
+            --git "$REPO_URL" \
+            --git-revision "$REVISION" \
+            $SUB_PATH_FLAG \
+            --service-account luban-ci-sa \
+            --namespace luban-ci
+        else
+          echo "Image resource $APP_NAME exists. Using 'save' with --replace-additional-tag..."
+          kp image save "$APP_NAME" \
+            --tag "${BASE_IMAGE_NAME}:latest" \
+            --replace-additional-tag "${BASE_IMAGE_NAME}:${REVISION}" \
+            --replace-additional-tag "${BASE_IMAGE_NAME}:${IMAGE_TAG}" \
+            --builder luban-builder \
+            --git "$REPO_URL" \
+            --git-revision "$REVISION" \
+            $SUB_PATH_FLAG \
+            --service-account luban-ci-sa \
+            --namespace luban-ci
+        fi
+          
+        echo "Image resource updated. Waiting for propagation..."
+        sleep 2
+        
+        echo "Triggering manual build to ensure tag is pushed..."
+        
+        # 2. Manually Trigger Build and Capture Output
+        # We need to capture stderr because kp writes to stderr sometimes
+        TRIGGER_OUTPUT=$(kp image trigger "$APP_NAME" -n luban-ci 2>&1)
+        
+        # Parse build number
+        # Output format: "Triggered build for Image Resource "..." with Build Number <N>"
+        BUILD_NUMBER=$(echo "$TRIGGER_OUTPUT" | sed -n 's/.*Build Number \([0-9]\+\).*/\1/p' | head -n1)
+        
+        if [ -n "$BUILD_NUMBER" ]; then
+           echo "Successfully triggered build #$BUILD_NUMBER. Following logs..."
+           kp build logs "$APP_NAME" -b "$BUILD_NUMBER" -n luban-ci
+        else
+           echo "Warning: Could not parse build number from output:"
+           echo "$TRIGGER_OUTPUT"
+           echo "Falling back to tailing latest build logs..."
+           sleep 2
+           kp build logs "$APP_NAME" -n luban-ci
+        fi
+
+      env:
+      - name: REPO_URL
+        value: "{{workflow.parameters.repo_url}}"
+      - name: REVISION
+        value: "{{workflow.parameters.revision}}"
+      - name: APP_NAME
+        value: "{{workflow.parameters.app_name}}"
       - name: GIT_REF
         value: "{{workflow.parameters.git_ref}}"
       - name: registry_server
         value: "{{workflow.parameters.registry_server}}"
-      - name: registry_namespace
-        value: "{{inputs.parameters.registry_namespace}}"
       volumeMounts:
       - name: workdir
         mountPath: /workdir
@@ -234,9 +311,6 @@ spec:
   - name: git-update
     inputs:
       parameters:
-      - name: image_tag
-      - name: gitops_repo_url
-      - name: registry_namespace
       - name: default_image_name
       - name: default_image_tag
     container:
@@ -244,6 +318,10 @@ spec:
       command: [sh, -c]
       args:
       - |
+        # Calculate derived parameters in shell for robustness
+        REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
+        GITOPS_REPO_URL="https://${GIT_PROVIDER}.com/${REGISTRY_NAMESPACE}/${APP_NAME}-gitops.git"
+
         git config --global credential.helper store
         # Extract domain from GITOPS_REPO_URL
         DOMAIN=$(echo "$GITOPS_REPO_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
@@ -267,10 +345,20 @@ spec:
         
         KUST_PATH="app/overlays/${DEPLOY_ENV}/kustomization.yaml"
         BASE_DIR="app/base"
-        APP_IMAGE_NAME="${registry_server}/${registry_namespace}/${APP_NAME}"
+        APP_IMAGE_NAME="${registry_server}/${REGISTRY_NAMESPACE}/${APP_NAME}"
         export APP_IMAGE_NAME
-        IMAGE_TAG="{{inputs.parameters.image_tag}}"
+        
+        # Determine the image tag (identical to build steps logic)
+        if printf "%s" "$GIT_REF" | grep -q '^refs/tags/'; then
+          # Release Tag Logic
+          IMAGE_TAG="${GIT_REF#refs/tags/}"
+          IMAGE_TAG="${IMAGE_TAG#v}"
+        else
+          # Commit Logic
+          IMAGE_TAG="${TAG:-$REVISION}"
+        fi
         export IMAGE_TAG
+        
         DEFAULT_IMAGE_NAME="{{inputs.parameters.default_image_name}}"
         
         echo "Updating GitOps repo..."
@@ -338,16 +426,16 @@ spec:
         value: "{{workflow.parameters.tag}}"
       - name: GIT_REF
         value: "{{workflow.parameters.git_ref}}"
-      - name: GITOPS_REPO_URL
-        value: "{{inputs.parameters.gitops_repo_url}}"
+      - name: REPO_URL
+        value: "{{workflow.parameters.repo_url}}"
+      - name: GIT_PROVIDER
+        value: "{{workflow.parameters.git_provider}}"
       - name: GITOPS_BRANCH
         value: "{{workflow.parameters.gitops_branch}}"
       - name: DEPLOY_ENV
         value: "{{workflow.parameters.deploy_env}}"
       - name: registry_server
         value: "{{workflow.parameters.registry_server}}"
-      - name: registry_namespace
-        value: "{{inputs.parameters.registry_namespace}}"
       volumeMounts:
       - name: workdir
         mountPath: /workdir

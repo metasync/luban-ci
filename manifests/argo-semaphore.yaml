@@ -4,4 +4,4 @@ metadata:
   name: workflow-semaphores
   namespace: luban-ci
 data:
-  kpack-builds: "2"
+  kpack-builds: "100"

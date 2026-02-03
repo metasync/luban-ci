@@ -41,42 +41,26 @@ spec:
       parameters:
       - name: environment
     steps:
-    - - name: determine-git-org
-        templateRef:
-          name: gitops-helper-template
-          template: determine-git-org
-        arguments:
-          parameters:
-            - name: git_organization
-              value: "{{workflow.parameters.git_organization}}"
-            - name: project_name
-              value: "{{workflow.parameters.project_name}}"
-
-    - - name: determine-repos
-        templateRef:
-          name: gitops-helper-template
-          template: get-source-repos
-        arguments:
-          parameters:
-          - name: git_provider
-            value: "{{workflow.parameters.git_provider}}"
-          - name: git_organization
-            value: "{{steps.determine-git-org.outputs.parameters.organization}}"
-
     - - name: ensure-project
         template: ensure-project
         arguments:
           parameters:
           - name: environment
             value: "{{inputs.parameters.environment}}"
-          - name: gitops_repos
-            value: "{{steps.determine-repos.outputs.parameters.gitops_repos}}"
+          - name: project_name
+            value: "{{workflow.parameters.project_name}}"
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: git_organization
+            value: "{{workflow.parameters.git_organization}}"
 
   - name: ensure-project
     inputs:
       parameters:
       - name: environment
-      - name: gitops_repos
+      - name: project_name
+      - name: git_provider
+      - name: git_organization
     steps:
     - - name: check-exists
         template: check-project-exists
@@ -84,14 +68,20 @@ spec:
           parameters:
           - name: environment
             value: "{{inputs.parameters.environment}}"
+          - name: project_name
+            value: "{{inputs.parameters.project_name}}"
     - - name: create-project
         template: create-project-resource
         arguments:
           parameters:
           - name: environment
             value: "{{inputs.parameters.environment}}"
-          - name: gitops_repos
-            value: "{{inputs.parameters.gitops_repos}}"
+          - name: project_name
+            value: "{{inputs.parameters.project_name}}"
+          - name: git_provider
+            value: "{{inputs.parameters.git_provider}}"
+          - name: git_organization
+            value: "{{inputs.parameters.git_organization}}"
         when: "{{steps.check-exists.outputs.result}} == false"
     - - name: ensure-pull-secret
         template: ensure-pull-secret
@@ -125,11 +115,12 @@ spec:
     inputs:
       parameters:
       - name: environment
+      - name: project_name
     script:
       image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh]
       source: |
-        PROJECT_NAME="{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}"
+        PROJECT_NAME="{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}"
         echo "Checking if ArgoCD project $PROJECT_NAME exists..." >&2
         if kubectl get appproject $PROJECT_NAME -n argocd > /dev/null 2>&1; then
           echo "Project $PROJECT_NAME already exists." >&2
@@ -143,20 +134,36 @@ spec:
     inputs:
       parameters:
       - name: environment
-      - name: gitops_repos
-    resource:
-      action: create
-      manifest: |
+      - name: project_name
+      - name: git_provider
+      - name: git_organization
+    container:
+      image: "{{workflow.parameters.gitops_utils_image}}"
+      command: [sh, -c]
+      args:
+      - |
+        # Calculate derived parameters in shell for robustness
+        ORG="{{inputs.parameters.git_organization}}"
+        if [ -z "$ORG" ]; then
+          ORG="{{inputs.parameters.project_name}}"
+        fi
+        
+        GITOPS_REPOS_WHITELIST="https://{{inputs.parameters.git_provider}}.com/${ORG}/*"
+        
+        echo "Creating AppProject {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}..."
+        
+        cat <<EOF | kubectl apply -f -
         apiVersion: argoproj.io/v1alpha1
         kind: AppProject
         metadata:
-          name: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
+          name: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}
           namespace: argocd
         spec:
-          description: {{workflow.parameters.project_name}} team project for {{inputs.parameters.environment}} environment
-          sourceRepos: {{inputs.parameters.gitops_repos}}
+          description: {{inputs.parameters.project_name}} team project for {{inputs.parameters.environment}} environment
+          sourceRepos: 
+          - "${GITOPS_REPOS_WHITELIST}"
           destinations:
-          - namespace: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
+          - namespace: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}
             server: https://kubernetes.default.svc
           - namespace: gateway
             server: https://kubernetes.default.svc
@@ -171,10 +178,11 @@ spec:
             description: Developer role with read and sync access
             groups: {{workflow.parameters.developer_groups}}
             policies:
-            - "p, proj:{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}:project-developer, applications, get, {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}/*, allow"
-            - "p, proj:{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}:project-developer, applications, sync, {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}/*, allow"
+            - "p, proj:{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}:project-developer, applications, get, {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}/*, allow"
+            - "p, proj:{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}:project-developer, applications, sync, {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}/*, allow"
           - name: project-admin
             description: Admin role with full access
             groups: {{workflow.parameters.admin_groups}}
             policies:
-            - "p, proj:{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}:project-admin, applications, *, {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}/*, allow"
+            - "p, proj:{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}:project-admin, applications, *, {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}/*, allow"
+        EOF

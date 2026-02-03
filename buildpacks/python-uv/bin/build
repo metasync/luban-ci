@@ -115,9 +115,38 @@ echo "Configuring launch..."
 if [[ -f "pyproject.toml" ]]; then
     echo "pyproject.toml found. Checking for [project.scripts]..."
 
-    # Use helper script to detect entry point
-    # CNB_BUILDPACK_DIR is provided by lifecycle
-    SCRIPT_NAME=$("$CNB_BUILDPACK_DIR/bin/detect_entrypoint.py")
+    # Use bash to parse pyproject.toml for [project.scripts]
+    # 1. Extract section
+    # 2. Filter out section headers
+    # 3. Get keys (before =)
+    # 4. Trim whitespace
+    SCRIPTS=$(sed -n '/^\[project.scripts\]/,/^\[/p' pyproject.toml | grep -v '^\[' | grep '=' | cut -d'=' -f1 | tr -d ' ' | tr '\n' ' ')
+    
+    # Convert space-separated string to array
+    read -r -a SCRIPT_KEYS <<< "$SCRIPTS"
+    
+    SCRIPT_NAME=""
+    
+    if [[ ${#SCRIPT_KEYS[@]} -eq 0 ]]; then
+        echo "No scripts found in [project.scripts]"
+    elif [[ ${#SCRIPT_KEYS[@]} -eq 1 ]]; then
+        SCRIPT_NAME="${SCRIPT_KEYS[0]}"
+    else
+        # Heuristic: look for common names
+        for name in "app" "start" "main" "run"; do
+            for key in "${SCRIPT_KEYS[@]}"; do
+                if [[ "$key" == "$name" ]]; then
+                    SCRIPT_NAME="$name"
+                    break 2
+                fi
+            done
+        done
+        
+        # Fallback to first one if no common name found
+        if [[ -z "$SCRIPT_NAME" ]]; then
+            SCRIPT_NAME="${SCRIPT_KEYS[0]}"
+        fi
+    fi
 
     if [[ -n "$SCRIPT_NAME" ]]; then
         echo "Found entry point script: $SCRIPT_NAME"

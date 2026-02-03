@@ -9,6 +9,7 @@ imagePullSecrets:
 secrets:
 - name: quay-creds
 - name: harbor-creds
+- name: github-creds
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

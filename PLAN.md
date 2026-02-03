@@ -47,3 +47,11 @@ This phase used Docker-in-Docker with Argo Workflows and has been retired in fav
 1.  `argocd/application.yaml`: Argo CD Application manifest for the test app.
 2.  **Integration:** Update Phase 4 workflow to trigger a Git commit (updating the image tag in the infra repo) or directly trigger Argo CD sync.
 3.  **Verification:** End-to-end test: Code Push -> Build -> Push Image -> Deploy -> App Updated.
+
+## Phase 7: Developer Experience & Robustness [Completed]
+**Goal:** Refactor the pipeline for stability, usability, and easier onboarding.
+**Deliverables:**
+1.  **Argo Template Refactoring**: Moved logic from complex Argo expressions to native shell scripts within containers for better reliability.
+2.  **Luban App Setup Enum**: Added `setup_source_repo` enum parameter to allow developers to opt-out of source repo provisioning (e.g., when migrating existing apps).
+3.  **Automatic Org Fallback**: Improved organization detection logic to automatically use the project name if no organization is specified.
+4.  **Makefile Enhancements**: Standardized deployment and testing targets.

@@ -23,5 +23,5 @@ replicas:
 # Explicitly defining images allows Kustomize to override the tag
 # This is often used by CI/CD pipelines (e.g., `kustomize edit set image ...`)
 images:
-  - name: quay.io/luban-ci/luban-hello-world-py
-    newTag: latest
+  - name: {{cookiecutter.default_image_name}}
+    newTag: {{cookiecutter.default_image_tag}}

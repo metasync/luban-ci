@@ -50,31 +50,49 @@ spec:
             name: luban-config
             key: domain_suffix
             optional: true
+      - name: default_image_name
+        description: "Default placeholder image name"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: default_image_name
+            optional: true
+      - name: default_image_tag
+        description: "Default placeholder image tag"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: default_image_tag
+            optional: true
       - name: gitops_provisioner_image
         description: "Image for GitOps provisioner tool"
-        value: "quay.io/luban-ci/gitops-provisioner:0.1.7"
+        value: "quay.io/luban-ci/gitops-provisioner:0.1.11"
+      - name: gitsrc_provisioner_image
+        description: "Image for Git Source provisioner tool"
+        value: "quay.io/luban-ci/gitsrc-provisioner:0.1.0"
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
         value: "quay.io/luban-ci/gitops-utils:0.3.3"
+      - name: webhook_url
+        description: "Webhook URL for CI integration"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: webhook_url
+            optional: true
+      - name: setup_source_repo
+        description: "Whether to provision the source code repository"
+        value: "yes"
+        enum:
+          - "yes"
+          - "no"
 
   templates:
     - name: setup-luban-application
       dag:
         tasks:
-          - name: determine-git-org
-            templateRef:
-              name: gitops-helper-template
-              template: determine-git-org
-            arguments:
-              parameters:
-                - name: git_organization
-                  value: "{{workflow.parameters.git_organization}}"
-                - name: project_name
-                  value: "{{workflow.parameters.project_name}}"
-
           # 1. Provision GitOps Repository (Cookiecutter -> GitHub)
           - name: provision-gitops-repo
-            dependencies: [determine-git-org]
             templateRef:
               name: gitops-repo-provision-template
               template: provision-gitops-repo
@@ -85,7 +103,7 @@ spec:
                 - name: application_name
                   value: "{{workflow.parameters.app_name}}"
                 - name: git_organization
-                  value: "{{tasks.determine-git-org.outputs.parameters.organization}}"
+                  value: "{{workflow.parameters.git_organization}}"
                 - name: git_provider
                   value: "{{workflow.parameters.git_provider}}"
                 - name: gitops_provisioner_image
@@ -99,10 +117,14 @@ spec:
                   value: "{{workflow.parameters.service_port}}"
                 - name: domain_suffix
                   value: "{{workflow.parameters.domain_suffix}}"
+                - name: default_image_name
+                  value: "{{workflow.parameters.default_image_name}}"
+                - name: default_image_tag
+                  value: "{{workflow.parameters.default_image_tag}}"
 
           # 3. Setup ArgoCD Application
           - name: setup-argocd-app
-            dependencies: [provision-gitops-repo, determine-git-org]
+            dependencies: [provision-gitops-repo]
             templateRef:
               name: argocd-app-setup-template
               template: create-applications
@@ -115,6 +137,30 @@ spec:
                 - name: environment
                   value: "{{workflow.parameters.environment}}"
                 - name: git_organization
-                  value: "{{tasks.determine-git-org.outputs.parameters.organization}}"
+                  value: "{{workflow.parameters.git_organization}}"
                 - name: git_provider
                   value: "{{workflow.parameters.git_provider}}"
+
+          # 4. Provision Source Code Repository (Python Hello World)
+          - name: provision-source-repo
+            dependencies: [setup-argocd-app]
+            when: "{{workflow.parameters.setup_source_repo}} == yes"
+            templateRef:
+              name: source-repo-provision-template
+              template: provision-source-repo
+            arguments:
+              parameters:
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+                - name: application_name
+                  value: "{{workflow.parameters.app_name}}"
+                - name: git_organization
+                  value: "{{workflow.parameters.git_organization}}"
+                - name: git_provider
+                  value: "{{workflow.parameters.git_provider}}"
+                - name: gitsrc_provisioner_image
+                  value: "{{workflow.parameters.gitsrc_provisioner_image}}"
+                - name: gitops_utils_image
+                  value: "{{workflow.parameters.gitops_utils_image}}"
+                - name: webhook_url
+                  value: "{{workflow.parameters.webhook_url}}"

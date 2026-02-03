@@ -96,6 +96,9 @@ The GitOps repository follows a standard Kustomize structure:
         QUAY_USERNAME=your_org+robot
         QUAY_PASSWORD=your_token
         ```
+    - **Cloudflare Tunnel (Optional)**: If you want to expose the webhook to the public internet using a tunnel.
+      - The setup script `make tunnel-setup` (detailed in [Development & Testing](#development--testing)) will handle authentication and setup.
+
     - The Makefile automatically loads all `secrets/*.env` files. Running `make secrets` applies them into Kubernetes as sealed credentials.
     - Ensure your VCS ignores these files. Recommended `.gitignore` entry:
       ```
@@ -159,7 +162,8 @@ This Workflow bootstraps a new microservice within an existing Project/Team.
   - `project_name`: (Required) The name of the team/domain this app belongs to (e.g., `payment`).
   - `app_name`: (Required) The name of the service (e.g., `cart-service`).
   - `git_organization`: (Optional) Auto-detected if not provided.
-  - `gitops_provisioner_image`: (Internal) The image used to render templates (default: `quay.io/luban-ci/gitops-provisioner:0.1.5`).
+  - `setup_source_repo`: (Optional) Whether to provision the source code repository (`yes`, `no`). Default: `yes`.
+  - `gitops_provisioner_image`: (Internal) The image used to render templates (default: `quay.io/luban-ci/gitops-provisioner:0.1.11`).
 
 ## Usage
 
@@ -206,13 +210,14 @@ make pipeline-run
           - 0.0.0.0
     ```
 
-### GitOps CLI Tooling
-- To avoid installing git and yq on every workflow run, build and push a small tooling image (gitops-utils):
+### GitOps CLI Tooling & Robustness
+- **Internal Logic**: To ensure reliability across different Argo controller versions, all complex parameter derivation (e.g., extracting organization from URL, constructing GitOps repo paths) has been moved from Argo expressions into native shell scripts within the task containers.
+- **Tooling Image**: To avoid installing git and yq on every workflow run, build and push a small tooling image (gitops-utils):
   ```bash
   make tools-image-build
   make tools-image-push
   ```
-- The workflow uses a parameter `gitops_utils_image` (default: quay.io/luban-ci/gitops-utils:0.3.3) for checkout/update steps. Override if needed.
+- **Usage**: The workflow uses a parameter `gitops_utils_image` (default: `quay.io/luban-ci/gitops-utils:0.3.3`) for checkout/update/provisioning steps.
 
 ### Concurrency Control
 - Recommended: Argo Workflows Semaphores
@@ -250,12 +255,27 @@ Send a signed GitHub push event payload to the local Gateway to verify the entir
 2.  Webhook secret is configured (`make events-webhook-secret`).
 3.  Gateway URL is accessible (default: `https://webhook.luban.metasync.cc/push`).
 
+**Cloudflare Tunnel (Optional)**:
+If you need to expose the internal webhook service to the internet (e.g., for real GitHub webhooks), you can use the built-in Cloudflare Tunnel setup. The script will guide you through authentication if needed.
+
+```bash
+# Setup Tunnel
+make tunnel-setup
+
+# Setup with custom hostname
+make tunnel-setup TUNNEL_HOSTNAME=my-webhook.metasync.cc
+```
+
 **Usage**:
 ```bash
 # Option 1: Python script (requires python3)
 make test-events-webhook-py
 
 # Option 2: Shell script (requires curl, openssl)
+make test-events-webhook
+
+# Testing with custom Tunnel Hostname
+export GATEWAY_URL=https://my-webhook.metasync.cc/push
 make test-events-webhook
 ```
 

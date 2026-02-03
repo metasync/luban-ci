@@ -27,56 +27,29 @@ spec:
   templates:
   - name: create-applications
     steps:
-    - - name: determine-git-org
-        templateRef:
-          name: gitops-helper-template
-          template: determine-git-org
-        arguments:
-          parameters:
-            - name: git_organization
-              value: "{{workflow.parameters.git_organization}}"
-            - name: project_name
-              value: "{{workflow.parameters.project_name}}"
-
-    - - name: determine-revision
-        templateRef:
-          name: gitops-helper-template
-          template: get-revision
-        arguments:
-          parameters:
-          - name: environment
-            value: "{{workflow.parameters.environment}}"
-
-    - - name: determine-repo-url
-        templateRef:
-          name: gitops-helper-template
-          template: get-repo-url
-        arguments:
-          parameters:
-          - name: git_provider
-            value: "{{workflow.parameters.git_provider}}"
-          - name: git_organization
-            value: "{{steps.determine-git-org.outputs.parameters.organization}}"
-          - name: application_name
-            value: "{{workflow.parameters.app_name}}"
-
     - - name: ensure-application
         template: ensure-application
         arguments:
           parameters:
           - name: environment
-            value: "{{steps.determine-revision.outputs.parameters.environment}}"
-          - name: revision
-            value: "{{steps.determine-revision.outputs.parameters.revision}}"
-          - name: repo_url
-            value: "{{steps.determine-repo-url.outputs.parameters.repo_url}}"
+            value: "{{workflow.parameters.environment}}"
+          - name: app_name
+            value: "{{workflow.parameters.app_name}}"
+          - name: project_name
+            value: "{{workflow.parameters.project_name}}"
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: git_organization
+            value: "{{workflow.parameters.git_organization}}"
 
   - name: ensure-application
     inputs:
       parameters:
       - name: environment
-      - name: revision
-      - name: repo_url
+      - name: app_name
+      - name: project_name
+      - name: git_provider
+      - name: git_organization
     steps:
     - - name: check-exists
         template: check-app-exists
@@ -84,27 +57,34 @@ spec:
           parameters:
           - name: environment
             value: "{{inputs.parameters.environment}}"
+          - name: app_name
+            value: "{{inputs.parameters.app_name}}"
     - - name: create-app
         template: create-app-resource
         arguments:
           parameters:
           - name: environment
             value: "{{inputs.parameters.environment}}"
-          - name: revision
-            value: "{{inputs.parameters.revision}}"
-          - name: repo_url
-            value: "{{inputs.parameters.repo_url}}"
+          - name: app_name
+            value: "{{inputs.parameters.app_name}}"
+          - name: project_name
+            value: "{{inputs.parameters.project_name}}"
+          - name: git_provider
+            value: "{{inputs.parameters.git_provider}}"
+          - name: git_organization
+            value: "{{inputs.parameters.git_organization}}"
         when: "{{steps.check-exists.outputs.result}} == false"
 
   - name: check-app-exists
     inputs:
       parameters:
       - name: environment
+      - name: app_name
     script:
       image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh]
       source: |
-        APP_NAME="{{inputs.parameters.environment}}-{{workflow.parameters.app_name}}"
+        APP_NAME="{{inputs.parameters.environment}}-{{inputs.parameters.app_name}}"
         echo "Checking if ArgoCD application $APP_NAME exists..." >&2
         if kubectl get application $APP_NAME -n argocd > /dev/null 2>&1; then
           echo "Application $APP_NAME already exists." >&2
@@ -118,28 +98,55 @@ spec:
     inputs:
       parameters:
       - name: environment
-      - name: revision
-      - name: repo_url
-    resource:
-      action: create
-      manifest: |
+      - name: app_name
+      - name: project_name
+      - name: git_provider
+      - name: git_organization
+    container:
+      image: "{{workflow.parameters.gitops_utils_image}}"
+      command: [sh, -c]
+      args:
+      - |
+        # Calculate derived parameters in shell for robustness
+        ORG="{{inputs.parameters.git_organization}}"
+        if [ -z "$ORG" ]; then
+          ORG="{{inputs.parameters.project_name}}"
+        fi
+        
+        REVISION="main"
+        if [ "{{inputs.parameters.environment}}" = "snd" ]; then
+          REVISION="develop"
+        fi
+        
+        REPO_URL="https://{{inputs.parameters.git_provider}}.com/${ORG}/{{inputs.parameters.app_name}}-gitops.git"
+        
+        # Determine Sync Policy
+        SYNC_POLICY_BLOCK=""
+        if [ "{{inputs.parameters.environment}}" != "prd" ]; then
+          SYNC_POLICY_BLOCK="automated:
+              prune: true
+              selfHeal: true"
+        fi
+        
+        echo "Creating Application {{inputs.parameters.environment}}-{{inputs.parameters.app_name}}..."
+        
+        cat <<EOF | kubectl apply -f -
         apiVersion: argoproj.io/v1alpha1
         kind: Application
         metadata:
-          name: {{inputs.parameters.environment}}-{{workflow.parameters.app_name}}
+          name: {{inputs.parameters.environment}}-{{inputs.parameters.app_name}}
           namespace: argocd
         spec:
-          project: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
+          project: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}
           source:
-            repoURL: {{inputs.parameters.repo_url}}
-            targetRevision: {{inputs.parameters.revision}}
+            repoURL: ${REPO_URL}
+            targetRevision: ${REVISION}
             path: app/overlays/{{inputs.parameters.environment}}
           destination:
             server: https://kubernetes.default.svc
-            namespace: {{inputs.parameters.environment}}-{{workflow.parameters.project_name}}
+            namespace: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}
           syncPolicy:
-            automated:
-              prune: true
-              selfHeal: true
+            ${SYNC_POLICY_BLOCK}
             syncOptions:
               - CreateNamespace=true
+        EOF
