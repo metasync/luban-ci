@@ -172,6 +172,7 @@ To promote an application from `snd` to `prd`, use the `luban-promotion-template
   - `project_name`: (Required) Name of the project.
   - `app_name`: (Required) Name of the application.
   - `git_organization`: (Optional) Auto-detected if not provided.
+  - `git_provider`: (Optional) `github` (default) or `gitlab`.
 
 This workflow extracts the current image tag from the `develop` branch (`snd` overlay), creates a new promotion branch from `main`, and opens a Pull Request to `main` (`prd` overlay) in the application's GitOps repository.
 

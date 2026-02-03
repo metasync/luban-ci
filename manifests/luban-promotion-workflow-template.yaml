@@ -18,19 +18,9 @@ spec:
       - name: git_provider
         description: "Git Provider (e.g., 'github', 'gitlab')"
         value: "github"
-      - name: git_creds_secret
-        description: "Name of the secret containing git credentials"
-        value: "github-creds"
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
         value: "quay.io/luban-ci/gitops-utils:0.3.3"
-      - name: registry_server
-        description: "Registry server domain"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: registry_server
-            optional: true
 
   templates:
     - name: promote-snd-to-prd
@@ -40,9 +30,7 @@ spec:
           - name: app_name
           - name: git_organization
           - name: git_provider
-          - name: git_creds_secret
           - name: gitops_utils_image
-          - name: registry_server
       container:
         image: "{{inputs.parameters.gitops_utils_image}}"
         command: [sh, -c]
@@ -79,26 +67,10 @@ spec:
               exit 1
             fi
 
-            # Calculate the image name we expect
-            REGISTRY_NAMESPACE="${ORG}"
-            APP_IMAGE_NAME="{{inputs.parameters.registry_server}}/${REGISTRY_NAMESPACE}/{{inputs.parameters.app_name}}"
-            export APP_IMAGE_NAME
-
-            echo "Target Image Name: $APP_IMAGE_NAME"
-
-            # Extract image tag from snd
-            IMAGE_TAG=$(yq '.images[] | select(.name == env(APP_IMAGE_NAME)) | .newTag' "$SND_KUST")
-
-            if [ "$IMAGE_TAG" = "null" ] || [ -z "$IMAGE_TAG" ]; then
-              echo "Warning: Could not find tag for $APP_IMAGE_NAME in $SND_KUST using explicit name."
-              echo "Falling back to first image in list..."
-              IMAGE_TAG=$(yq '.images[0].newTag' "$SND_KUST")
-              # Also update APP_IMAGE_NAME to match what we found if it was different
-              EXTRACTED_NAME=$(yq '.images[0].name' "$SND_KUST")
-              if [ "$EXTRACTED_NAME" != "null" ] && [ -n "$EXTRACTED_NAME" ]; then
-                APP_IMAGE_NAME="$EXTRACTED_NAME"
-              fi
-            fi
+            # Extract image name and tag from snd
+            # Since we don't have registry_server, we find the first image that has a 'newTag'
+            IMAGE_TAG=$(yq '.images[0].newTag' "$SND_KUST")
+            APP_IMAGE_NAME=$(yq '.images[0].name' "$SND_KUST")
 
             if [ "$IMAGE_TAG" = "null" ] || [ -z "$IMAGE_TAG" ]; then
               echo "Error: Could not extract image tag from $SND_KUST"
@@ -148,8 +120,6 @@ spec:
               PR_TITLE="Promote {{inputs.parameters.app_name}} to prd (${IMAGE_TAG})"
               PR_BODY="Automated promotion request from snd (develop) to prd (main).<br><br>**App**: {{inputs.parameters.app_name}}<br>**Tag**: ${IMAGE_TAG}"
               
-              # Replace newlines with <br> for JSON body if needed, or just use literal \n
-              
               PR_RESP=$(curl -X POST -s -w "\n%{http_code}" \
                 -H "Authorization: token $GIT_TOKEN" \
                 -H "Accept: application/vnd.github.v3+json" \
@@ -176,12 +146,12 @@ spec:
           - name: GIT_USERNAME
             valueFrom:
               secretKeyRef:
-                name: "{{inputs.parameters.git_creds_secret}}"
+                name: "{{inputs.parameters.git_provider}}-creds"
                 key: username
           - name: GIT_TOKEN
             valueFrom:
               secretKeyRef:
-                name: "{{inputs.parameters.git_creds_secret}}"
+                name: "{{inputs.parameters.git_provider}}-creds"
                 key: token
           - name: APP_NAME
             value: "{{inputs.parameters.app_name}}"

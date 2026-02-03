@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Developer Experience**: Added `setup_source_repo` parameter with `yes`/`no` enum to `luban-app-setup-template`, allowing optional source repo provisioning.
 - **Developer Experience**: Added `luban-promotion-template` to facilitate environment promotion from `snd` to `prd` via Pull Requests in the GitOps repository.
-- **Infrastructure**: Integrated `source-repo-workflow-template.yaml` and `promotion-workflow-template.yaml` into the automated deployment pipeline (Makefile).
+- **Infrastructure**: Integrated `source-repo-workflow-template.yaml` and `luban-promotion-workflow-template.yaml` into the automated deployment pipeline (Makefile).
 
 ### Changed
 - **Robustness**: Refactored all workflow templates to use native shell logic instead of complex Argo expressions for parameter derivation (e.g., Git organization fallback, URL construction).
