@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.8] - 2026-02-05
+
+### Added
+- **Promotion**: Implemented "Trunk-Based Promotion" workflow (`luban-promotion-template`), allowing `snd` (develop) to `prd` (main) promotion via direct Pull Requests.
+
+### Changed
+- **Workflow**: Updated `luban-ci-kpack-workflow-template` to recursively replace placeholder image names in **all** overlays (`app/overlays/*`) during the initial build, ensuring correct image references for future environment promotions.
+- **Refactor**: Renamed `promotion-workflow-template.yaml` to `luban-promotion-workflow-template.yaml` for consistency and simplified its logic to operate directly on the `develop` branch.
+- **Documentation**: Updated `README.md` to document the new trunk-based promotion strategy.
+
 ## [v0.6.7] - 2026-02-03
 
 ### Added
