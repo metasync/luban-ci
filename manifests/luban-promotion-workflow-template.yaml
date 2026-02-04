@@ -81,42 +81,36 @@ spec:
             echo "Promoting Image: $APP_IMAGE_NAME"
             echo "Promoting Tag:   $IMAGE_TAG"
 
-            # 4. Switch to 'main' (prd) and create promotion branch
-            echo "Switching to main branch..."
-            git fetch origin main
-            git checkout main
-
-            PROMOTE_BRANCH="promote/{{inputs.parameters.app_name}}-${IMAGE_TAG}"
-            echo "Creating promotion branch: $PROMOTE_BRANCH"
-            git checkout -b "$PROMOTE_BRANCH"
-
+            # 4. Update PRD overlay in 'develop' branch
+            echo "Updating PRD overlay in develop branch..."
+            
             PRD_KUST="app/overlays/prd/kustomization.yaml"
             if [ ! -f "$PRD_KUST" ]; then
-              echo "Error: $PRD_KUST not found in main branch."
+              echo "Error: $PRD_KUST not found in develop branch."
               exit 1
             fi
 
-            # Update the tag in prd
+            # Update the tag in prd overlay
             export APP_IMAGE_NAME
             export IMAGE_TAG
             
             if yq -e '.images[] | select(.name == env(APP_IMAGE_NAME))' "$PRD_KUST" >/dev/null 2>&1; then
                yq -i '(.images[] | select(.name == env(APP_IMAGE_NAME))).newTag = env(IMAGE_TAG)' "$PRD_KUST"
             else
-               echo "Image entry not found in PRD. Appending..."
+               echo "Image entry not found in PRD overlay. Appending..."
                yq -i ".images += [{\"name\": env(APP_IMAGE_NAME), \"newTag\": env(IMAGE_TAG)}]" "$PRD_KUST"
             fi
 
-            # 5. Commit and Push Branch
+            # 5. Commit and Push to 'develop'
             if git diff --quiet; then
-              echo "No changes to promote. PRD is already up to date with SND tag."
+              echo "No changes to promote. PRD overlay in develop is already up to date with SND tag."
             else
               git add .
-              git commit -m "Promote {{inputs.parameters.app_name}} from snd to prd (tag: ${IMAGE_TAG})"
-              git push origin "$PROMOTE_BRANCH" --force
+              git commit -m "Promote {{inputs.parameters.app_name}} to prd (tag: ${IMAGE_TAG})"
+              git push origin develop
               
-              # 6. Create Pull Request via GitHub API
-              echo "Creating Pull Request..."
+              # 6. Create Pull Request (develop -> main)
+              echo "Creating Pull Request (develop -> main)..."
               PR_TITLE="Promote {{inputs.parameters.app_name}} to prd (${IMAGE_TAG})"
               PR_BODY="Automated promotion request from snd (develop) to prd (main).<br><br>**App**: {{inputs.parameters.app_name}}<br>**Tag**: ${IMAGE_TAG}"
               
@@ -127,7 +121,7 @@ spec:
                 -d "{
                   \"title\": \"$PR_TITLE\",
                   \"body\": \"$PR_BODY\",
-                  \"head\": \"$PROMOTE_BRANCH\",
+                  \"head\": \"develop\",
                   \"base\": \"main\"
                 }")
                 

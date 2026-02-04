@@ -174,7 +174,9 @@ To promote an application from `snd` to `prd`, use the `luban-promotion-template
   - `git_organization`: (Optional) Auto-detected if not provided.
   - `git_provider`: (Optional) `github` (default) or `gitlab`.
 
-This workflow extracts the current image tag from the `develop` branch (`snd` overlay), creates a new promotion branch from `main`, and opens a Pull Request to `main` (`prd` overlay) in the application's GitOps repository.
+This workflow extracts the current image tag from the `develop` branch (`snd` overlay), updates the `prd` overlay in the `develop` branch, and opens a Pull Request from `develop` to `main` in the application's GitOps repository.
+
+> **Note**: This follows a "Trunk-Based Promotion" model. The `develop` branch accumulates changes (both verified `snd` deployments and proposed `prd` updates), and the PR acts as a release gate to synchronize `develop` with `main`.
 
 ### Run CI Pipeline
 Trigger the end-to-end CI pipeline (Checkout -> Build -> Push):
