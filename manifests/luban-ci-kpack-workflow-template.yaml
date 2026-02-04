@@ -375,12 +375,17 @@ spec:
               fi
            fi
            
-           # Replace in Overlay (Kustomization)
-           if [ -f "$KUST_PATH" ]; then
-              if grep "$DEFAULT_IMAGE_NAME" "$KUST_PATH" >/dev/null 2>&1; then
-                 echo "Replacing placeholder in Overlay..."
-                 sed -i "s|$DEFAULT_IMAGE_NAME|$APP_IMAGE_NAME|g" "$KUST_PATH"
-              fi
+           # Replace in ALL Overlays (to ensure future environments are updated)
+           # We search in app/overlays/*
+           OVERLAYS_DIR="app/overlays"
+           if [ -d "$OVERLAYS_DIR" ]; then
+              echo "Scanning overlays for placeholder..."
+              find "$OVERLAYS_DIR" -name "*.yaml" -type f | while read -r FILE; do
+                 if grep "$DEFAULT_IMAGE_NAME" "$FILE" >/dev/null 2>&1; then
+                    echo "Replacing placeholder in $FILE..."
+                    sed -i "s|$DEFAULT_IMAGE_NAME|$APP_IMAGE_NAME|g" "$FILE"
+                 fi
+              done
            fi
         fi
         
