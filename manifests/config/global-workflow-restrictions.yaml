@@ -9,6 +9,13 @@ data:
   workflowDefaults: |
     spec:
       serviceAccountName: workflow-runner
+      ttlStrategy:
+        secondsAfterCompletion: 86400 # 24 hours
+        secondsAfterSuccess: 1800     # 30 minutes
+        secondsAfterFailure: 86400    # 24 hours
+      podGC:
+        strategy: OnPodCompletion
+      activeDeadlineSeconds: 3600     # 1 hour timeout
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
