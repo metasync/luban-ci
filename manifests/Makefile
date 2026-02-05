@@ -14,6 +14,11 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@echo "Applying Argo Workflow semaphores..."
 	@kubectl apply -f config/argo-semaphore.yaml
 	@echo "Applying Global Workflow Restrictions (argo namespace)..."
+	@# Check for legacy config conflict
+	@if [ -n "$$(kubectl get cm argo-workflows-workflow-controller-configmap -n argo -o jsonpath='{.data.config}' 2>/dev/null)" ]; then \
+		echo "Removing legacy 'config' key to prevent conflict..."; \
+		kubectl patch configmap argo-workflows-workflow-controller-configmap -n argo --type=json -p='[{"op": "remove", "path": "/data/config"}]'; \
+	fi
 	@kubectl patch configmap argo-workflows-workflow-controller-configmap -n argo --patch "$$(cat config/global-workflow-restrictions.yaml)" || echo "Warning: Failed to patch global config. Ensure you have admin access to 'argo' namespace."
 	@echo "Applying Luban Configuration..."
 	@kubectl apply -f config/luban-config.yaml
