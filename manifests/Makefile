@@ -32,8 +32,6 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f workflows/luban-project-workflow-template.yaml
 	@kubectl apply -f workflows/luban-app-workflow-template.yaml
 	@kubectl apply -f workflows/luban-promotion-workflow-template.yaml
-	@echo "Deploying Cleanup CronWorkflow..."
-	@kubectl apply -f cron/workflow-cleanup-cron.yaml
 	@echo "Pipeline deployed."
 
 clean: ## Delete all workflows

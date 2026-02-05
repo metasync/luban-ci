@@ -255,7 +255,6 @@ make pipeline-run
   - Successful workflows: Deleted after 30 minutes.
   - Failed/Completed workflows: Deleted after 24 hours.
 - **Pod GC**: Pods are deleted immediately upon completion (`OnPodCompletion`) to free up cluster resources.
-- **Legacy Cleanup**: A CronWorkflow (`workflow-cleanup-cron.yaml`) is also deployed as a backup mechanism.
 
 ## Development & Testing
 

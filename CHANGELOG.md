@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Cleanup**: Enabled global `ttlStrategy` to automatically delete completed workflows (24h retention) and successful workflows (30m retention).
   - **Cost**: Enabled global `podGC` (`OnPodCompletion`) to immediately delete pods after execution, and set `activeDeadlineSeconds` (1h) to prevent runaway workflows.
 - **Refactor**: Removed redundant `securityContext` definitions from all WorkflowTemplates (`luban-project`, `luban-app`, `argocd-*`, `gitops-*`, etc.) in favor of the new global defaults.
+- **Cleanup**: Removed `workflow-cleanup-cron.yaml` and `global-workflow-restrictions-rollback.yaml` as the Argo Controller now handles lifecycle management natively.
 - **Robustness**: Updated `Makefile` to use `kubectl apply` instead of `kubectl patch` for the global configuration to prevent YAML corruption during deployment.
 
 ## [v0.6.8] - 2026-02-05
