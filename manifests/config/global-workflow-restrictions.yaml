@@ -6,3 +6,9 @@ metadata:
 data:
   workflowRestrictions: |
     templateReferencing: Strict
+  workflowDefaults: |
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
