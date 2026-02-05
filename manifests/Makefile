@@ -7,26 +7,26 @@ export
 
 deploy: ## Deploy Argo Workflow Template and RBAC
 	@echo "Deploying Workflow RBAC..."
-	@kubectl apply -f pipeline-sa.yaml
+	@kubectl apply -f rbac/pipeline-sa.yaml
 	@echo "Deploying kpack Stack and Builder..."
-	@kubectl apply -f kpack-stack.yaml
-	@kubectl apply -f kpack-builder.yaml
+	@kubectl apply -f kpack/kpack-stack.yaml
+	@kubectl apply -f kpack/kpack-builder.yaml
 	@echo "Applying Argo Workflow semaphores..."
-	@kubectl apply -f argo-semaphore.yaml
+	@kubectl apply -f config/argo-semaphore.yaml
 	@echo "Applying Luban Configuration..."
-	@kubectl apply -f luban-config.yaml
+	@kubectl apply -f config/luban-config.yaml
 	@echo "Deploying Workflow Templates..."
-	@kubectl apply -f luban-ci-kpack-workflow-template.yaml
-	@kubectl apply -f argocd-project-workflow-template.yaml
-	@kubectl apply -f argocd-app-workflow-template.yaml
-	@kubectl apply -f harbor-project-workflow-template.yaml
-	@kubectl apply -f gitops-repo-workflow-template.yaml
-	@kubectl apply -f source-repo-workflow-template.yaml
-	@kubectl apply -f luban-project-workflow-template.yaml
-	@kubectl apply -f luban-app-workflow-template.yaml
-	@kubectl apply -f luban-promotion-workflow-template.yaml
+	@kubectl apply -f workflows/luban-ci-kpack-workflow-template.yaml
+	@kubectl apply -f workflows/argocd-project-workflow-template.yaml
+	@kubectl apply -f workflows/argocd-app-workflow-template.yaml
+	@kubectl apply -f workflows/harbor-project-workflow-template.yaml
+	@kubectl apply -f workflows/gitops-repo-workflow-template.yaml
+	@kubectl apply -f workflows/source-repo-workflow-template.yaml
+	@kubectl apply -f workflows/luban-project-workflow-template.yaml
+	@kubectl apply -f workflows/luban-app-workflow-template.yaml
+	@kubectl apply -f workflows/luban-promotion-workflow-template.yaml
 	@echo "Deploying Cleanup CronWorkflow..."
-	@kubectl apply -f workflow-cleanup-cron.yaml
+	@kubectl apply -f cron/workflow-cleanup-cron.yaml
 	@echo "Pipeline deployed."
 
 clean: ## Delete all workflows
