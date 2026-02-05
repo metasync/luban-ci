@@ -8,7 +8,12 @@ data:
     templateReferencing: Strict
   workflowDefaults: |
     spec:
+      serviceAccountName: workflow-runner
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+  workflowEvents: |
+    enabled: true
+  nodeEvents: |
+    enabled: true
