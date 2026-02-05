@@ -200,7 +200,18 @@ make pipeline-run
     - `default_service_port`: Default service port (e.g., `80`).
     - `domain_suffix`: Suffix for app ingress (e.g., `apps.metasync.cc`).
 
+### Global Defaults & Security
+- **Global Configuration**: Managed via `argo-workflows-workflow-controller-configmap`.
+- **Security Context**:
+  - `runAsNonRoot: true`
+  - `runAsUser: 1000`
+  - `fsGroup: 1000`
+- **Resource Management**:
+  - `activeDeadlineSeconds`: 3600 (1 hour timeout per workflow)
+  - `podGC`: `OnPodCompletion`
+
 ### Application Deployment Configuration
+
 - **Start Command**: The `python-uv` buildpack supports two ways to define the start command:
   1.  **pyproject.toml (Recommended)**: If your project has a `[project.scripts]` section in `pyproject.toml`, the buildpack will automatically detect the entry point and set it as the default start command (e.g., `uv run my-app`). It supports common script names like `app` or `start`.
   2.  **Kubernetes Manifest**: You can explicitly specify the command in your Kubernetes Deployment manifest using `args`.
@@ -232,7 +243,7 @@ make pipeline-run
 
 ### Concurrency Control
 - Recommended: Argo Workflows Semaphores
-  - A ConfigMap defines a named semaphore and its limit. This repo includes [argo-semaphore.yaml](manifests/argo-semaphore.yaml) with kpack-builds: "2".
+  - A ConfigMap defines a named semaphore and its limit. This repo includes [argo-semaphore.yaml](manifests/argo-semaphore.yaml) with kpack-builds: "10".
   - The CI WorkflowTemplate references this semaphore via `spec.synchronization.semaphore.configMapKeyRef`.
   - Increase or decrease `kpack-builds` in the ConfigMap to control how many workflows (and thus kpack builds) run concurrently.
 - Optional: Workflow spec.parallelism
@@ -240,9 +251,11 @@ make pipeline-run
   - For parallel DAG/steps, set `spec.parallelism` in the Workflow/WorkflowTemplate.
 
 ### Workflow Cleanup
-- A CronWorkflow runs every 15 minutes to delete completed workflows (Succeeded, Failed, Error) to reclaim resources.
-- Manifest: [workflow-cleanup-cron.yaml](manifests/workflow-cleanup-cron.yaml)
-- Deployed automatically with `make pipeline-deploy`.
+- **Global TTL Strategy**: All workflows are automatically cleaned up by the Argo Controller.
+  - Successful workflows: Deleted after 30 minutes.
+  - Failed/Completed workflows: Deleted after 24 hours.
+- **Pod GC**: Pods are deleted immediately upon completion (`OnPodCompletion`) to free up cluster resources.
+- **Legacy Cleanup**: A CronWorkflow (`workflow-cleanup-cron.yaml`) is also deployed as a backup mechanism.
 
 ## Development & Testing
 
