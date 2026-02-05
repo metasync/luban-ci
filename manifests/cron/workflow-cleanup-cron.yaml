@@ -12,18 +12,11 @@ spec:
   failedJobsHistoryLimit: 1
   workflowSpec:
     serviceAccountName: luban-ci-sa
-    securityContext:
-      runAsNonRoot: true
-      runAsUser: 1000
-      fsGroup: 1000
     entrypoint: cleanup
     templates:
     - name: cleanup
       container:
         image: quay.io/luban-ci/gitops-utils:0.3.3
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 1000
         command: [sh, -c]
         args:
         - |

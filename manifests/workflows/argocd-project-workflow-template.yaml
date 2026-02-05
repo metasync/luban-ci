@@ -96,10 +96,6 @@ spec:
       - name: environment
     script:
       image: "{{workflow.parameters.gitops_utils_image}}"
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
       command: [sh]
       source: |
         TARGET_NS="{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}"
@@ -122,10 +118,6 @@ spec:
       - name: project_name
     script:
       image: "{{workflow.parameters.gitops_utils_image}}"
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
       command: [sh]
       source: |
         PROJECT_NAME="{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}"
@@ -147,10 +139,6 @@ spec:
       - name: git_organization
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
       command: [sh, -c]
       args:
       - |

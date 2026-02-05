@@ -130,10 +130,6 @@ spec:
       container:
         image: "{{inputs.parameters.gitops_provisioner_image}}"
         imagePullPolicy: Always
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 1000
-          fsGroup: 1000
         command: ["python3", "/entrypoint.py"]
         # Command is inherited from ENTRYPOINT ["python3", "/entrypoint.py"]
         args:
@@ -168,10 +164,6 @@ spec:
       script:
         image: "{{inputs.parameters.gitops_utils_image}}"
         imagePullPolicy: Always
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 1000
-          fsGroup: 1000
         command: [sh]
         env:
           - name: GITHUB_TOKEN
