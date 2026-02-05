@@ -191,7 +191,8 @@ spec:
                 exit 1
              fi
           elif [ "$HTTP_CODE" -eq 200 ]; then
-             echo "Repository already exists."
+             echo "Repository already exists. Skipping provisioning to avoid overwriting."
+             exit 0
           fi
 
           # 2. Configure Webhook
