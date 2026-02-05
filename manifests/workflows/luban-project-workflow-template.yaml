@@ -6,10 +6,6 @@ metadata:
 spec:
   entrypoint: setup-luban-project
   serviceAccountName: luban-ci-sa
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 1000
-    fsGroup: 1000
   arguments:
     parameters:
       - name: project_name
