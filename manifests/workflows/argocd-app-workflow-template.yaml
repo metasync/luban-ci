@@ -82,6 +82,10 @@ spec:
       - name: app_name
     script:
       image: "{{workflow.parameters.gitops_utils_image}}"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       command: [sh]
       source: |
         APP_NAME="{{inputs.parameters.environment}}-{{inputs.parameters.app_name}}"
@@ -104,6 +108,10 @@ spec:
       - name: git_organization
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       command: [sh, -c]
       args:
       - |

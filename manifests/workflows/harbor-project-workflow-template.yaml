@@ -32,6 +32,10 @@ spec:
           - name: registry_server
       container:
         image: "{{workflow.parameters.gitops_utils_image}}"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          fsGroup: 1000
         command: [sh, -c]
         args:
           - |
