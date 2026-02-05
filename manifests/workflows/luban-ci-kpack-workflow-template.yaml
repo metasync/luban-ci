@@ -6,6 +6,10 @@ metadata:
 spec:
   entrypoint: ci-pipeline
   serviceAccountName: luban-ci-sa
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
   synchronization:
     semaphore:
       configMapKeyRef:
