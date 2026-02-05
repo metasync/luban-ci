@@ -19,7 +19,7 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 		echo "Removing legacy 'config' key to prevent conflict..."; \
 		kubectl patch configmap argo-workflows-workflow-controller-configmap -n argo --type=json -p='[{"op": "remove", "path": "/data/config"}]'; \
 	fi
-	@kubectl patch configmap argo-workflows-workflow-controller-configmap -n argo --patch "$$(cat config/global-workflow-restrictions.yaml)" || echo "Warning: Failed to patch global config. Ensure you have admin access to 'argo' namespace."
+	@kubectl apply -f config/global-workflow-restrictions.yaml || echo "Warning: Failed to apply global config. Ensure you have admin access to 'argo' namespace."
 	@echo "Applying Luban Configuration..."
 	@kubectl apply -f config/luban-config.yaml
 	@echo "Deploying Workflow Templates..."
