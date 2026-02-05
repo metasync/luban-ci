@@ -13,8 +13,6 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f kpack/kpack-builder.yaml
 	@echo "Applying Argo Workflow semaphores..."
 	@kubectl apply -f config/argo-semaphore.yaml
-	@echo "Applying Global Workflow Restrictions (argo namespace)..."
-	@kubectl patch configmap argo-workflows-workflow-controller-configmap -n argo --patch "$$(cat config/global-workflow-restrictions.yaml)" || echo "Warning: Failed to patch global config. Ensure you have admin access to 'argo' namespace."
 	@echo "Applying Luban Configuration..."
 	@kubectl apply -f config/luban-config.yaml
 	@echo "Deploying Workflow Templates..."
