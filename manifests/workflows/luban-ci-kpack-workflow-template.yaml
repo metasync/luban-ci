@@ -322,6 +322,9 @@ spec:
       command: [sh, -c]
       args:
       - |
+        # Configure safe directory to avoid "fatal: detected dubious ownership"
+        git config --global --add safe.directory "*"
+        
         # Calculate derived parameters in shell for robustness
         REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
         GITOPS_REPO_URL="https://${GIT_PROVIDER}.com/${REGISTRY_NAMESPACE}/${APP_NAME}-gitops.git"
