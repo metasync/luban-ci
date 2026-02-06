@@ -36,17 +36,12 @@ spec:
         # URL format: https://github.com/org/repo.git or https://github.com/org/repo
         ORG=$(echo "{{inputs.parameters.repo_url}}" | sed -e 's|^[^/]*//||' -e 's|/.*$||' | cut -d'/' -f2)
         
-        # 2. Determine Environment and Namespace (Trunk-Based Development)
-        # - Git Tags (e.g. v1.0.0) -> Production (prd)
-        # - All Branches (main, feature) -> Sandbox (snd)
-        if echo "{{inputs.parameters.git_ref}}" | grep -q "^refs/tags/"; then
-           DEPLOY_ENV="prd"
-        else
-           DEPLOY_ENV="snd"
-        fi
-        
-        # Always run builds in the Sandbox/CI namespace (snd-<org>)
-        # This ensures Production environment is kept clean from build workloads
+        # 2. Determine Environment and Namespace
+        # In our Promotion-Based workflow:
+        # - ALL builds (branches, tags) run in Sandbox (snd) namespace.
+        # - ALL builds deploy to Sandbox (snd) environment first.
+        # - Production releases happen via a separate Promotion Workflow (snd -> prd).
+        DEPLOY_ENV="snd"
         TARGET_NS="snd-${ORG}"
         
         echo "Dispatching pipeline for {{inputs.parameters.app_name}} to $TARGET_NS (Deploy Target: $DEPLOY_ENV)..."
