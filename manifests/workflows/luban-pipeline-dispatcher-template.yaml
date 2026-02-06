@@ -34,7 +34,8 @@ spec:
       - |
         # 1. Parse Organization from URL
         # URL format: https://github.com/org/repo.git or https://github.com/org/repo
-        ORG=$(echo "{{inputs.parameters.repo_url}}" | sed -e 's|^[^/]*//||' -e 's|/.*$||' | cut -d'/' -f2)
+        # Strip protocol -> github.com/org/repo -> cut field 2 -> org
+        ORG=$(echo "{{inputs.parameters.repo_url}}" | sed -e 's|^[^/]*//||' | cut -d'/' -f2)
         
         # 2. Determine Environment and Namespace
         # In our Promotion-Based workflow:
@@ -49,7 +50,7 @@ spec:
         # 3. Submit the CI Workflow
         # We assume the ServiceAccount 'workflow-runner' exists in the target namespace
         argo submit \
-          --from clusterwftmpl/luban-ci-kpack-template \
+          --from clusterworkflowtemplate/luban-ci-kpack-template \
           -n "$TARGET_NS" \
           --serviceaccount workflow-runner \
           -p repo_url="{{inputs.parameters.repo_url}}" \

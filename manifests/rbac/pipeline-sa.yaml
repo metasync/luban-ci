@@ -29,7 +29,7 @@ rules:
   resources: ["workflowtaskresults"]
   verbs: ["create", "patch"]
 - apiGroups: ["argoproj.io"]
-  resources: ["workflows"]
+  resources: ["workflows", "clusterworkflowtemplates"]
   verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
 - apiGroups: ["kpack.io"]
   resources: ["images", "builds", "builders"]

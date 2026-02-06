@@ -117,6 +117,18 @@ spec:
         jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | \
         kubectl apply -n $TARGET_NS -f -
         
+        # 2b. Copy Luban Config
+        echo "Copying luban-config to $TARGET_NS..."
+        kubectl get configmap luban-config -n luban-ci -o json | \
+        jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | \
+        kubectl apply -n $TARGET_NS -f -
+        
+        # 2c. Copy Workflow Semaphores
+        echo "Copying workflow-semaphores to $TARGET_NS..."
+        kubectl get configmap workflow-semaphores -n luban-ci -o json | \
+        jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | \
+        kubectl apply -n $TARGET_NS -f -
+        
         # 3. Patch default ServiceAccount
         echo "Patching default ServiceAccount in $TARGET_NS..."
         kubectl patch sa default -n $TARGET_NS -p '{"imagePullSecrets": [{"name": "{{workflow.parameters.image_pull_secret}}"}]}'
