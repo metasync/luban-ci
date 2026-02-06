@@ -38,6 +38,9 @@ spec:
       - name: create_test_users
         description: "Create local ServiceAccounts for testing RBAC (yes/no)"
         value: "no"
+        enum:
+        - "yes"
+        - "no"
       - name: image_pull_secret
         description: "Name of the secret to copy to project namespaces"
         valueFrom:
