@@ -1,0 +1,8 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: luban-view-templates
+rules:
+- apiGroups: ["argoproj.io"]
+  resources: ["clusterworkflowtemplates"]
+  verbs: ["get", "list", "watch"]
