@@ -165,8 +165,15 @@ spec:
 
         if [ "$CREATE_TEST_USERS" = "yes" ]; then
            echo "Creating test users (ServiceAccounts)..."
-           kubectl create sa test-project-admin -n $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
-           kubectl create sa test-project-developer -n $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
+           # Create SAs and annotate them with default-namespace
+           kubectl create sa test-project-admin -n $TARGET_NS --dry-run=client -o yaml | \
+             kubectl annotate -f - --local "workflows.argoproj.io/default-namespace=$TARGET_NS" -o yaml | \
+             kubectl apply -f -
+             
+           kubectl create sa test-project-developer -n $TARGET_NS --dry-run=client -o yaml | \
+             kubectl annotate -f - --local "workflows.argoproj.io/default-namespace=$TARGET_NS" -o yaml | \
+             kubectl apply -f -
+             
            TEST_ADMIN_SA="test-project-admin"
            TEST_DEV_SA="test-project-developer"
         fi
