@@ -24,7 +24,7 @@ spec:
                 labels:
                   app: placeholder  # Will be overwritten by parameter mapping
               spec:
-                serviceAccountName: luban-ci-sa
+                serviceAccountName: workflow-runner
                 workflowTemplateRef:
                   name: luban-ci-kpack-template
                 arguments:
@@ -67,3 +67,10 @@ spec:
                 dataKey: body.ref
               dest: spec.arguments.parameters.3.value
               operation: overwrite
+            # Dynamic Namespace Injection: snd-<org_name>
+            - src:
+                dependencyName: github-dep
+                dataKey: body.repository.owner.login
+              dest: metadata.namespace
+              operation: prepend
+              value: "snd-"
