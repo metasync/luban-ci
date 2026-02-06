@@ -1,0 +1,62 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: pipeline-dispatcher-template
+  namespace: luban-ci
+spec:
+  entrypoint: dispatch
+  serviceAccountName: luban-ci-sa
+  arguments:
+    parameters:
+    - name: repo_url
+    - name: revision
+    - name: app_name
+    - name: git_ref
+    - name: git_provider
+      value: "github"
+    - name: git_creds_secret
+      value: "github-creds"
+
+  templates:
+  - name: dispatch
+    inputs:
+      parameters:
+      - name: repo_url
+      - name: revision
+      - name: app_name
+      - name: git_ref
+      - name: git_provider
+      - name: git_creds_secret
+    container:
+      image: quay.io/argoproj/argocli:v3.7.7
+      command: [sh, -c]
+      args:
+      - |
+        # 1. Parse Organization from URL
+        # URL format: https://github.com/org/repo.git or https://github.com/org/repo
+        ORG=$(echo "{{inputs.parameters.repo_url}}" | sed -e 's|^[^/]*//||' -e 's|/.*$||' | cut -d'/' -f2)
+        
+        # 2. Determine Environment and Namespace
+        if [ "{{inputs.parameters.git_ref}}" = "refs/heads/main" ]; then
+           ENV="prd"
+        else
+           ENV="snd"
+        fi
+        TARGET_NS="${ENV}-${ORG}"
+        
+        echo "Dispatching pipeline for {{inputs.parameters.app_name}} to $TARGET_NS..."
+        
+        # 3. Submit the CI Workflow
+        # We assume the ServiceAccount 'workflow-runner' exists in the target namespace
+        argo submit \
+          --from wftmpl/luban-ci-kpack-template \
+          -n "$TARGET_NS" \
+          --serviceaccount workflow-runner \
+          -p repo_url="{{inputs.parameters.repo_url}}" \
+          -p revision="{{inputs.parameters.revision}}" \
+          -p app_name="{{inputs.parameters.app_name}}" \
+          -p git_ref="{{inputs.parameters.git_ref}}" \
+          -p git_provider="{{inputs.parameters.git_provider}}" \
+          -p git_creds_secret="{{inputs.parameters.git_creds_secret}}" \
+          -p deploy_env="$ENV" \
+          --labels "app={{inputs.parameters.app_name}}"

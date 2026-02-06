@@ -20,13 +20,14 @@ spec:
               apiVersion: argoproj.io/v1alpha1
               kind: Workflow
               metadata:
-                generateName: luban-ci-pipeline-
+                generateName: ci-dispatch-
+                namespace: luban-ci
                 labels:
-                  app: placeholder  # Will be overwritten by parameter mapping
+                  app: placeholder
               spec:
-                serviceAccountName: workflow-runner
+                serviceAccountName: luban-ci-sa
                 workflowTemplateRef:
-                  name: luban-ci-kpack-template
+                  name: pipeline-dispatcher-template
                 arguments:
                   parameters:
                     - name: repo_url
@@ -67,10 +68,3 @@ spec:
                 dataKey: body.ref
               dest: spec.arguments.parameters.3.value
               operation: overwrite
-            # Dynamic Namespace Injection: snd-<org_name>
-            - src:
-                dependencyName: github-dep
-                dataKey: body.repository.owner.login
-              dest: metadata.namespace
-              operation: prepend
-              value: "snd-"
