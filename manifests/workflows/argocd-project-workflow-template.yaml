@@ -128,6 +128,16 @@ spec:
         kubectl get configmap workflow-semaphores -n luban-ci -o json | \
         jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | \
         kubectl apply -n $TARGET_NS -f -
+
+        # 2d. Copy GitHub Creds
+        echo "Copying github-creds to $TARGET_NS..."
+        if kubectl get secret github-creds -n luban-ci > /dev/null 2>&1; then
+           kubectl get secret github-creds -n luban-ci -o json | \
+           jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | \
+           kubectl apply -n $TARGET_NS -f -
+        else
+           echo "Warning: github-creds secret not found in luban-ci. Skipping copy."
+        fi
         
         # 3. Patch default ServiceAccount
         echo "Patching default ServiceAccount in $TARGET_NS..."
@@ -137,6 +147,10 @@ spec:
         echo "Creating workflow-runner ServiceAccount in $TARGET_NS..."
         kubectl create sa workflow-runner -n $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
         
+        # Patch workflow-runner with secrets (for kpack builds)
+        # It needs both pull secrets (for base images) and regular secrets (for pushing)
+        kubectl patch sa workflow-runner -n $TARGET_NS -p '{"imagePullSecrets": [{"name": "{{workflow.parameters.image_pull_secret}}"}], "secrets": [{"name": "{{workflow.parameters.image_pull_secret}}"}, {"name": "github-creds"}]}'
+
         # Bind workflow-runner to admin role in namespace (for Kpack/Deployment management)
         echo "Binding workflow-runner to admin role..."
         kubectl create rolebinding workflow-runner-admin \
@@ -144,6 +158,20 @@ spec:
           --serviceaccount=$TARGET_NS:workflow-runner \
           -n $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
 
+        # Bind workflow-runner to luban-kpack-reader ClusterRole (to see ClusterBuilder)
+        kubectl create clusterrolebinding workflow-runner-kpack-reader-$TARGET_NS \
+          --clusterrole=luban-kpack-reader \
+          --serviceaccount=$TARGET_NS:workflow-runner \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+        # Bind workflow-runner to luban-kpack-admin ClusterRole (to manage Kpack resources in namespace)
+        # Note: We use RoleBinding here (not ClusterRoleBinding) to restrict access to the namespace
+        kubectl create rolebinding workflow-runner-kpack-admin \
+          --clusterrole=luban-kpack-admin \
+          --serviceaccount=$TARGET_NS:workflow-runner \
+          -n $TARGET_NS \
+          --dry-run=client -o yaml | kubectl apply -f -
+        
         # 5. Configure RBAC for OIDC Groups
         ADMIN_GROUPS='{{workflow.parameters.admin_groups}}'
         DEV_GROUPS='{{workflow.parameters.developer_groups}}'

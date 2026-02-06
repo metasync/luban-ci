@@ -1,0 +1,8 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: luban-kpack-admin
+rules:
+- apiGroups: ["kpack.io"]
+  resources: ["images", "builds", "sourceresolvers", "builders"]
+  verbs: ["*"]

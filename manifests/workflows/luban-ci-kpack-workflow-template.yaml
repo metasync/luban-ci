@@ -167,6 +167,9 @@ spec:
       command: [sh, -c]
       args:
       - |
+        set -e
+        set -o pipefail
+        
         # Calculate derived parameters in shell for robustness
         REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
         
@@ -183,37 +186,32 @@ spec:
         BASE_IMAGE_NAME="${registry_server}/${REGISTRY_NAMESPACE}/${APP_NAME}"
         
         # Prepare optional sub-path
-        SUB_PATH_FLAG=""
-        if [ -n "{{workflow.parameters.sub_path}}" ]; then
-          SUB_PATH_FLAG="--sub-path {{workflow.parameters.sub_path}}"
-        fi
+        SUB_PATH_FLAG_VALUE="{{workflow.parameters.sub_path}}"
 
-        # Execute the save command
-        if ! kubectl get image "$APP_NAME" -n luban-ci >/dev/null 2>&1; then
-          echo "Image resource $APP_NAME does not exist. Using 'save' with --additional-tag..."
-          kp image save "$APP_NAME" \
-            --tag "${BASE_IMAGE_NAME}:latest" \
-            --additional-tag "${BASE_IMAGE_NAME}:${IMAGE_TAG}" \
-            --builder luban-builder \
-            --git "$REPO_URL" \
-            --git-revision "$REVISION" \
-            $SUB_PATH_FLAG \
-            --service-account luban-ci-sa \
-            --namespace luban-ci \
-            --wait
-        else
-          echo "Image resource $APP_NAME exists. Using 'save' with --replace-additional-tag..."
-          kp image save "$APP_NAME" \
-            --tag "${BASE_IMAGE_NAME}:latest" \
-            --replace-additional-tag "${BASE_IMAGE_NAME}:${IMAGE_TAG}" \
-            --builder luban-builder \
-            --git "$REPO_URL" \
-            --git-revision "$REVISION" \
-            $SUB_PATH_FLAG \
-            --service-account luban-ci-sa \
-            --namespace luban-ci \
-            --wait
-        fi
+        # Execute the save command using kubectl apply (to avoid kp CLI in-cluster config issues)
+        cat <<EOF | kubectl apply -f -
+        apiVersion: kpack.io/v1alpha2
+        kind: Image
+        metadata:
+          name: $APP_NAME
+        spec:
+          tag: ${BASE_IMAGE_NAME}:latest
+          additionalTags:
+          - ${BASE_IMAGE_NAME}:${IMAGE_TAG}
+          builder:
+            kind: ClusterBuilder
+            name: luban-builder
+          source:
+            git:
+              url: "$REPO_URL"
+              revision: "$REVISION"
+            subPath: "$SUB_PATH_FLAG_VALUE"
+          serviceAccountName: workflow-runner
+        EOF
+        
+        # Wait for image to be ready (optional, but good for feedback)
+        # We don't block indefinitely, just give it a moment to initialize
+        sleep 5
 
       env:
       - name: REPO_URL
@@ -244,6 +242,9 @@ spec:
       command: [sh, -c]
       args:
       - |
+        set -e
+        set -o pipefail
+
         # Calculate derived parameters in shell for robustness
         REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
 
@@ -261,43 +262,32 @@ spec:
         BASE_IMAGE_NAME="${registry_server}/${REGISTRY_NAMESPACE}/${APP_NAME}"
         
         # Prepare optional sub-path
-        SUB_PATH_FLAG=""
-        if [ -n "{{workflow.parameters.sub_path}}" ]; then
-          SUB_PATH_FLAG="--sub-path {{workflow.parameters.sub_path}}"
-        fi
+        SUB_PATH_FLAG_VALUE="{{workflow.parameters.sub_path}}"
 
         echo "Detected Git Tag Push ($GIT_REF). Updating tags..."
         
-        # 1. Update Image resource (Metadata only)
-        # Use the determined TAG_FLAG to set tags:
-        # 1. The commit revision tag (traceability)
-        # 2. The release version tag (usability)
-        if ! kubectl get image "$APP_NAME" -n luban-ci >/dev/null 2>&1; then
-          echo "Image resource $APP_NAME does not exist. Using 'save' with --additional-tag..."
-          kp image save "$APP_NAME" \
-            --tag "${BASE_IMAGE_NAME}:latest" \
-            --additional-tag "${BASE_IMAGE_NAME}:${REVISION}" \
-            --additional-tag "${BASE_IMAGE_NAME}:${IMAGE_TAG}" \
-            --builder luban-builder \
-            --git "$REPO_URL" \
-            --git-revision "$REVISION" \
-            $SUB_PATH_FLAG \
-            --service-account luban-ci-sa \
-            --namespace luban-ci
-        else
-          echo "Image resource $APP_NAME exists. Using 'save' with --replace-additional-tag..."
-          kp image save "$APP_NAME" \
-            --tag "${BASE_IMAGE_NAME}:latest" \
-            --replace-additional-tag "${BASE_IMAGE_NAME}:${REVISION}" \
-            --replace-additional-tag "${BASE_IMAGE_NAME}:${IMAGE_TAG}" \
-            --builder luban-builder \
-            --git "$REPO_URL" \
-            --git-revision "$REVISION" \
-            $SUB_PATH_FLAG \
-            --service-account luban-ci-sa \
-            --namespace luban-ci
-        fi
-          
+        # Execute the save command using kubectl apply
+        cat <<EOF | kubectl apply -f -
+        apiVersion: kpack.io/v1alpha2
+        kind: Image
+        metadata:
+          name: $APP_NAME
+        spec:
+          tag: ${BASE_IMAGE_NAME}:latest
+          additionalTags:
+          - ${BASE_IMAGE_NAME}:${REVISION}
+          - ${BASE_IMAGE_NAME}:${IMAGE_TAG}
+          builder:
+            kind: ClusterBuilder
+            name: luban-builder
+          source:
+            git:
+              url: "$REPO_URL"
+              revision: "$REVISION"
+            subPath: "$SUB_PATH_FLAG_VALUE"
+          serviceAccountName: workflow-runner
+        EOF
+        
         echo "Image resource updated. Waiting for propagation..."
         sleep 2
         
@@ -305,7 +295,7 @@ spec:
         
         # 2. Manually Trigger Build and Capture Output
         # We need to capture stderr because kp writes to stderr sometimes
-        TRIGGER_OUTPUT=$(kp image trigger "$APP_NAME" -n luban-ci 2>&1)
+        TRIGGER_OUTPUT=$(kp image trigger "$APP_NAME" 2>&1)
         
         # Parse build number
         # Output format: "Triggered build for Image Resource "..." with Build Number <N>"
@@ -313,13 +303,13 @@ spec:
         
         if [ -n "$BUILD_NUMBER" ]; then
            echo "Successfully triggered build #$BUILD_NUMBER. Following logs..."
-           kp build logs "$APP_NAME" -b "$BUILD_NUMBER" -n luban-ci
+           kp build logs "$APP_NAME" -b "$BUILD_NUMBER"
         else
            echo "Warning: Could not parse build number from output:"
            echo "$TRIGGER_OUTPUT"
            echo "Falling back to tailing latest build logs..."
            sleep 2
-           kp build logs "$APP_NAME" -n luban-ci
+           kp build logs "$APP_NAME"
         fi
 
       env:

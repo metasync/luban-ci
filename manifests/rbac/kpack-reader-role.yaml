@@ -1,0 +1,8 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: luban-kpack-reader
+rules:
+- apiGroups: ["kpack.io"]
+  resources: ["clusterbuilders", "clusterstacks", "clusterstores"]
+  verbs: ["get", "list", "watch"]
