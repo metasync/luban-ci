@@ -142,13 +142,15 @@ spec:
           local sa_name="$2"
           
           # Add OIDC groups
-          echo "$groups" | jq -r '.[]' | while read group; do
-             if [ -n "$group" ]; then
-               echo "- kind: Group"
-               echo "  name: $group"
-               echo "  apiGroup: rbac.authorization.k8s.io"
-             fi
-          done
+          if [ -n "$groups" ] && [ "$groups" != "[]" ]; then
+             echo "$groups" | jq -r '.[]' | while read group; do
+                if [ -n "$group" ]; then
+                  echo "- kind: Group"
+                  echo "  name: $group"
+                  echo "  apiGroup: rbac.authorization.k8s.io"
+                fi
+             done
+          fi
           
           # Add ServiceAccount if specified
           if [ -n "$sa_name" ]; then
