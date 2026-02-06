@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: pipeline-dispatcher-template
+  name: luban-pipeline-dispatcher-template
   namespace: luban-ci
 spec:
   entrypoint: dispatch

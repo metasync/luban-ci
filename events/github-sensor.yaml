@@ -27,7 +27,7 @@ spec:
               spec:
                 serviceAccountName: luban-ci-sa
                 workflowTemplateRef:
-                  name: pipeline-dispatcher-template
+                  name: luban-pipeline-dispatcher-template
                 arguments:
                   parameters:
                     - name: repo_url
