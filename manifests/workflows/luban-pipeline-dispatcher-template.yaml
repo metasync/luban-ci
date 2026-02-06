@@ -38,13 +38,16 @@ spec:
         
         # 2. Determine Environment and Namespace
         if [ "{{inputs.parameters.git_ref}}" = "refs/heads/main" ]; then
-           ENV="prd"
+           DEPLOY_ENV="prd"
         else
-           ENV="snd"
+           DEPLOY_ENV="snd"
         fi
-        TARGET_NS="${ENV}-${ORG}"
         
-        echo "Dispatching pipeline for {{inputs.parameters.app_name}} to $TARGET_NS..."
+        # Always run builds in the Sandbox/CI namespace (snd-<org>)
+        # This ensures Production environment is kept clean from build workloads
+        TARGET_NS="snd-${ORG}"
+        
+        echo "Dispatching pipeline for {{inputs.parameters.app_name}} to $TARGET_NS (Deploy Target: $DEPLOY_ENV)..."
         
         # 3. Submit the CI Workflow
         # We assume the ServiceAccount 'workflow-runner' exists in the target namespace
@@ -58,5 +61,5 @@ spec:
           -p git_ref="{{inputs.parameters.git_ref}}" \
           -p git_provider="{{inputs.parameters.git_provider}}" \
           -p git_creds_secret="{{inputs.parameters.git_creds_secret}}" \
-          -p deploy_env="$ENV" \
+          -p deploy_env="$DEPLOY_ENV" \
           --labels "app={{inputs.parameters.app_name}}"
