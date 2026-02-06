@@ -128,38 +128,14 @@ spec:
       command: [sh, -c]
       args:
       - |
-        # Configure git credentials
-        git config --global credential.helper store
-        # Extract domain from REPO_URL
-        DOMAIN=$(echo "$REPO_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
-        echo "https://${GIT_USERNAME}:${GIT_TOKEN}@${DOMAIN}" > ~/.git-credentials
-        
         # Extract namespace from REPO_URL
         REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
         echo -n "$REGISTRY_NAMESPACE" > /tmp/registry_namespace
-
-        echo "Cloning ${REPO_URL}..."
-        git clone ${REPO_URL} /workdir/repo
-        cd /workdir/repo
-        git checkout ${REVISION}
+        
+        echo "Resolved registry namespace: $REGISTRY_NAMESPACE"
       env:
-      - name: GIT_USERNAME
-        valueFrom:
-          secretKeyRef:
-            name: "{{workflow.parameters.git_creds_secret}}"
-            key: username
-      - name: GIT_TOKEN
-        valueFrom:
-          secretKeyRef:
-            name: "{{workflow.parameters.git_creds_secret}}"
-            key: token
       - name: REPO_URL
         value: "{{workflow.parameters.repo_url}}"
-      - name: REVISION
-        value: "{{workflow.parameters.revision}}"
-      volumeMounts:
-      - name: workdir
-        mountPath: /workdir
 
   - name: build-push-by-commit
     inputs:
