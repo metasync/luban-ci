@@ -32,35 +32,40 @@ Luban CI enforces strict naming conventions to simplify configuration and ensure
 ### Environment Mapping
 
 - **Sandbox (`snd`)**:
-  - Tracks the `develop` branch of the GitOps repository.
-  - Deploys to the `<snd>-<project>` namespace (e.g., `snd-payment`).
+  - The default build and deployment environment.
+  - **All** CI pipelines (from `main` branch, feature branches, or tags) run in the `snd-<project>` namespace.
+  - Automatically deploys to the `snd` environment overlay.
 - **Production (`prd`)**:
-  - Tracks the `main` branch of the GitOps repository.
-  - Deploys to the `<prd>-<project>` namespace (e.g., `prd-payment`).
+  - The release environment.
+  - **No** CI builds occur directly in Production namespaces.
+  - Deploys happen via **Promotion** (copying a verified image tag from `snd` to `prd`).
 
-## GitOps Workflow
+## Development & Release Model
 
-Luban CI promotes a structured GitOps workflow to ensure consistency, security, and traceability across environments.
+Luban CI follows a **Trunk-Based Development** model with **Promotion-Based Releases**.
 
-### Branches
-- **`develop`**: Sandbox development; default working branch for developers.
-- **`main`**: Production; merged via PR from `develop`.
+### 1. Development (Continuous Integration)
+- **Trigger**: Commit to any branch (e.g., `main`, `feat/login`).
+- **Action**:
+  1.  **Dispatch**: The `luban-ci` dispatcher triggers a pipeline in the project's Sandbox namespace (`snd-<project>`).
+  2.  **Build**: kpack builds the container image in Sandbox.
+  3.  **Deploy**: The pipeline updates the **Sandbox** overlay in the GitOps repository.
+  4.  **Verify**: The application is deployed to the Sandbox cluster for verification.
 
-### Environments
-- **`snd` (Sandbox)**: Deploys from `develop`.
-- **`prd` (Production)**: Deploys from `main`.
+### 2. Release (Continuous Delivery)
+- **Trigger**: Git Tag (e.g., `v1.0.0`) OR Manual Promotion.
+- **Action**:
+  1.  **Build**: Tags are also built and deployed to **Sandbox** first to ensure the exact artifact is verified.
+  2.  **Promote**: A separate **Promotion Workflow** is triggered (manually or via automation).
+  3.  **Deploy**: The Promotion Workflow:
+      - Reads the verified image tag from the Sandbox environment.
+      - Updates the **Production** overlay in the GitOps repository.
+      - Creates a Pull Request (or auto-merges) to apply changes to Production.
 
-### Structure
-The GitOps repository follows a standard Kustomize structure:
-- **`app/base`**: Contains common resources (Deployment, Service, HTTPRoute).
-- **`app/overlays/snd`**: Configures the Sandbox environment (e.g., `namespace: snd-payment`).
-- **`app/overlays/prd`**: Configures the Production environment (e.g., `namespace: prd-payment`).
-
-### Developer Flow
-1.  **Work**: Developer clones the repository and works on the `develop` branch.
-2.  **Validate**: Changes pushed to `develop` are automatically deployed to the **Sandbox** environment via Argo CD for validation.
-3.  **Promote**: Developer opens a Pull Request (PR) from `develop` → `main`.
-4.  **Deploy**: Upon merge, the changes are automatically deployed to the **Production** environment from the `main` branch.
+### Why this model?
+- **Build Once, Deploy Many**: The exact image tested in Sandbox is promoted to Production. We do not rebuild for Production.
+- **Isolation**: Heavy build workloads run only in Sandbox/CI namespaces, keeping Production clusters stable and clean.
+- **Safety**: Production deployments are explicit promotion actions, not side-effects of a merge.
 
 ### Notes
 - **Labels**: Managed centrally via Kustomization to ensure consistency.
@@ -203,9 +208,12 @@ To promote an application from `snd` to `prd`, use the `luban-promotion-template
   - `git_organization`: (Optional) Auto-detected if not provided.
   - `git_provider`: (Optional) `github` (default) or `gitlab`.
 
-This workflow extracts the current image tag from the `develop` branch (`snd` overlay), updates the `prd` overlay in the `develop` branch, and opens a Pull Request from `develop` to `main` in the application's GitOps repository.
+This workflow:
+1.  Extracts the currently deployed image tag from the **Sandbox** overlay.
+2.  Updates the **Production** overlay with that tag.
+3.  Creates a Pull Request (or commits directly) to the GitOps repository to apply the change.
 
-> **Note**: This follows a "Trunk-Based Promotion" model. The `develop` branch accumulates changes (both verified `snd` deployments and proposed `prd` updates), and the PR acts as a release gate to synchronize `develop` with `main`.
+> **Note**: This ensures that only artifacts that have been successfully deployed and verified in Sandbox can be promoted to Production.
 
 ### Run CI Pipeline
 Trigger the end-to-end CI pipeline (Checkout -> Build -> Push):
