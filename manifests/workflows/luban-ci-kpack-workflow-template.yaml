@@ -1,8 +1,8 @@
 apiVersion: argoproj.io/v1alpha1
-kind: WorkflowTemplate
+kind: ClusterWorkflowTemplate
 metadata:
   name: luban-ci-kpack-template
-  namespace: luban-ci
+  # Cluster resources do not have a namespace
 spec:
   entrypoint: ci-pipeline
   serviceAccountName: luban-ci-sa
