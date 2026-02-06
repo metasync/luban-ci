@@ -22,3 +22,21 @@ test-webhook-py: ## Send signed push payload via gateway to trigger Workflow (Py
 test-webhook: ## Send signed push payload via gateway to trigger Workflow (Shell)
 	@echo "Running webhook test script (Shell)..."
 	@./webhook_test.sh
+
+test-get-token: ## Generate login token for test users (ADMIN or DEVELOPER)
+	@echo "Generating token for test-project-$(ROLE) in $(TEST_NAMESPACE)..."
+	@if [ -z "$(ROLE)" ]; then echo "Error: Please specify ROLE=admin or ROLE=developer"; exit 1; fi
+	@kubectl create token test-project-$(ROLE) -n $(TEST_NAMESPACE) --duration=24h
+
+test-rbac-validation: ## Validate permissions for test users
+	@echo "Validating RBAC for $(TEST_NAMESPACE)..."
+	@echo "\n--- Admin User (test-project-admin) ---"
+	@echo "Can delete workflows? (Expected: yes)"
+	@kubectl auth can-i delete workflow --as=system:serviceaccount:$(TEST_NAMESPACE):test-project-admin -n $(TEST_NAMESPACE)
+	@echo "Can submit workflows? (Expected: yes)"
+	@kubectl auth can-i create workflow --as=system:serviceaccount:$(TEST_NAMESPACE):test-project-admin -n $(TEST_NAMESPACE)
+	@echo "\n--- Developer User (test-project-developer) ---"
+	@echo "Can delete workflows? (Expected: no)"
+	@kubectl auth can-i delete workflow --as=system:serviceaccount:$(TEST_NAMESPACE):test-project-developer -n $(TEST_NAMESPACE)
+	@echo "Can submit workflows? (Expected: yes)"
+	@kubectl auth can-i create workflow --as=system:serviceaccount:$(TEST_NAMESPACE):test-project-developer -n $(TEST_NAMESPACE)
