@@ -6,6 +6,14 @@ metadata:
 spec:
   entrypoint: dispatch
   serviceAccountName: luban-ci-sa
+  # Keep pods until the workflow is deleted
+  podGC:
+    strategy: OnWorkflowDeletion
+  # Cleanup workflows
+  ttlStrategy:
+    secondsAfterCompletion: 86400
+    secondsAfterSuccess: 3600
+    secondsAfterFailure: 86400
   arguments:
     parameters:
     - name: repo_url

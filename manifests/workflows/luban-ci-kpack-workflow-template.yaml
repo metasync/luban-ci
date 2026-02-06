@@ -10,6 +10,14 @@ spec:
     runAsNonRoot: true
     runAsUser: 1000
     fsGroup: 1000
+  # Keep pods until the workflow is deleted to ensure logs are available
+  podGC:
+    strategy: OnWorkflowDeletion
+  # Automatically delete the workflow (and pods) after a delay to clean up
+  ttlStrategy:
+    secondsAfterCompletion: 86400 # 24 hours
+    secondsAfterSuccess: 3600     # 1 hour (clean up successful runs faster)
+    secondsAfterFailure: 86400    # 24 hours (keep failed runs longer)
   synchronization:
     semaphore:
       configMapKeyRef:
