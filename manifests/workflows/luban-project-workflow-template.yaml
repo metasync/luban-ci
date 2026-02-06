@@ -35,6 +35,9 @@ spec:
       - name: admin_groups
         description: "List of OIDC groups for admin access (JSON array)"
         value: '[]'
+      - name: create_test_users
+        description: "Create local ServiceAccounts for testing RBAC (yes/no)"
+        value: "no"
       - name: image_pull_secret
         description: "Name of the secret to copy to project namespaces"
         valueFrom:
@@ -79,6 +82,8 @@ spec:
                   value: "{{workflow.parameters.developer_groups}}"
                 - name: admin_groups
                   value: "{{workflow.parameters.admin_groups}}"
+                - name: create_test_users
+                  value: "{{workflow.parameters.create_test_users}}"
                 - name: image_pull_secret
                   value: "{{workflow.parameters.image_pull_secret}}"
             withParam: "{{workflow.parameters.environments}}"

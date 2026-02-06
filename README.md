@@ -146,6 +146,35 @@ This Master Workflow initializes the infrastructure for a new Team or Domain.
   - `git_organization`: (Optional) The GitHub Org/User where source code lives.
   - `developer_groups`: (Optional) OIDC groups for read/write access.
   - `admin_groups`: (Optional) OIDC groups for admin access.
+  - `create_test_users`: (Optional) Create local ServiceAccounts (`test-project-admin`, `test-project-developer`) for verifying permissions (default: `no`).
+
+### User Access Management
+Luban CI automatically configures RBAC for your project namespaces to enable OIDC group access to the Argo Workflows UI.
+
+- **Admin Access**:
+  - Groups defined in `admin_groups` are bound to the `admin` ClusterRole within the project namespace.
+  - Can view, submit, resubmit, and delete workflows.
+  - Can view logs and artifacts.
+- **Developer Access**:
+  - Groups defined in `developer_groups` are bound to the `edit` ClusterRole within the project namespace.
+  - Can view, submit, and resubmit workflows.
+  - Can view logs.
+
+**Test Users**:
+If you set `create_test_users: "yes"` when creating a project, the system will provision two ServiceAccounts in each environment namespace (e.g., `snd-payment`):
+1.  `test-project-admin`: Has the same permissions as your admin OIDC groups.
+2.  `test-project-developer`: Has the same permissions as your developer OIDC groups.
+
+You can use these accounts to verify permissions using `kubectl auth can-i`:
+```bash
+# Verify Admin Access
+kubectl auth can-i delete workflow --as=system:serviceaccount:snd-payment:test-project-admin -n snd-payment
+# > yes
+
+# Verify Developer Access (cannot delete)
+kubectl auth can-i delete workflow --as=system:serviceaccount:snd-payment:test-project-developer -n snd-payment
+# > no
+```
 
 ### Luban App Setup (Service Level)
 This Workflow bootstraps a new microservice within an existing Project/Team.

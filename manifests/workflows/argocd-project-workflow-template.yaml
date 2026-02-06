@@ -25,6 +25,9 @@ spec:
     - name: admin_groups
       description: "List of OIDC groups for admin access (JSON array)"
       value: '[]'
+    - name: create_test_users
+      description: "Create local ServiceAccounts for testing RBAC (yes/no)"
+      value: "no"
     - name: image_pull_secret
       description: "Name of the secret to copy to project namespaces"
       valueFrom:
@@ -83,14 +86,14 @@ spec:
           - name: git_organization
             value: "{{inputs.parameters.git_organization}}"
         when: "{{steps.check-exists.outputs.result}} == false"
-    - - name: ensure-pull-secret
-        template: ensure-pull-secret
+    - - name: bootstrap-namespace
+        template: bootstrap-namespace
         arguments:
           parameters:
           - name: environment
             value: "{{inputs.parameters.environment}}"
 
-  - name: ensure-pull-secret
+  - name: bootstrap-namespace
     inputs:
       parameters:
       - name: environment
@@ -99,17 +102,101 @@ spec:
       command: [sh]
       source: |
         TARGET_NS="{{inputs.parameters.environment}}-{{workflow.parameters.project_name}}"
+        CREATE_TEST_USERS="{{workflow.parameters.create_test_users}}"
         
+        # 1. Create Namespace
         echo "Ensuring namespace $TARGET_NS exists..."
         kubectl create ns $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
         
+        # 2. Copy Image Pull Secret
         echo "Copying {{workflow.parameters.image_pull_secret}} to $TARGET_NS..."
         kubectl get secret {{workflow.parameters.image_pull_secret}} -n luban-ci -o json | \
         jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | \
         kubectl apply -n $TARGET_NS -f -
         
+        # 3. Patch default ServiceAccount
         echo "Patching default ServiceAccount in $TARGET_NS..."
         kubectl patch sa default -n $TARGET_NS -p '{"imagePullSecrets": [{"name": "{{workflow.parameters.image_pull_secret}}"}]}'
+
+        # 4. Create workflow-runner ServiceAccount
+        echo "Creating workflow-runner ServiceAccount in $TARGET_NS..."
+        kubectl create sa workflow-runner -n $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Bind workflow-runner to admin role in namespace (for Kpack/Deployment management)
+        echo "Binding workflow-runner to admin role..."
+        kubectl create rolebinding workflow-runner-admin \
+          --clusterrole=admin \
+          --serviceaccount=$TARGET_NS:workflow-runner \
+          -n $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
+
+        # 5. Configure RBAC for OIDC Groups
+        ADMIN_GROUPS='{{workflow.parameters.admin_groups}}'
+        DEV_GROUPS='{{workflow.parameters.developer_groups}}'
+        
+        # Helper function to generate RoleBinding subjects from JSON array
+        generate_subjects() {
+          local groups="$1"
+          local sa_name="$2"
+          
+          # Add OIDC groups
+          echo "$groups" | jq -r '.[]' | while read group; do
+             if [ -n "$group" ]; then
+               echo "- kind: Group"
+               echo "  name: $group"
+               echo "  apiGroup: rbac.authorization.k8s.io"
+             fi
+          done
+          
+          # Add ServiceAccount if specified
+          if [ -n "$sa_name" ]; then
+             echo "- kind: ServiceAccount"
+             echo "  name: $sa_name"
+             echo "  namespace: $TARGET_NS"
+          fi
+        }
+
+        TEST_ADMIN_SA=""
+        TEST_DEV_SA=""
+
+        if [ "$CREATE_TEST_USERS" = "yes" ]; then
+           echo "Creating test users (ServiceAccounts)..."
+           kubectl create sa test-project-admin -n $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
+           kubectl create sa test-project-developer -n $TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
+           TEST_ADMIN_SA="test-project-admin"
+           TEST_DEV_SA="test-project-developer"
+        fi
+
+        # Apply Admin RoleBinding
+        echo "Creating project-admins RoleBinding..."
+        cat <<EOF | kubectl apply -f -
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: project-admins
+          namespace: $TARGET_NS
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: admin
+        subjects:
+        $(generate_subjects "$ADMIN_GROUPS" "$TEST_ADMIN_SA")
+        EOF
+
+        # Apply Developer RoleBinding (Edit Role)
+        echo "Creating project-developers RoleBinding..."
+        cat <<EOF | kubectl apply -f -
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: project-developers
+          namespace: $TARGET_NS
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: edit
+        subjects:
+        $(generate_subjects "$DEV_GROUPS" "$TEST_DEV_SA")
+        EOF
 
   - name: check-project-exists
     inputs:
