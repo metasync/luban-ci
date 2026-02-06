@@ -27,6 +27,8 @@ spec:
     parameters:
     - name: repo_url
       description: "URL of the source code repository"
+    - name: registry_namespace
+      description: "Organization/Namespace for the registry (e.g., 'metasync')"
     - name: revision
       description: "Commit revision to build"
     - name: app_name
@@ -89,22 +91,20 @@ spec:
   templates:
   - name: ci-pipeline
     steps:
-    - - name: checkout
-        template: git-checkout
     - - name: build-push-by-commit
         template: build-push-by-commit
         when: "'{{workflow.parameters.git_ref}}' !~ '^refs/tags/'"
         arguments:
           parameters:
           - name: namespace
-            value: "{{steps.checkout.outputs.parameters.registry_namespace}}"
+            value: "{{workflow.parameters.registry_namespace}}"
       - name: build-push-by-tag
         template: build-push-by-tag
         when: "'{{workflow.parameters.git_ref}}' =~ '^refs/tags/'"
         arguments:
           parameters:
           - name: namespace
-            value: "{{steps.checkout.outputs.parameters.registry_namespace}}"
+            value: "{{workflow.parameters.registry_namespace}}"
     
     - - name: update-gitops
         template: git-update
@@ -115,27 +115,7 @@ spec:
           - name: default_image_tag
             value: "{{workflow.parameters.default_image_tag}}"
           - name: namespace
-            value: "{{steps.checkout.outputs.parameters.registry_namespace}}"
-
-  - name: git-checkout
-    outputs:
-      parameters:
-      - name: registry_namespace
-        valueFrom:
-          path: /tmp/registry_namespace
-    container:
-      image: "{{workflow.parameters.gitops_utils_image}}"
-      command: [sh, -c]
-      args:
-      - |
-        # Extract namespace from REPO_URL
-        REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
-        echo -n "$REGISTRY_NAMESPACE" > /tmp/registry_namespace
-        
-        echo "Resolved registry namespace: $REGISTRY_NAMESPACE"
-      env:
-      - name: REPO_URL
-        value: "{{workflow.parameters.repo_url}}"
+            value: "{{workflow.parameters.registry_namespace}}"
 
   - name: build-push-by-commit
     inputs:

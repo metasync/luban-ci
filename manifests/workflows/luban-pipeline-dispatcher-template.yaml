@@ -62,6 +62,7 @@ spec:
           -n "$TARGET_NS" \
           --serviceaccount workflow-runner \
           -p repo_url="{{inputs.parameters.repo_url}}" \
+          -p registry_namespace="$ORG" \
           -p revision="{{inputs.parameters.revision}}" \
           -p app_name="{{inputs.parameters.app_name}}" \
           -p git_ref="{{inputs.parameters.git_ref}}" \
