@@ -86,9 +86,17 @@ spec:
     - - name: build-push-by-commit
         template: build-push-by-commit
         when: "'{{workflow.parameters.git_ref}}' !~ '^refs/tags/'"
+        arguments:
+          parameters:
+          - name: namespace
+            value: "{{steps.checkout.outputs.parameters.registry_namespace}}"
       - name: build-push-by-tag
         template: build-push-by-tag
         when: "'{{workflow.parameters.git_ref}}' =~ '^refs/tags/'"
+        arguments:
+          parameters:
+          - name: namespace
+            value: "{{steps.checkout.outputs.parameters.registry_namespace}}"
     
     - - name: update-gitops
         template: git-update
@@ -98,8 +106,15 @@ spec:
             value: "{{workflow.parameters.default_image_name}}"
           - name: default_image_tag
             value: "{{workflow.parameters.default_image_tag}}"
+          - name: namespace
+            value: "{{steps.checkout.outputs.parameters.registry_namespace}}"
 
   - name: git-checkout
+    outputs:
+      parameters:
+      - name: registry_namespace
+        valueFrom:
+          path: /tmp/registry_namespace
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh, -c]
@@ -110,6 +125,10 @@ spec:
         # Extract domain from REPO_URL
         DOMAIN=$(echo "$REPO_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
         echo "https://${GIT_USERNAME}:${GIT_TOKEN}@${DOMAIN}" > ~/.git-credentials
+        
+        # Extract namespace from REPO_URL
+        REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
+        echo -n "$REGISTRY_NAMESPACE" > /tmp/registry_namespace
 
         echo "Cloning ${REPO_URL}..."
         git clone ${REPO_URL} /workdir/repo
@@ -135,6 +154,9 @@ spec:
         mountPath: /workdir
 
   - name: build-push-by-commit
+    inputs:
+      parameters:
+      - name: namespace
     outputs:
       parameters:
       - name: image_tag
@@ -146,7 +168,7 @@ spec:
       args:
       - |
         # Calculate derived parameters in shell for robustness
-        REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
+        REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
         
         # Build for Regular Commit
         echo "Processing regular commit build for {{workflow.parameters.app_name}}..."
@@ -209,6 +231,9 @@ spec:
         mountPath: /workdir
 
   - name: build-push-by-tag
+    inputs:
+      parameters:
+      - name: namespace
     outputs:
       parameters:
       - name: image_tag
@@ -220,7 +245,7 @@ spec:
       args:
       - |
         # Calculate derived parameters in shell for robustness
-        REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
+        REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
 
         # Tag Push Workflow
         echo "Processing tag push for {{workflow.parameters.app_name}}..."
@@ -317,6 +342,7 @@ spec:
       parameters:
       - name: default_image_name
       - name: default_image_tag
+      - name: namespace
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh, -c]
@@ -326,7 +352,7 @@ spec:
         git config --global --add safe.directory "*"
         
         # Calculate derived parameters in shell for robustness
-        REGISTRY_NAMESPACE=$(echo "$REPO_URL" | cut -d'/' -f4)
+        REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
         GITOPS_REPO_URL="https://${GIT_PROVIDER}.com/${REGISTRY_NAMESPACE}/${APP_NAME}-gitops.git"
 
         git config --global credential.helper store
