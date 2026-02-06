@@ -23,3 +23,4 @@ cache/
 # Cloudflare Tunnel
 manifests/tunnel/cloudflared-config.yaml
 .cloudflared/
+.trae
