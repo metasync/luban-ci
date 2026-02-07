@@ -14,7 +14,7 @@ data:
         secondsAfterSuccess: 1800
         secondsAfterFailure: 86400
       podGC:
-        strategy: OnPodCompletion
+        strategy: OnWorkflowDeletion
       activeDeadlineSeconds: 3600
       securityContext:
         runAsNonRoot: true
