@@ -6,9 +6,6 @@ metadata:
 spec:
   entrypoint: create-projects
   serviceAccountName: luban-ci-sa
-  # Keep pods until the workflow is deleted to ensure logs are available
-  podGC:
-    strategy: OnWorkflowDeletion
   # Automatically delete the workflow (and pods) after a delay to clean up
   ttlStrategy:
     secondsAfterCompletion: 86400 # 24 hours
