@@ -6,11 +6,6 @@ metadata:
 spec:
   entrypoint: create-projects
   serviceAccountName: luban-ci-sa
-  # Automatically delete the workflow (and pods) after a delay to clean up
-  ttlStrategy:
-    secondsAfterCompletion: 86400 # 24 hours
-    secondsAfterSuccess: 3600     # 1 hour
-    secondsAfterFailure: 86400    # 24 hours
   arguments:
     parameters:
     - name: project_name
