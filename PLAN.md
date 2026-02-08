@@ -55,3 +55,11 @@ This phase used Docker-in-Docker with Argo Workflows and has been retired in fav
 2.  **Luban App Setup Enum**: Added `setup_source_repo` enum parameter to allow developers to opt-out of source repo provisioning (e.g., when migrating existing apps).
 3.  **Automatic Org Fallback**: Improved organization detection logic to automatically use the project name if no organization is specified.
 4.  **Makefile Enhancements**: Standardized deployment and testing targets.
+
+## Phase 8: Unified Provisioner [Completed]
+**Goal:** Consolidate provisioning tools into a single, robust Python application (`luban-provisioner`).
+**Deliverables:**
+1.  **Unified Tool**: `tools/luban-provisioner` now handles GitOps repo, source repo, and project namespace provisioning.
+2.  **Native GitHub Integration**: Replaced fragile shell scripts with Python `requests` logic for creating repos, webhooks, and branch protection.
+3.  **Simplified Workflows**: Updated `luban-app-workflow-template`, `gitops-repo-workflow-template`, and `source-repo-workflow-template` to rely on the unified tool.
+4.  **Cleaner Codebase**: Removed disparate provisioner scripts and centralized logic.

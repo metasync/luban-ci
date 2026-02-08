@@ -1,5 +1,6 @@
 import subprocess
 import click
+import os
 
 def copy_secrets(target_ns, source_ns, image_pull_secret):
     """
@@ -36,3 +37,51 @@ def copy_secrets(target_ns, source_ns, image_pull_secret):
             subprocess.run(cmd, shell=True, check=True)
         except subprocess.CalledProcessError:
             click.echo(f"Failed to copy secret {secret}", err=True)
+
+def initialize_git_repo(repo_dir, remote_url, user_name="Luban CI", user_email="luban-ci@metasync.io", initial_branch="main"):
+    """Initialize a git repository, commit all files, and push to remote."""
+    cwd = os.getcwd()
+    try:
+        os.chdir(repo_dir)
+        
+        click.echo(f"Initializing git repo in {repo_dir}...")
+        
+        # Init
+        subprocess.run(["git", "init"], check=True)
+        subprocess.run(["git", "config", "user.name", user_name], check=True)
+        subprocess.run(["git", "config", "user.email", user_email], check=True)
+        subprocess.run(["git", "config", "--add", "safe.directory", "*"], check=True)
+        
+        # Branch
+        subprocess.run(["git", "branch", "-M", initial_branch], check=True)
+        
+        # Add and Commit
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Initial provisioning"], check=True)
+        
+        # Remote
+        subprocess.run(["git", "remote", "add", "origin", remote_url], check=True)
+        
+        # Push
+        click.echo(f"Pushing to {initial_branch}...")
+        subprocess.run(["git", "push", "-u", "origin", initial_branch, "--force"], check=True)
+        
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Git operation failed: {e}", err=True)
+        raise e
+    finally:
+        os.chdir(cwd)
+
+def create_and_push_branch(repo_dir, branch_name):
+    """Create a new branch and push it."""
+    cwd = os.getcwd()
+    try:
+        os.chdir(repo_dir)
+        click.echo(f"Creating and pushing branch {branch_name}...")
+        subprocess.run(["git", "checkout", "-b", branch_name], check=True)
+        subprocess.run(["git", "push", "-u", "origin", branch_name, "--force"], check=True)
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Git branch operation failed: {e}", err=True)
+        raise e
+    finally:
+        os.chdir(cwd)

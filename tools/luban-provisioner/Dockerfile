@@ -3,7 +3,8 @@ FROM python:3.12-alpine
 # Install system dependencies
 # curl: for downloading kubectl
 # jq: for JSON processing in secret copying
-RUN apk add --no-cache curl jq
+# git: for initializing and pushing repositories
+RUN apk add --no-cache curl jq git
 
 # Install kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
@@ -11,7 +12,7 @@ RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/s
     && mv kubectl /usr/local/bin/
 
 # Install python dependencies directly
-RUN pip install --no-cache-dir cookiecutter click
+RUN pip install --no-cache-dir cookiecutter click requests
 
 # Workdir
 WORKDIR /app

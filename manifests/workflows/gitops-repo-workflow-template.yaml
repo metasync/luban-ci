@@ -20,10 +20,7 @@ spec:
         value: "github"
       - name: luban_provisioner_image
         description: "Image for the template rendering tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.14"
-      - name: gitops_utils_image
-        description: "Image for git/api operations"
-        value: "quay.io/luban-ci/gitops-utils:0.3.3"
+        value: "quay.io/luban-ci/luban-provisioner:0.1.16"
       # Configuration (Defaults Managed Here)
       - name: container_port
         description: "Port exposed by the container"
@@ -70,7 +67,6 @@ spec:
           - name: git_organization
           - name: git_provider
           - name: luban_provisioner_image
-          - name: gitops_utils_image
           - name: container_port
           - name: service_port
           - name: domain_suffix
@@ -79,14 +75,18 @@ spec:
       
       dag:
         tasks:
-          - name: render-template
-            template: render-template
+          - name: provision-repo
+            template: provision-repo
             arguments:
               parameters:
                 - name: project_name
                   value: "{{inputs.parameters.project_name}}"
                 - name: application_name
                   value: "{{inputs.parameters.application_name}}"
+                - name: git_organization
+                  value: "{{inputs.parameters.git_organization}}"
+                - name: git_provider
+                  value: "{{inputs.parameters.git_provider}}"
                 - name: luban_provisioner_image
                   value: "{{inputs.parameters.luban_provisioner_image}}"
                 - name: container_port
@@ -100,27 +100,13 @@ spec:
                 - name: default_image_tag
                   value: "{{inputs.parameters.default_image_tag}}"
 
-          - name: push-to-github
-            dependencies: [render-template]
-            template: push-to-github
-            when: "{{inputs.parameters.git_provider}} == github"
-            arguments:
-              parameters:
-                - name: project_name
-                  value: "{{inputs.parameters.project_name}}"
-                - name: application_name
-                  value: "{{inputs.parameters.application_name}}"
-                - name: git_organization
-                  value: "{{inputs.parameters.git_organization}}"
-                - name: gitops_utils_image
-                  value: "{{inputs.parameters.gitops_utils_image}}"
-
-    # Step 1: Render the template using the provisioner image
-    - name: render-template
+    - name: provision-repo
       inputs:
         parameters:
           - name: project_name
           - name: application_name
+          - name: git_organization
+          - name: git_provider
           - name: luban_provisioner_image
           - name: container_port
           - name: service_port
@@ -131,7 +117,6 @@ spec:
         image: "{{inputs.parameters.luban_provisioner_image}}"
         imagePullPolicy: Always
         command: ["python3", "/app/src/main.py", "gitops"]
-        # Command is inherited from ENTRYPOINT ["python3", "/app/src/main.py"]
         args:
           - "--project-name"
           - "{{inputs.parameters.project_name}}"
@@ -149,22 +134,10 @@ spec:
           - "{{inputs.parameters.default_image_name}}"
           - "--default-image-tag"
           - "{{inputs.parameters.default_image_tag}}"
-        volumeMounts:
-          - name: workdir
-            mountPath: /workdir
-
-    # Step 2: Create repo and push using gitops-utils (GitHub implementation)
-    - name: push-to-github
-      inputs:
-        parameters:
-          - name: project_name
-          - name: application_name
-          - name: git_organization
-          - name: gitops_utils_image
-      script:
-        image: "{{inputs.parameters.gitops_utils_image}}"
-        imagePullPolicy: Always
-        command: [sh]
+          - "--git-organization"
+          - "{{inputs.parameters.git_organization}}"
+          - "--git-provider"
+          - "{{inputs.parameters.git_provider}}"
         env:
           - name: GITHUB_TOKEN
             valueFrom:
@@ -174,138 +147,11 @@ spec:
         volumeMounts:
           - name: workdir
             mountPath: /workdir
-        source: |
-          #!/bin/sh
-          set -e
-          set -x
-          
-          # Calculate derived parameters in shell for robustness
-          ORG="{{inputs.parameters.git_organization}}"
-          if [ -z "$ORG" ]; then
-            ORG="{{inputs.parameters.project_name}}"
-          fi
-
-          # gitops-utils has git and curl installed
-          
-          REPO_DIR="/workdir/{{inputs.parameters.application_name}}-gitops"
-          REPO_NAME="{{inputs.parameters.application_name}}-gitops"
-          
-          if [ ! -d "$REPO_DIR" ]; then
-            echo "Error: Directory $REPO_DIR does not exist. Rendering failed?"
-            ls -R /workdir
-            exit 1
-          fi
-
-          cd "$REPO_DIR"
-
-          # 1. Create Remote Repository (using GitHub API via curl)
-          echo "Creating repository ${ORG}/$REPO_NAME..."
-          
-          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            https://api.github.com/repos/${ORG}/$REPO_NAME)
-
-          if [ "$HTTP_CODE" -eq 404 ]; then
-             echo "Repo not found, creating..."
-             CREATE_RESP=$(curl -X POST -s -w "\n%{http_code}" \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/orgs/${ORG}/repos \
-              -d "{\"name\":\"$REPO_NAME\", \"private\":false}")
-
-             CREATE_HTTP_CODE=$(echo "$CREATE_RESP" | tail -n1)
-             
-             # Fallback for User account if Org endpoint fails
-             if [ "$CREATE_HTTP_CODE" -eq 404 ]; then
-                echo "Org creation failed (404). Checking if target is authenticated user..."
-                CURRENT_USER=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user | grep '"login":' | head -n1 | cut -d'"' -f4)
-                
-                if [ "$CURRENT_USER" = "${ORG}" ]; then
-                   echo "Creating repository for user $CURRENT_USER..."
-                   CREATE_RESP=$(curl -X POST -s -w "\n%{http_code}" \
-                     -H "Authorization: token $GITHUB_TOKEN" \
-                     -H "Accept: application/vnd.github.v3+json" \
-                     https://api.github.com/user/repos \
-                     -d "{\"name\":\"$REPO_NAME\", \"private\":false}")
-                   CREATE_HTTP_CODE=$(echo "$CREATE_RESP" | tail -n1)
-                else
-                   echo "Error: Target '${ORG}' is not an Organization and does not match authenticated user ($CURRENT_USER)."
-                fi
-             fi
-
-             if [ "$CREATE_HTTP_CODE" -ne 201 ]; then
-                echo "Error creating repo. Status: $CREATE_HTTP_CODE"
-                echo "Response: $CREATE_RESP"
-                exit 1
-             fi
-          elif [ "$HTTP_CODE" -eq 200 ]; then
-             echo "Repository already exists. Skipping provisioning to avoid overwriting."
-             exit 0
-          else
-             echo "Error checking repository status. HTTP Code: $HTTP_CODE"
-             exit 1
-          fi
-
-          # 2. Initialize and Push
-          echo "Initializing Git..."
-          
-          # Ensure clean environment
-          unset GIT_DIR
-          unset GIT_WORK_TREE
-          
-          git init
-          if [ -d ".git" ]; then
-            echo ".git directory created successfully."
-          else
-            echo "Error: .git directory missing after init!"
-            ls -la
-            exit 1
-          fi
-          
-          # Use global config to avoid "not in a git directory" issues
-          git config --global user.email "luban-ci@metasync.io"
-          git config --global user.name "Luban CI"
-          git config --global --add safe.directory "*"
-          
-          git branch -M main
-          git add .
-          git commit -m "Initial GitOps provisioning"
-
-          git remote add origin https://${GITHUB_TOKEN}@github.com/${ORG}/$REPO_NAME.git
-          
-          echo "Pushing to remote (main)..."
-          git push -u origin main --force
-
-          echo "Pushing to remote (develop)..."
-          git checkout -b develop
-          git push -u origin develop --force
-
-          # 3. Configure GitHub Repo Settings (API)
-          echo "Configuring repository settings..."
-          
-          # Set 'develop' as default branch
-          echo "Setting 'develop' as default branch..."
-          curl -X PATCH \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${ORG}/$REPO_NAME \
-            -d '{"default_branch":"develop"}'
-
-          # Protect 'main' branch
-          echo "Enabling branch protection for 'main'..."
-          curl -X PUT \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${ORG}/$REPO_NAME/branches/main/protection \
-            -d '{
-              "required_status_checks": null,
-              "enforce_admins": true,
-              "required_pull_request_reviews": {
-                "dismiss_stale_reviews": true,
-                "require_code_owner_reviews": false,
-                "required_approving_review_count": 1
-              },
-              "restrictions": null
-            }'
-
-          echo "✅ Success!"
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 100Mi

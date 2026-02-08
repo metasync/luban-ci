@@ -66,7 +66,7 @@ spec:
             optional: true
       - name: luban_provisioner_image
         description: "Image for Luban provisioner tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.14"
+        value: "quay.io/luban-ci/luban-provisioner:0.1.16"
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
         value: "quay.io/luban-ci/gitops-utils:0.3.3"
@@ -105,8 +105,6 @@ spec:
                   value: "{{workflow.parameters.git_provider}}"
                 - name: luban_provisioner_image
                   value: "{{workflow.parameters.luban_provisioner_image}}"
-                - name: gitops_utils_image
-                  value: "{{workflow.parameters.gitops_utils_image}}"
                 # Pass through optional configs
                 - name: container_port
                   value: "{{workflow.parameters.container_port}}"
@@ -157,7 +155,5 @@ spec:
                   value: "{{workflow.parameters.git_provider}}"
                 - name: luban_provisioner_image
                   value: "{{workflow.parameters.luban_provisioner_image}}"
-                - name: gitops_utils_image
-                  value: "{{workflow.parameters.gitops_utils_image}}"
                 - name: webhook_url
                   value: "{{workflow.parameters.webhook_url}}"

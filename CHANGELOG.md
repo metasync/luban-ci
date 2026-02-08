@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.8.0] - 2026-02-09
+
+### Architecture
+- **Provisioning**: Completed the unification of all provisioning tools into `luban-provisioner` (v0.1.16).
+  - Consolidated GitOps repo, source repo, and project namespace provisioning into a single Python application.
+  - Replaced fragile shell scripts in workflows with robust Python logic using `requests` and `git` CLI.
+  - Implemented native GitHub API integration for repository creation, webhook configuration, and branch protection.
+
+### Changed
+- **Workflow**: Updated `luban-app-workflow-template`, `gitops-repo-workflow-template`, and `source-repo-workflow-template` to use `luban-provisioner:0.1.16`.
+- **Workflow**: Simplified workflow templates by removing complex inline scripts and delegating logic to the provisioner tool.
+- **Workflow**: Restored `gitops_utils_image` in `luban-app-workflow-template` to support ArgoCD application management steps.
+- **Tooling**: Updated `luban-provisioner` Dockerfile to include `git` and `requests` for full standalone capability.
+
+### Fixed
+- **Provisioner**: Restored `copy_secrets` utility function to ensure project namespace provisioning correctly copies credentials.
+- **CLI**: Fixed missing command-line options in the unified CLI entrypoint.
+
 ## [v0.7.0] - 2026-02-09
 
 ### Architecture
