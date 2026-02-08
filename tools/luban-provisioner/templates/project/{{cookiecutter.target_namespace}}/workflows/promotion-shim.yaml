@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: promotion-workflow
+  namespace: {{ cookiecutter.target_namespace }}
+spec:
+  entrypoint: main
+  serviceAccountName: workflow-runner
+  arguments:
+    parameters:
+    - name: app_name
+      description: "Name of the application (e.g., 'cart-service')"
+    - name: git_organization
+      description: "Git Organization/User"
+      value: "{{ cookiecutter.git_organization }}"
+  templates:
+  - name: main
+    inputs:
+      parameters:
+      - name: app_name
+      - name: git_organization
+    steps:
+    - - name: promote
+        templateRef:
+          name: luban-promotion-template
+          clusterScope: true
+          template: promote-snd-to-prd
+        arguments:
+          parameters:
+          - name: project_name
+            value: "{{ cookiecutter.project_name }}"
+          - name: app_name
+            value: "{{ '{{inputs.parameters.app_name}}' }}"
+          - name: git_organization
+            value: "{{ '{{inputs.parameters.git_organization}}' }}"
+          - name: git_provider
+            value: "{{ cookiecutter.git_provider }}"
+          - name: gitops_utils_image
+            value: "quay.io/luban-ci/gitops-utils:0.3.3"

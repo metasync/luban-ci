@@ -109,13 +109,11 @@ builder-push: ## Check remote, build (if needed), tag and push Builder Image
 
 tools-image-build: ## Build gitops-utils tooling image
 	@$(MAKE) -C tools/gitops-utils build
-	@$(MAKE) -C tools/gitops-provisioner build
-	@$(MAKE) -C tools/gitsrc-provisioner build
+	@$(MAKE) -C tools/luban-provisioner build
 
 tools-image-push: ## Push gitops-utils tooling image (build if missing)
 	@$(MAKE) -C tools/gitops-utils push
-	@$(MAKE) -C tools/gitops-provisioner push
-	@$(MAKE) -C tools/gitsrc-provisioner push
+	@$(MAKE) -C tools/luban-provisioner push
 
 # --- Pipeline Management ---
 

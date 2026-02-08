@@ -10,9 +10,12 @@ spec:
     parameters:
     - name: project_name
       description: "Name of the Harbor project to create"
-    - name: public
-      description: "Whether the project should be public"
-      value: "false"
+    - name: registry_visibility
+      description: "Project visibility (public or private)"
+      value: "public"
+      enum:
+      - "public"
+      - "private"
     - name: registry_server
       description: "Registry server domain (e.g. harbor.example.com)"
       valueFrom:
@@ -28,7 +31,7 @@ spec:
       inputs:
         parameters:
           - name: project_name
-          - name: public
+          - name: registry_visibility
           - name: registry_server
       container:
         image: "{{workflow.parameters.gitops_utils_image}}"
@@ -38,7 +41,13 @@ spec:
             PROJECT_NAME="{{inputs.parameters.project_name}}"
             REGISTRY_SERVER="{{inputs.parameters.registry_server}}"
             HARBOR_URL="https://${REGISTRY_SERVER}"
-            PUBLIC="{{inputs.parameters.public}}"
+            VISIBILITY="{{inputs.parameters.registry_visibility}}"
+            
+            if [ "$VISIBILITY" = "public" ]; then
+              PUBLIC="true"
+            else
+              PUBLIC="false"
+            fi
 
             echo "Creating project '$PROJECT_NAME' on $HARBOR_URL..."
             

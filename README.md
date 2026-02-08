@@ -197,7 +197,7 @@ This Workflow bootstraps a new microservice within an existing Project/Team.
   - `app_name`: (Required) The name of the service (e.g., `cart-service`).
   - `git_organization`: (Optional) Auto-detected if not provided.
   - `setup_source_repo`: (Optional) Whether to provision the source code repository (`yes`, `no`). Default: `yes`.
-  - `gitops_provisioner_image`: (Internal) The image used to render templates (default: `quay.io/luban-ci/gitops-provisioner:0.1.11`).
+  - `luban_provisioner_image`: (Internal) The image used to render templates (default: `quay.io/luban-ci/luban-provisioner:0.1.14`).
 
 ### Environment Promotion
 To promote an application from `snd` to `prd`, use the `luban-promotion-template`:
@@ -355,6 +355,6 @@ make pipeline-logs APP_NAME=my-app
 - `buildpacks/`: Custom Buildpacks source code (e.g., `python-uv`).
 - `stack/`: Dockerfiles for Base, Run, and Build images.
 - `manifests/`: Kubernetes manifests (Argo Workflows, RBAC).
-- `tools/`: Utility tools (GitOps provisioner, CLI utils).
+- `tools/`: Utility tools (Luban provisioner, GitOps utils).
 - `test/`: Test scripts and Makefile.
 - `Makefile`: Main entry point for all operations.

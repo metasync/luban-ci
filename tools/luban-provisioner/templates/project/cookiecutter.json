@@ -1,0 +1,11 @@
+{
+  "project_name": "",
+  "environment": "",
+  "target_namespace": "",
+  "git_provider": "",
+  "git_organization": "",
+  "image_pull_secret": "",
+  "admin_groups": "",
+  "developer_groups": "",
+  "create_test_users": "no"
+}

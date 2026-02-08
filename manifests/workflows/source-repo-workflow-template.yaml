@@ -26,9 +26,9 @@ spec:
       - name: git_provider
         description: "Git Provider (github, gitlab, etc.)"
         value: "github"
-      - name: gitsrc_provisioner_image
+      - name: luban_provisioner_image
         description: "Image for the template rendering tool"
-        value: "quay.io/luban-ci/gitsrc-provisioner:0.1.0"
+        value: "quay.io/luban-ci/luban-provisioner:0.1.14"
       - name: gitops_utils_image
         description: "Image for git/api operations"
         value: "quay.io/luban-ci/gitops-utils:0.3.3"
@@ -48,7 +48,7 @@ spec:
           - name: application_name
           - name: git_organization
           - name: git_provider
-          - name: gitsrc_provisioner_image
+          - name: luban_provisioner_image
           - name: gitops_utils_image
           - name: webhook_url
       
@@ -62,8 +62,8 @@ spec:
                   value: "{{inputs.parameters.project_name}}"
                 - name: application_name
                   value: "{{inputs.parameters.application_name}}"
-                - name: gitsrc_provisioner_image
-                  value: "{{inputs.parameters.gitsrc_provisioner_image}}"
+                - name: luban_provisioner_image
+                  value: "{{inputs.parameters.luban_provisioner_image}}"
 
           - name: push-to-github
             dependencies: [render-template]
@@ -87,11 +87,11 @@ spec:
         parameters:
           - name: project_name
           - name: application_name
-          - name: gitsrc_provisioner_image
+          - name: luban_provisioner_image
       container:
-        image: "{{inputs.parameters.gitsrc_provisioner_image}}"
+        image: "{{inputs.parameters.luban_provisioner_image}}"
         imagePullPolicy: Always
-        command: ["python3", "/entrypoint.py"]
+        command: ["python3", "/app/src/main.py", "source"]
         args:
           - "--project-name"
           - "{{inputs.parameters.project_name}}"

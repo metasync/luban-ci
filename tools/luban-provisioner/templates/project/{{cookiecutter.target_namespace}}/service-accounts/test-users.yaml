@@ -1,0 +1,17 @@
+{% if cookiecutter.create_test_users == "yes" %}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-project-admin
+  namespace: {{ cookiecutter.target_namespace }}
+  annotations:
+    workflows.argoproj.io/default-namespace: {{ cookiecutter.target_namespace }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-project-developer
+  namespace: {{ cookiecutter.target_namespace }}
+  annotations:
+    workflows.argoproj.io/default-namespace: {{ cookiecutter.target_namespace }}
+{% endif %}

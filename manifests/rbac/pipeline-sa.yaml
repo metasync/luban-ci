@@ -17,7 +17,7 @@ metadata:
   name: luban-ci-cluster-role
 rules:
 - apiGroups: [""]
-  resources: ["secrets", "serviceaccounts", "namespaces"]
+  resources: ["secrets", "serviceaccounts", "namespaces", "configmaps"]
   verbs: ["get", "list", "watch", "create", "patch", "update"]
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["rolebindings", "roles", "clusterrolebindings"]
@@ -29,7 +29,7 @@ rules:
   resources: ["workflowtaskresults"]
   verbs: ["create", "patch"]
 - apiGroups: ["argoproj.io"]
-  resources: ["workflows", "clusterworkflowtemplates"]
+  resources: ["workflows", "clusterworkflowtemplates", "workflowtemplates"]
   verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

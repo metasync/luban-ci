@@ -1,0 +1,31 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: view-templates-{{ cookiecutter.target_namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: luban-view-templates
+subjects:
+{%- for group in cookiecutter.admin_groups.split(',') %}
+{%- if group %}
+- kind: Group
+  name: {{ group }}
+  apiGroup: rbac.authorization.k8s.io
+{%- endif %}
+{%- endfor %}
+{%- for group in cookiecutter.developer_groups.split(',') %}
+{%- if group %}
+- kind: Group
+  name: {{ group }}
+  apiGroup: rbac.authorization.k8s.io
+{%- endif %}
+{%- endfor %}
+{%- if cookiecutter.create_test_users == "yes" %}
+- kind: ServiceAccount
+  name: test-project-admin
+  namespace: {{ cookiecutter.target_namespace }}
+- kind: ServiceAccount
+  name: test-project-developer
+  namespace: {{ cookiecutter.target_namespace }}
+{%- endif %}

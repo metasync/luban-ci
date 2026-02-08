@@ -4,89 +4,103 @@ metadata:
   name: luban-project-setup-template
   namespace: luban-ci
 spec:
-  entrypoint: setup-luban-project
+  entrypoint: setup-project
   serviceAccountName: luban-ci-sa
   arguments:
     parameters:
-      - name: project_name
-        description: "Name of the project/team (e.g., 'payment')"
-      - name: environments
-        description: "List of environments to setup (JSON array)"
-        value: '["snd", "prd"]'
-      - name: public
-        description: "Whether the Harbor project should be public"
-        value: "false"
-      - name: registry_server
-        description: "Registry server domain"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: registry_server
-            optional: true
-      - name: git_organization
-        description: "Git Organization/User (defaults to project_name if empty)"
-        value: ""
-      - name: git_provider
-        description: "Git Provider (e.g., 'github', 'gitlab')"
-        value: "github"
-      - name: developer_groups
-        description: "List of OIDC groups for developer access (JSON array)"
-        value: '[]'
-      - name: admin_groups
-        description: "List of OIDC groups for admin access (JSON array)"
-        value: '[]'
-      - name: create_test_users
-        description: "Create local ServiceAccounts for testing RBAC (yes/no)"
-        value: "no"
-        enum:
-        - "yes"
-        - "no"
-      - name: image_pull_secret
-        description: "Name of the secret to copy to project namespaces"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: image_pull_secret
-            optional: true
-      - name: gitops_utils_image
-        description: "Image for GitOps utility tools"
-        value: "quay.io/luban-ci/gitops-utils:0.3.3"
-  templates:
-    - name: setup-luban-project
-      steps:
-        - - name: setup-harbor-project
-            templateRef:
-              name: harbor-project-setup-template
-              template: create-project
-            arguments:
-              parameters:
-                - name: project_name
-                  value: "{{workflow.parameters.project_name}}"
-                - name: public
-                  value: "{{workflow.parameters.public}}"
-                - name: registry_server
-                  value: "{{workflow.parameters.registry_server}}"
+    - name: project_name
+      description: "Name of the project/team (e.g., 'payment')"
+    - name: environments
+      description: "List of target environments (e.g., [\"snd\", \"prd\"])"
+      value: "[\"snd\", \"prd\"]"
+    - name: git_organization
+      description: "Git Organization/User (defaults to project_name if empty)"
+      value: ""
+    - name: git_provider
+      description: "Git Provider (e.g., 'github', 'gitlab')"
+      value: "github"
+    - name: developer_groups
+      description: "List of OIDC groups for developer access (JSON array)"
+      value: '[]'
+    - name: admin_groups
+      description: "List of OIDC groups for admin access (JSON array)"
+      value: '[]'
+    - name: create_test_users
+      description: "Create local ServiceAccounts for testing RBAC (yes/no)"
+      value: "no"
+      enum:
+      - "yes"
+      - "no"
+    - name: registry_visibility
+      description: "Project visibility (public or private)"
+      value: "public"
+      enum:
+      - "public"
+      - "private"
+    - name: registry_server
+      description: "Registry server domain (e.g. harbor.example.com)"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: registry_server
+          optional: true
+    - name: image_pull_secret
+      description: "Name of the secret to copy to project namespaces"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: image_pull_secret
+          optional: true
+    - name: gitops_utils_image
+      description: "Image for GitOps utility tools"
+      value: "quay.io/luban-ci/gitops-utils:0.3.3"
 
-          - name: setup-argocd-project
-            templateRef:
-              name: argocd-project-setup-template
-              template: create-projects
-            arguments:
-              parameters:
-                - name: project_name
-                  value: "{{workflow.parameters.project_name}}"
-                - name: environment
-                  value: "{{item}}"
-                - name: git_organization
-                  value: "{{workflow.parameters.git_organization}}"
-                - name: git_provider
-                  value: "{{workflow.parameters.git_provider}}"
-                - name: developer_groups
-                  value: "{{workflow.parameters.developer_groups}}"
-                - name: admin_groups
-                  value: "{{workflow.parameters.admin_groups}}"
-                - name: create_test_users
-                  value: "{{workflow.parameters.create_test_users}}"
-                - name: image_pull_secret
-                  value: "{{workflow.parameters.image_pull_secret}}"
-            withParam: "{{workflow.parameters.environments}}"
+  templates:
+  - name: setup-project
+    steps:
+    - - name: harbor-project
+        templateRef:
+          name: harbor-project-setup-template
+          template: create-project
+        arguments:
+           parameters:
+           - name: project_name
+             value: "{{workflow.parameters.project_name}}"
+           - name: registry_visibility
+             value: "{{workflow.parameters.registry_visibility}}"
+           - name: registry_server
+             value: "{{workflow.parameters.registry_server}}"
+
+      - name: argocd-project
+        templateRef:
+          name: argocd-project-setup-template
+          template: create-projects
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{item}}"
+        withParam: "{{workflow.parameters.environments}}"
+
+      - name: namespace-provision
+        templateRef:
+          name: namespace-provision-template
+          template: bootstrap-namespace
+        arguments:
+          parameters:
+          - name: project_name
+            value: "{{workflow.parameters.project_name}}"
+          - name: environment
+            value: "{{item}}"
+          - name: git_organization
+            value: "{{workflow.parameters.git_organization}}"
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: admin_groups
+            value: "{{workflow.parameters.admin_groups}}"
+          - name: developer_groups
+            value: "{{workflow.parameters.developer_groups}}"
+          - name: create_test_users
+            value: "{{workflow.parameters.create_test_users}}"
+          - name: image_pull_secret
+            value: "{{workflow.parameters.image_pull_secret}}"
+        withParam: "{{workflow.parameters.environments}}"

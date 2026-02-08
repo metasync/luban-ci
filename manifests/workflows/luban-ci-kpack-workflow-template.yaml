@@ -134,6 +134,14 @@ spec:
         set -e
         set -o pipefail
         
+        # Setup Kubeconfig for kp CLI
+        mkdir -p ~/.kube
+        kubectl config set-cluster local --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        kubectl config set-credentials luban --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+        NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+        kubectl config set-context local --cluster=local --user=luban --namespace="$NAMESPACE"
+        kubectl config use-context local
+        
         # Calculate derived parameters in shell for robustness
         REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
         
@@ -173,9 +181,12 @@ spec:
           serviceAccountName: workflow-runner
         EOF
         
-        # Wait for image to be ready (optional, but good for feedback)
-        # We don't block indefinitely, just give it a moment to initialize
+        echo "Image resource updated. Waiting for propagation..."
         sleep 5
+
+        echo "Following build logs..."
+        # Tail logs of the latest build
+        kp build logs "$APP_NAME"
 
       env:
       - name: REPO_URL
@@ -208,6 +219,14 @@ spec:
       - |
         set -e
         set -o pipefail
+
+        # Setup Kubeconfig for kp CLI
+        mkdir -p ~/.kube
+        kubectl config set-cluster local --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        kubectl config set-credentials luban --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+        NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+        kubectl config set-context local --cluster=local --user=luban --namespace="$NAMESPACE"
+        kubectl config use-context local
 
         # Calculate derived parameters in shell for robustness
         REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
@@ -253,28 +272,11 @@ spec:
         EOF
         
         echo "Image resource updated. Waiting for propagation..."
-        sleep 2
+        sleep 5
         
-        echo "Triggering manual build to ensure tag is pushed..."
-        
-        # 2. Manually Trigger Build and Capture Output
-        # We need to capture stderr because kp writes to stderr sometimes
-        TRIGGER_OUTPUT=$(kp image trigger "$APP_NAME" 2>&1)
-        
-        # Parse build number
-        # Output format: "Triggered build for Image Resource "..." with Build Number <N>"
-        BUILD_NUMBER=$(echo "$TRIGGER_OUTPUT" | sed -n 's/.*Build Number \([0-9]\+\).*/\1/p' | head -n1)
-        
-        if [ -n "$BUILD_NUMBER" ]; then
-           echo "Successfully triggered build #$BUILD_NUMBER. Following logs..."
-           kp build logs "$APP_NAME" -b "$BUILD_NUMBER"
-        else
-           echo "Warning: Could not parse build number from output:"
-           echo "$TRIGGER_OUTPUT"
-           echo "Falling back to tailing latest build logs..."
-           sleep 2
-           kp build logs "$APP_NAME"
-        fi
+        echo "Following build logs..."
+        # Tail logs of the latest build (which should be the one triggered by the update)
+        kp build logs "$APP_NAME"
 
       env:
       - name: REPO_URL

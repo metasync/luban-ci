@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.0] - 2026-02-09
+
+### Architecture
+- **Provisioning**: Unified `gitops-provisioner`, `gitsrc-provisioner`, and `luban-provisioner` into a single monolithic tool `luban-provisioner`.
+  - Simplifies maintenance, versioning, and distribution.
+  - New modular Python CLI architecture with subcommands (`gitops`, `source`, `project`).
+  - Reduced Docker image footprint and unified dependency management (one Dockerfile).
+
+### Changed
+- **Workflow**: Updated `gitops-repo-workflow-template`, `source-repo-workflow-template`, and `luban-app-workflow-template` to use the new `luban-provisioner:0.1.14` image.
+- **Workflow**: Renamed parameters `gitops_provisioner_image` and `gitsrc_provisioner_image` to `luban_provisioner_image` for consistency.
+- **Provisioner**: Updated `luban-provisioner` to automatically copy `harbor-creds` (RW) to project namespaces, resolving kpack push authentication issues (`UNAUTHORIZED`).
+- **Makefile**: Updated `tools-image-build` and `tools-image-push` targets to reflect the merged toolset.
+
+### Removed
+- **Tools**: Deleted deprecated `tools/gitops-provisioner` and `tools/gitsrc-provisioner` directories.
+
 ## [v0.6.9] - 2026-02-05
 
 ### Changed
