@@ -15,7 +15,14 @@ spec:
   - matches:
     - path:
         type: PathPrefix
-        value: /
+        value: /github/push
     backendRefs:
     - name: github-event-source-eventsource-svc
       port: 12000
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /azure/push
+    backendRefs:
+    - name: azure-event-source-eventsource-svc
+      port: 13000

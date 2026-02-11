@@ -29,6 +29,9 @@ spec:
       - name: git_provider
         description: "Git Provider (e.g., 'github', 'gitlab')"
         value: "github"
+        enum:
+          - "github"
+          - "azure"
       - name: container_port
         description: "Container port to expose"
         valueFrom:
@@ -66,7 +69,7 @@ spec:
             optional: true
       - name: luban_provisioner_image
         description: "Image for Luban provisioner tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.16"
+        value: "quay.io/luban-ci/luban-provisioner:0.1.45"
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
         value: "quay.io/luban-ci/gitops-utils:0.3.3"

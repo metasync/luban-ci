@@ -82,6 +82,7 @@ Luban CI follows a **Trunk-Based Development** model with **Promotion-Based Rele
 - **Accounts**:
   - GitHub Account (for source code)
   - Quay.io Account (for container registry)
+  - **Git Provider**: GitHub (Default) or Azure DevOps.
 
 ## Setup
 
@@ -197,7 +198,7 @@ This Workflow bootstraps a new microservice within an existing Project/Team.
   - `app_name`: (Required) The name of the service (e.g., `cart-service`).
   - `git_organization`: (Optional) Auto-detected if not provided.
   - `setup_source_repo`: (Optional) Whether to provision the source code repository (`yes`, `no`). Default: `yes`.
-  - `luban_provisioner_image`: (Internal) The image used to render templates (default: `quay.io/luban-ci/luban-provisioner:0.1.14`).
+  - `luban_provisioner_image`: (Internal) The image used to render templates.
 
 ### Environment Promotion
 To promote an application from `snd` to `prd`, use the `luban-promotion-template`:
@@ -236,6 +237,17 @@ make pipeline-run
     - `default_container_port`: Default app port (e.g., `8000`).
     - `default_service_port`: Default service port (e.g., `80`).
     - `domain_suffix`: Suffix for app ingress (e.g., `apps.metasync.cc`).
+    - `azure_server`: (Optional) Azure DevOps server hostname (e.g., `dev.azure.com`). Required for Azure DevOps.
+
+### Git Provider Configuration (Azure DevOps)
+If you are using Azure DevOps instead of GitHub:
+1.  **Organization & Project**: Ensure your Azure DevOps Organization exists. The `luban-project-workflow` will create the Project for you.
+2.  **Personal Access Token (PAT)**:
+    - Scopes required: `Code (Read & Write)`, `Project and Team (Read & Write)`, `Work Items (Read & Write)`.
+    - Configure in `secrets/azure-creds.env` (mapped to `azure-creds` secret).
+3.  **Environment Variables**:
+    - Ensure `AZURE_SERVER` is available in the environment if using a self-hosted Azure DevOps Server.
+    - Default is `dev.azure.com`.
 
 ### Global Defaults & Security
 - **Global Configuration**: Managed via `argo-workflows-workflow-controller-configmap`.

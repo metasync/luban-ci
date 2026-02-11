@@ -15,6 +15,13 @@ def copy_secrets(target_ns, source_ns, image_pull_secret):
     # This ensures workflow-runner has write access even if image_pull_secret is RO
     if image_pull_secret != "harbor-creds":
         secrets.append("harbor-creds")
+        
+    # Copy Azure SSH creds if available (always copy to be safe, or make it conditional?)
+    # Since we might use Azure, let's copy it. It's harmless if unused.
+    secrets.append("azure-ssh-creds")
+    
+    # Also copy azure-creds (HTTPS PAT) for GitOps updates which use HTTPS
+    secrets.append("azure-creds")
     
     for secret in secrets:
         click.echo(f"Copying secret {secret} from {source_ns} to {target_ns}...")
@@ -69,8 +76,20 @@ def initialize_git_repo(repo_dir, remote_url, user_name="Luban CI", user_email="
     except subprocess.CalledProcessError as e:
         click.echo(f"Git operation failed: {e}", err=True)
         raise e
-    finally:
-        os.chdir(cwd)
+def patch_default_service_account(target_ns, image_pull_secret):
+    """Patch the default service account to use the image pull secret."""
+    if not image_pull_secret:
+        return
+        
+    click.echo(f"Patching default service account in {target_ns} with {image_pull_secret}...")
+    patch_json = f'{{"imagePullSecrets": [{{"name": "{image_pull_secret}"}}]}}'
+    cmd = ['kubectl', 'patch', 'serviceaccount', 'default', '-n', target_ns, '-p', patch_json]
+    
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
+        click.echo("Default service account patched.")
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to patch default service account: {e}", err=True)
 
 def create_and_push_branch(repo_dir, branch_name):
     """Create a new branch and push it."""

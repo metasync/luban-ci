@@ -18,9 +18,12 @@ spec:
       - name: git_provider
         description: "Git Provider (github, gitlab, etc.)"
         value: "github"
+        enum:
+          - "github"
+          - "azure"
       - name: luban_provisioner_image
         description: "Image for the template rendering tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.16"
+        value: "quay.io/luban-ci/luban-provisioner:0.1.45"
       # Configuration (Defaults Managed Here)
       - name: container_port
         description: "Port exposed by the container"
@@ -116,34 +119,54 @@ spec:
       container:
         image: "{{inputs.parameters.luban_provisioner_image}}"
         imagePullPolicy: Always
-        command: ["python3", "/app/src/main.py", "gitops"]
+        command: ["sh", "-c"]
         args:
-          - "--project-name"
-          - "{{inputs.parameters.project_name}}"
-          - "--application-name"
-          - "{{inputs.parameters.application_name}}"
-          - "--output-dir"
-          - "/workdir"
-          - "--container-port"
-          - "{{inputs.parameters.container_port}}"
-          - "--service-port"
-          - "{{inputs.parameters.service_port}}"
-          - "--domain-suffix"
-          - "{{inputs.parameters.domain_suffix}}"
-          - "--default-image-name"
-          - "{{inputs.parameters.default_image_name}}"
-          - "--default-image-tag"
-          - "{{inputs.parameters.default_image_tag}}"
-          - "--git-organization"
-          - "{{inputs.parameters.git_organization}}"
-          - "--git-provider"
-          - "{{inputs.parameters.git_provider}}"
+          - |
+            # Resolve Git Server Domain from Environment Variables
+            GIT_SERVER="github.com" # Default fallback
+            if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
+               GIT_SERVER="${AZURE_SERVER:-dev.azure.com}"
+            elif [ "{{inputs.parameters.git_provider}}" = "github" ]; then
+               GIT_SERVER="${GITHUB_SERVER:-github.com}"
+            fi
+
+            python3 /app/src/main.py gitops \
+              --project-name "{{inputs.parameters.project_name}}" \
+              --application-name "{{inputs.parameters.application_name}}" \
+              --output-dir "/workdir" \
+              --container-port "{{inputs.parameters.container_port}}" \
+              --service-port "{{inputs.parameters.service_port}}" \
+              --domain-suffix "{{inputs.parameters.domain_suffix}}" \
+              --default-image-name "{{inputs.parameters.default_image_name}}" \
+              --default-image-tag "{{inputs.parameters.default_image_tag}}" \
+              --git-organization "{{inputs.parameters.git_organization}}" \
+              --git-provider "{{inputs.parameters.git_provider}}" \
+              --git-server "$GIT_SERVER"
         env:
+          - name: GITHUB_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: github_server
+                optional: true
+          - name: AZURE_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: azure_server
+                optional: true
           - name: GITHUB_TOKEN
             valueFrom:
               secretKeyRef:
                 name: github-creds
                 key: token
+                optional: true
+          - name: AZURE_DEVOPS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: azure-creds
+                key: token
+                optional: true
         volumeMounts:
           - name: workdir
             mountPath: /workdir

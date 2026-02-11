@@ -13,12 +13,19 @@ spec:
     - name: git_organization
       description: "Git Organization/User"
       value: "{{ cookiecutter.git_organization }}"
+    - name: git_provider
+      description: "Git Provider (e.g., 'github', 'azure')"
+      value: "{{ cookiecutter.git_provider }}"
+      enum:
+        - "github"
+        - "azure"
   templates:
   - name: main
     inputs:
       parameters:
       - name: app_name
       - name: git_organization
+      - name: git_provider
     steps:
     - - name: promote
         templateRef:
@@ -34,6 +41,6 @@ spec:
           - name: git_organization
             value: "{{ '{{inputs.parameters.git_organization}}' }}"
           - name: git_provider
-            value: "{{ cookiecutter.git_provider }}"
+            value: "{{ '{{inputs.parameters.git_provider}}' }}"
           - name: gitops_utils_image
             value: "quay.io/luban-ci/gitops-utils:0.3.3"

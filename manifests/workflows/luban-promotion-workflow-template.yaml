@@ -15,8 +15,11 @@ spec:
         description: "Git Organization/User (defaults to project_name if empty)"
         value: ""
       - name: git_provider
-        description: "Git Provider (e.g., 'github', 'gitlab')"
+        description: "Git Provider (e.g., 'github', 'azure')"
         value: "github"
+        enum:
+          - "github"
+          - "azure"
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
         value: "quay.io/luban-ci/gitops-utils:0.3.3"
@@ -31,120 +34,32 @@ spec:
           - name: git_provider
           - name: gitops_utils_image
       container:
-        image: "{{inputs.parameters.gitops_utils_image}}"
-        command: [sh, -c]
+        image: "quay.io/luban-ci/luban-provisioner:0.1.45"
+        command: ["/bin/sh", "-c"]
         args:
           - |
-            set -e
-            set -x
-
-            # 1. Calculate derived parameters
-            ORG="{{inputs.parameters.git_organization}}"
-            if [ -z "$ORG" ]; then
-              ORG="{{inputs.parameters.project_name}}"
-            fi
-            
-            GITOPS_REPO_NAME="{{inputs.parameters.app_name}}-gitops"
-            GITOPS_REPO_URL="https://{{inputs.parameters.git_provider}}.com/${ORG}/${GITOPS_REPO_NAME}.git"
-            
-            # 2. Configure Git
-            git config --global credential.helper store
-            DOMAIN=$(echo "$GITOPS_REPO_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
-            echo "https://${GIT_USERNAME}:${GIT_TOKEN}@${DOMAIN}" > ~/.git-credentials
-            git config --global user.email "ci@luban.com"
-            git config --global user.name "Luban CI"
-            git config --global --add safe.directory "*"
-
-            # 3. Clone and extract tag from 'develop' (snd)
-            echo "Cloning GitOps repo (develop branch)..."
-            git clone -b develop ${GITOPS_REPO_URL} /tmp/gitops
-            cd /tmp/gitops
-
-            SND_KUST="app/overlays/snd/kustomization.yaml"
-            if [ ! -f "$SND_KUST" ]; then
-              echo "Error: $SND_KUST not found in develop branch."
-              exit 1
-            fi
-
-            # Extract image name and tag from snd
-            # Since we don't have registry_server, we find the first image that has a 'newTag'
-            IMAGE_TAG=$(yq '.images[0].newTag' "$SND_KUST")
-            APP_IMAGE_NAME=$(yq '.images[0].name' "$SND_KUST")
-
-            if [ "$IMAGE_TAG" = "null" ] || [ -z "$IMAGE_TAG" ]; then
-              echo "Error: Could not extract image tag from $SND_KUST"
-              yq . "$SND_KUST"
-              exit 1
-            fi
-
-            echo "Promoting Image: $APP_IMAGE_NAME"
-            echo "Promoting Tag:   $IMAGE_TAG"
-
-            # 4. Update PRD overlay in 'develop' branch
-            echo "Updating PRD overlay in develop branch..."
-            
-            PRD_KUST="app/overlays/prd/kustomization.yaml"
-            if [ ! -f "$PRD_KUST" ]; then
-              echo "Error: $PRD_KUST not found in develop branch."
-              exit 1
-            fi
-
-            # Update the tag in prd overlay
-            export APP_IMAGE_NAME
-            export IMAGE_TAG
-            
-            if yq -e '.images[] | select(.name == env(APP_IMAGE_NAME))' "$PRD_KUST" >/dev/null 2>&1; then
-               yq -i '(.images[] | select(.name == env(APP_IMAGE_NAME))).newTag = env(IMAGE_TAG)' "$PRD_KUST"
-            else
-               echo "Image entry not found in PRD overlay. Appending..."
-               yq -i ".images += [{\"name\": env(APP_IMAGE_NAME), \"newTag\": env(IMAGE_TAG)}]" "$PRD_KUST"
-            fi
-
-            # 5. Commit and Push to 'develop'
-            if git diff --quiet; then
-              echo "No changes to promote. PRD overlay in develop is already up to date with SND tag."
-            else
-              git add .
-              git commit -m "Promote {{inputs.parameters.app_name}} to prd (tag: ${IMAGE_TAG})"
-              git push origin develop
-              
-              # 6. Create Pull Request (develop -> main)
-              echo "Creating Pull Request (develop -> main)..."
-              PR_TITLE="Promote {{inputs.parameters.app_name}} to prd (${IMAGE_TAG})"
-              PR_BODY="Automated promotion request from snd (develop) to prd (main).<br><br>**App**: {{inputs.parameters.app_name}}<br>**Tag**: ${IMAGE_TAG}"
-              
-              PR_RESP=$(curl -X POST -s -w "\n%{http_code}" \
-                -H "Authorization: token $GIT_TOKEN" \
-                -H "Accept: application/vnd.github.v3+json" \
-                https://api.github.com/repos/${ORG}/${GITOPS_REPO_NAME}/pulls \
-                -d "{
-                  \"title\": \"$PR_TITLE\",
-                  \"body\": \"$PR_BODY\",
-                  \"head\": \"develop\",
-                  \"base\": \"main\"
-                }")
-                
-              PR_HTTP_CODE=$(echo "$PR_RESP" | tail -n1)
-              if [ "$PR_HTTP_CODE" -eq 201 ]; then
-                echo "✅ Pull Request created successfully!"
-              elif [ "$PR_HTTP_CODE" -eq 422 ]; then
-                echo "⚠️ Pull Request already exists or no changes found between branches."
-              else
-                echo "❌ Error creating Pull Request. Status: $PR_HTTP_CODE"
-                echo "$PR_RESP"
-                exit 1
-              fi
-            fi
+            python3 /app/src/main.py promote \
+              --app-name "{{inputs.parameters.app_name}}" \
+              --git-organization "{{inputs.parameters.git_organization}}" \
+              --git-provider "{{inputs.parameters.git_provider}}" \
+              --project-name "{{inputs.parameters.project_name}}" \
+              --git-server "$GIT_SERVER" \
+              --azure-server "$AZURE_SERVER"
         env:
-          - name: GIT_USERNAME
-            valueFrom:
-              secretKeyRef:
-                name: "{{inputs.parameters.git_provider}}-creds"
-                key: username
           - name: GIT_TOKEN
             valueFrom:
               secretKeyRef:
                 name: "{{inputs.parameters.git_provider}}-creds"
                 key: token
-          - name: APP_NAME
-            value: "{{inputs.parameters.app_name}}"
+          - name: GITHUB_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: github_server
+                optional: true
+          - name: AZURE_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: azure_server
+                optional: true

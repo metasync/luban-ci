@@ -13,14 +13,14 @@ spec:
       organizations:
         - "metasync"
       webhook:
-        endpoint: "/push"
+        endpoint: "/github/push"
         port: "12000"
         method: "POST"
-        url: "https://webhook.luban.k8s.orb.local/push"
+        url: "https://webhook.luban.k8s.orb.local/github/push"
       events:
         - "*"
       webhookSecret:
-        name: github-webhook-secret
+        name: webhook-secret
         key: secret
       insecure: false
       active: true

@@ -12,7 +12,7 @@ import time
 def get_secret():
     """Retrieve the webhook secret from Kubernetes."""
     cmd = [
-        "kubectl", "get", "secret", "github-webhook-secret",
+        "kubectl", "get", "secret", "webhook-secret",
         "-n", "luban-ci",
         "-o", "jsonpath={.data.secret}"
     ]

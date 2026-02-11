@@ -9,3 +9,4 @@ secrets:
   - name: harbor-creds
   - name: {{ cookiecutter.image_pull_secret }}
   - name: github-creds
+  - name: azure-ssh-creds

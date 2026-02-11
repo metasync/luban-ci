@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.0] - 2026-02-11
+
+### Architecture
+- **Multi-Provider Support**: Fully enabled support for **Azure DevOps** in addition to GitHub.
+  - Implemented Azure DevOps Project creation, Git Repository provisioning, and Webhook configuration.
+  - Unified provisioning logic to support both providers seamlessly.
+
+### Changed
+- **Provisioning**: Transitioned all initial Git provisioning operations (Project setup, Repo creation, App scaffolding) to use **HTTPS** with embedded tokens, eliminating complex SSH key management in CI/CD containers.
+- **Workflow**: Updated `luban-promotion-workflow-template` to robustly handle optional environment variables (like `AZURE_SERVER`) via shell execution, preventing "Bad hostname" errors.
+- **Workflow**: Updated all core workflow templates to use `luban-provisioner:0.1.45`.
+- **Policy**: Updated Azure Branch Protection policies to allow Pull Request creators to approve their own changes (`creatorVoteCounts: true`), streamlining development for smaller teams.
+
+### Fixed
+- **Azure DevOps**: Resolved "Project not found" race conditions by implementing polling in the Project creation logic, ensuring the project is fully provisioned before subsequent steps run.
+- **Azure DevOps**: Fixed Git URL construction in the `promote` command to correctly include the Project path segment (`{org}/{project}/_git/{repo}`), resolving "Project does not exist" errors during promotion.
+- **Azure DevOps**: Removed redundant SSH URL injection logic that was causing confusion.
+
 ## [v0.8.0] - 2026-02-09
 
 ### Architecture

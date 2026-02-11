@@ -19,8 +19,8 @@ spec:
       - name: create_test_users
       - name: image_pull_secret
     container:
-      image: quay.io/luban-ci/luban-provisioner:0.1.14
-      command: [python3, /app/src/main.py, project]
+      image: quay.io/luban-ci/luban-provisioner:0.1.45
+      command: [python3, /app/src/main.py, k8s]
       args:
       - --project-name={{inputs.parameters.project_name}}
       - --environment={{inputs.parameters.environment}}

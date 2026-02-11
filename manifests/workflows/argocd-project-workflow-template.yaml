@@ -17,8 +17,11 @@ spec:
       description: "Git Organization/User (defaults to project_name if empty)"
       value: ""
     - name: git_provider
-      description: "Git Provider (e.g., 'github', 'gitlab')"
+      description: "Git Provider (e.g., 'github', 'azure')"
       value: "github"
+      enum:
+      - "github"
+      - "azure"
     - name: developer_groups
       description: "List of OIDC groups for developer access (JSON array)"
       value: '[]'
@@ -105,6 +108,19 @@ spec:
       - name: git_organization
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
+      env:
+        - name: GITHUB_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: github_server
+              optional: true
+        - name: AZURE_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: azure_server
+              optional: true
       command: [sh, -c]
       args:
       - |
@@ -114,7 +130,23 @@ spec:
           ORG="{{inputs.parameters.project_name}}"
         fi
         
-        GITOPS_REPOS_WHITELIST="https://{{inputs.parameters.git_provider}}.com/${ORG}/*"
+        # Resolve Git Server Domain from Environment Variables
+        GIT_SERVER="github.com" # Default fallback
+        if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
+           GIT_SERVER="${AZURE_SERVER:-dev.azure.com}"
+        elif [ "{{inputs.parameters.git_provider}}" = "github" ]; then
+           GIT_SERVER="${GITHUB_SERVER:-github.com}"
+        fi
+
+        # Repo Whitelist Construction
+        if [ "{{inputs.parameters.git_provider}}" = "azure" ] && [ -n "{{inputs.parameters.git_organization}}" ]; then
+            # Azure DevOps with Organization
+            # URL: https://dev.azure.com/{ORG}/{PROJECT}/_git/*
+            GITOPS_REPOS_WHITELIST="https://${GIT_SERVER}/{{inputs.parameters.git_organization}}/{{inputs.parameters.project_name}}/_git/*"
+        else
+            # Standard GitHub or Azure without Org (Org=Project)
+            GITOPS_REPOS_WHITELIST="https://${GIT_SERVER}/${ORG}/*"
+        fi
         
         echo "Creating AppProject {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}..."
         

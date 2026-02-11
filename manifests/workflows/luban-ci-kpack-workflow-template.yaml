@@ -63,7 +63,7 @@ spec:
       value: "snd"
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
-      value: "quay.io/luban-ci/gitops-utils:0.3.3"
+      value: "quay.io/luban-ci/gitops-utils:0.3.5"
     - name: default_image_name
       description: "Default placeholder image name to replace"
       valueFrom:
@@ -145,6 +145,19 @@ spec:
         # Calculate derived parameters in shell for robustness
         REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
         
+        # Convert Azure DevOps HTTPS URL to SSH if needed
+        # HTTPS: https://dev.azure.com/{org}/{project}/_git/{repo}
+        # SSH:   git@ssh.dev.azure.com:v3/{org}/{project}/{repo}
+        if echo "$REPO_URL" | grep -q "dev.azure.com"; then
+           echo "Detected Azure DevOps URL. Converting to SSH format..."
+           # Remove https:// and dev.azure.com/
+           PATH_PART=$(echo "$REPO_URL" | sed -E 's|https://dev.azure.com/||')
+           # Replace /_git/ with /
+           PATH_PART=$(echo "$PATH_PART" | sed -E 's|/_git/|/|')
+           REPO_URL="git@ssh.dev.azure.com:v3/$PATH_PART"
+           echo "Converted URL: $REPO_URL"
+        fi
+
         # Build for Regular Commit
         echo "Processing regular commit build for {{workflow.parameters.app_name}}..."
         
@@ -231,6 +244,19 @@ spec:
         # Calculate derived parameters in shell for robustness
         REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
 
+        # Convert Azure DevOps HTTPS URL to SSH if needed
+        # HTTPS: https://dev.azure.com/{org}/{project}/_git/{repo}
+        # SSH:   git@ssh.dev.azure.com:v3/{org}/{project}/{repo}
+        if echo "$REPO_URL" | grep -q "dev.azure.com"; then
+           echo "Detected Azure DevOps URL. Converting to SSH format..."
+           # Remove https:// and dev.azure.com/
+           PATH_PART=$(echo "$REPO_URL" | sed -E 's|https://dev.azure.com/||')
+           # Replace /_git/ with /
+           PATH_PART=$(echo "$PATH_PART" | sed -E 's|/_git/|/|')
+           REPO_URL="git@ssh.dev.azure.com:v3/$PATH_PART"
+           echo "Converted URL: $REPO_URL"
+        fi
+
         # Tag Push Workflow
         echo "Processing tag push for {{workflow.parameters.app_name}}..."
         
@@ -309,7 +335,30 @@ spec:
         
         # Calculate derived parameters in shell for robustness
         REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
-        GITOPS_REPO_URL="https://${GIT_PROVIDER}.com/${REGISTRY_NAMESPACE}/${APP_NAME}-gitops.git"
+        # Determine GitOps Repo URL
+        if [ "$GIT_PROVIDER" = "azure" ]; then
+           # Extract org/project from REPO_URL (SSH or HTTPS)
+           # SSH: git@ssh.dev.azure.com:v3/{org}/{project}/{repo}
+           # HTTPS: https://dev.azure.com/{org}/{project}/_git/{repo}
+           
+           if echo "$REPO_URL" | grep -q "ssh.dev.azure.com"; then
+             # Remove prefix up to v3/
+             BASE_PATH=$(echo "$REPO_URL" | sed -E 's|.*v3/||')
+           else
+             # Remove prefix https://dev.azure.com/ and suffix /_git/...
+             BASE_PATH=$(echo "$REPO_URL" | sed -E 's|https://dev.azure.com/||' | sed -E 's|/_git/.*||')
+           fi
+           
+           # Extract Org and Project (first two components)
+           # Assuming BASE_PATH is org/project/repo
+           # We need just org/project
+           ORG_PROJ=$(echo "$BASE_PATH" | cut -d/ -f1,2)
+           
+           GITOPS_REPO_URL="https://dev.azure.com/${ORG_PROJ}/_git/${APP_NAME}-gitops"
+           echo "Detected Azure DevOps. Constructed GitOps URL: $GITOPS_REPO_URL"
+        else
+           GITOPS_REPO_URL="https://${GIT_PROVIDER}.com/${REGISTRY_NAMESPACE}/${APP_NAME}-gitops.git"
+        fi
 
         git config --global credential.helper store
         # Extract domain from GITOPS_REPO_URL

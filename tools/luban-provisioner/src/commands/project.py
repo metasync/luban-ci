@@ -1,95 +1,49 @@
 import os
 import sys
-import json
-import shutil
-import subprocess
-import traceback
 import click
-from cookiecutter.main import cookiecutter
-from utils import copy_secrets
+from providers.github import GitHubProvider
+from providers.azure import AzureProvider
 
 @click.command(name='project')
 @click.option('--project-name', required=True, help='Name of the project')
-@click.option('--environment', required=True, help='Environment (snd/prd)')
 @click.option('--git-org', required=True, help='Git Organization')
 @click.option('--git-provider', default='github', help='Git Provider')
-@click.option('--admin-groups', default='', help='Comma-separated list of admin groups')
-@click.option('--developer-groups', default='', help='Comma-separated list of developer groups')
-@click.option('--create-test-users', default='no', help='Create test service accounts (yes/no)')
-@click.option('--image-pull-secret', required=True, help='Name of the image pull secret to copy and use')
-@click.option('--dry-run', is_flag=True, help='Only generate files, do not apply')
-def project(project_name, environment, git_org, git_provider, admin_groups, developer_groups, create_test_users, image_pull_secret, dry_run):
-    """Bootstrap a new project namespace."""
-    
-    target_ns = f"{environment}-{project_name}"
-    click.echo(f"Bootstrapping project {project_name} in {target_ns}...")
+@click.option('--github-token', envvar='GITHUB_TOKEN', help='GitHub Token')
+@click.option('--azure-token', envvar='AZURE_DEVOPS_TOKEN', help='Azure DevOps Token')
+@click.option('--git-server', default=None, help='Git Server Domain (e.g., github.com, dev.azure.com)')
+def project(project_name, git_org, git_provider, github_token, azure_token, git_server):
+    """Ensure Git Project/Organization exists."""
 
-    # Parse groups
-    try:
-        admins_list = json.loads(admin_groups) if admin_groups.startswith('[') else [g.strip() for g in admin_groups.split(',') if g.strip()]
-    except json.JSONDecodeError:
-        click.echo(f"Warning: Failed to parse admin_groups JSON: {admin_groups}", err=True)
-        admins_list = []
+    # Resolve defaults if git_server not provided
+    if not git_server:
+        if git_provider == 'github':
+            git_server = 'github.com'
+        elif git_provider == 'azure':
+            git_server = 'dev.azure.com'
 
-    try:
-        devs_list = json.loads(developer_groups) if developer_groups.startswith('[') else [g.strip() for g in developer_groups.split(',') if g.strip()]
-    except json.JSONDecodeError:
-        click.echo(f"Warning: Failed to parse developer_groups JSON: {developer_groups}", err=True)
-        devs_list = []
-    
-    should_create_test_users = create_test_users.lower() == 'yes'
+    provider = None
+    match git_provider:
+        case 'github':
+            if not github_token:
+                click.echo("Warning: GITHUB_TOKEN not provided. Skipping Git project verification/creation.", err=True)
+            else:
+                provider = GitHubProvider(github_token, git_server=git_server)
+        
+        case 'azure':
+            if not azure_token:
+                click.echo("Warning: AZURE_DEVOPS_TOKEN not provided. Skipping Azure project creation.", err=True)
+            else:
+                # For Azure, project_name is the Project Name. git_org is the Organization.
+                provider = AzureProvider(azure_token, organization=git_org, project=project_name, git_server=git_server)
 
-    # Context for Cookiecutter
-    context = {
-        "project_name": project_name,
-        "environment": environment,
-        "target_namespace": target_ns,
-        "git_organization": git_org,
-        "git_provider": git_provider,
-        "admin_groups": ",".join(admins_list),
-        "developer_groups": ",".join(devs_list),
-        "create_test_users": "yes" if should_create_test_users else "no",
-        "image_pull_secret": image_pull_secret
-    }
-
-    # Template directory
-    template_dir = "/app/templates/project"
-    output_dir = '/tmp/luban-provisioner'
-    
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-    os.makedirs(output_dir)
-
-    # Generate
-    try:
-        cookiecutter(
-            template_dir,
-            no_input=True,
-            extra_context=context,
-            output_dir=output_dir,
-            overwrite_if_exists=True
-        )
-        click.echo("Manifests generated successfully.")
-    except Exception as e:
-        click.echo(f"Error generating manifests: {e}", err=True)
-        traceback.print_exc()
-        sys.exit(1)
-
-    generated_path = os.path.join(output_dir, target_ns)
-
-    if dry_run:
-        click.echo(f"Dry run: Manifests generated at {generated_path}")
-        subprocess.run(['find', generated_path], check=True)
-        return
-
-    # Apply manifests
-    click.echo("Applying manifests to cluster...")
-    try:
-        subprocess.run(['kubectl', 'apply', '-f', generated_path, '--recursive'], check=True)
-        click.echo("Manifests applied.")
-    except subprocess.CalledProcessError as e:
-        click.echo(f"Error applying manifests: {e}", err=True)
-        sys.exit(1)
-
-    # Copy Secrets logic
-    copy_secrets(target_ns, "luban-ci", image_pull_secret)
+    if provider:
+        try:
+            # We pass description based on context
+            desc = f"Project {project_name} created by Luban Provisioner"
+            provider.create_project(project_name, description=desc)
+        except Exception as e:
+            click.echo(f"Error creating/verifying git project: {e}", err=True)
+            # If Git Project creation fails, subsequent repo creation will fail.
+            # Fail hard for Azure as it's critical.
+            if git_provider == 'azure':
+                sys.exit(1)

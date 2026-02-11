@@ -4,7 +4,11 @@ FROM python:3.12-alpine
 # curl: for downloading kubectl
 # jq: for JSON processing in secret copying
 # git: for initializing and pushing repositories
-RUN apk add --no-cache curl jq git
+# openssh-client: for git ssh operations
+RUN apk add --no-cache curl jq git openssh-client
+
+# Create a non-root user (uid 1000) for SSH compatibility
+RUN adduser -D -u 1000 luban
 
 # Install kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
@@ -12,7 +16,7 @@ RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/s
     && mv kubectl /usr/local/bin/
 
 # Install python dependencies directly
-RUN pip install --no-cache-dir cookiecutter click requests
+RUN pip install --no-cache-dir cookiecutter click requests ruamel.yaml
 
 # Workdir
 WORKDIR /app

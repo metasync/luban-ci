@@ -1,0 +1,70 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: azure-sensor
+  namespace: luban-ci
+spec:
+  template:
+    serviceAccountName: luban-ci-sa
+  dependencies:
+    - name: azure-dep
+      eventSourceName: azure-event-source
+      eventName: azure
+  triggers:
+    - template:
+        name: kpack-workflow-trigger
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: luban-ci-dispatch-
+                namespace: luban-ci
+                labels:
+                  app: placeholder
+              spec:
+                serviceAccountName: luban-ci-sa
+                workflowTemplateRef:
+                  name: luban-pipeline-dispatcher-template
+                arguments:
+                  parameters:
+                    - name: repo_url
+                      value: ""
+                    - name: revision
+                      value: "main"
+                    - name: app_name
+                      value: ""
+                    - name: git_ref
+                      value: ""
+                    - name: git_provider
+                      value: "azure"
+                    - name: git_creds_secret
+                      value: "azure-creds"
+          parameters:
+            - src:
+                dependencyName: azure-dep
+                dataKey: body.resource.refUpdates.0.newObjectId
+              dest: spec.arguments.parameters.1.value
+              operation: overwrite
+            - src:
+                dependencyName: azure-dep
+                dataKey: body.resource.repository.remoteUrl
+              dest: spec.arguments.parameters.0.value
+              operation: overwrite
+            - src:
+                dependencyName: azure-dep
+                dataKey: body.resource.repository.name
+              dest: spec.arguments.parameters.2.value
+              operation: overwrite
+            - src:
+                dependencyName: azure-dep
+                dataKey: body.resource.repository.name
+              dest: metadata.labels.app
+              operation: overwrite
+            - src:
+                dependencyName: azure-dep
+                dataKey: body.resource.refUpdates.0.name
+              dest: spec.arguments.parameters.3.value
+              operation: overwrite

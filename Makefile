@@ -77,11 +77,43 @@ secrets: ## Create/Update Kubernetes secrets from env files
 		-n $(K8S_NAMESPACE) \
 		--from-literal=username="$(GITHUB_USERNAME)" \
 		--from-literal=token="$(GITHUB_TOKEN)"
+	@echo "Creating Azure DevOps secrets..."
+	@kubectl delete secret azure-creds -n $(K8S_NAMESPACE) --ignore-not-found
+	@kubectl create secret generic azure-creds \
+		-n $(K8S_NAMESPACE) \
+		--from-literal=token='$(AZURE_DEVOPS_TOKEN)' \
+		--from-literal=username='git'
+	@echo "Creating Azure SSH secrets..."
+	@kubectl delete secret azure-ssh-creds -n $(K8S_NAMESPACE) --ignore-not-found
+	@kubectl create secret generic azure-ssh-creds \
+		-n $(K8S_NAMESPACE) \
+		--from-file=ssh-privatekey=secrets/azure_id_rsa \
+		--from-file=known_hosts=secrets/known_hosts \
+		--type=kubernetes.io/ssh-auth
+	@kubectl annotate secret azure-ssh-creds -n $(K8S_NAMESPACE) "kpack.io/git=git@ssh.dev.azure.com" --overwrite
 	@echo "Creating Cloudflare API secrets..."
 	@kubectl create secret generic cloudflare-api-token \
 		-n cert-manager \
 		--from-literal=api-token='$(CLOUDFLARE_API_TOKEN)' \
 		--dry-run=client -o yaml | kubectl apply -f -
+	@echo "Creating ArgoCD Repository Secrets..."
+	@kubectl create ns $(ARGOCD_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
+	@kubectl delete secret argocd-repo-creds-azure -n $(ARGOCD_NAMESPACE) --ignore-not-found
+	@kubectl create secret generic argocd-repo-creds-azure \
+		-n $(ARGOCD_NAMESPACE) \
+		--from-literal=type=git \
+		--from-literal=url='https://dev.azure.com/$(AZURE_ORGANIZATION)' \
+		--from-literal=password='$(AZURE_DEVOPS_TOKEN)' \
+		--from-literal=username="git"
+	@kubectl label secret argocd-repo-creds-azure -n $(ARGOCD_NAMESPACE) "argocd.argoproj.io/secret-type=repo-creds" --overwrite
+	@kubectl delete secret argocd-repo-creds-github -n $(ARGOCD_NAMESPACE) --ignore-not-found
+	@kubectl create secret generic argocd-repo-creds-github \
+		-n $(ARGOCD_NAMESPACE) \
+		--from-literal=type=git \
+		--from-literal=url='https://github.com/$(GITHUB_ORGANIZATION)' \
+		--from-literal=password='$(GITHUB_TOKEN)' \
+		--from-literal=username=luban-ci
+	@kubectl label secret argocd-repo-creds-github -n $(ARGOCD_NAMESPACE) "argocd.argoproj.io/secret-type=repo-creds" --overwrite
 	@echo "Secrets setup complete."
 
 # --- Buildpack Management ---

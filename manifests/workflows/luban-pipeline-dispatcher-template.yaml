@@ -37,13 +37,53 @@ spec:
       - name: git_creds_secret
     container:
       image: quay.io/luban-ci/gitops-utils:0.3.4
+      # Inject configuration from luban-config in the local namespace (luban-ci)
+      env:
+        - name: REGISTRY_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: registry_server
+              optional: true
+        - name: DEFAULT_IMAGE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: default_image_name
+              optional: true
+        - name: DEFAULT_IMAGE_TAG
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: default_image_tag
+              optional: true
       command: [sh, -c]
       args:
       - |
-        # 1. Parse Organization from URL
+        # 1. Parse Organization and Project from URL
         # URL format: https://github.com/org/repo.git or https://github.com/org/repo
         # Strip protocol -> github.com/org/repo -> cut field 2 -> org
-        ORG=$(echo "{{inputs.parameters.repo_url}}" | sed -e 's|^[^/]*//||' | cut -d'/' -f2)
+        # Handle Azure DevOps legacy URLs: https://<org>.visualstudio.com/<project>/_git/<repo>
+        # Handle Azure DevOps modern URLs: https://dev.azure.com/<org>/<project>/_git/<repo>
+        URL_STRIPPED=$(echo "{{inputs.parameters.repo_url}}" | sed -e 's|^[^/]*//||')
+        
+        if echo "$URL_STRIPPED" | grep -q "\.visualstudio\.com"; then
+          # Format: <org>.visualstudio.com/<project>/_git/<repo>
+          ORG=$(echo "$URL_STRIPPED" | cut -d'.' -f1)
+          PROJECT=$(echo "$URL_STRIPPED" | cut -d'/' -f2)
+          # In Azure DevOps, the namespace is tied to the Project, not the Organization (if they differ)
+          # But for consistency, if Project exists, we use it as the logical "Org/Scope" for the namespace.
+          NAMESPACE_SCOPE="$PROJECT"
+        elif echo "$URL_STRIPPED" | grep -q "dev\.azure\.com"; then
+          # Format: dev.azure.com/<org>/<project>/_git/<repo>
+          ORG=$(echo "$URL_STRIPPED" | cut -d'/' -f2)
+          PROJECT=$(echo "$URL_STRIPPED" | cut -d'/' -f3)
+          NAMESPACE_SCOPE="$PROJECT"
+        else
+          # Fallback for GitHub and others (host/org/repo)
+          ORG=$(echo "$URL_STRIPPED" | cut -d'/' -f2)
+          NAMESPACE_SCOPE="$ORG"
+        fi
         
         # 2. Determine Environment and Namespace
         # In our Promotion-Based workflow:
@@ -51,22 +91,26 @@ spec:
         # - ALL builds deploy to Sandbox (snd) environment first.
         # - Production releases happen via a separate Promotion Workflow (snd -> prd).
         DEPLOY_ENV="snd"
-        TARGET_NS="snd-${ORG}"
+        TARGET_NS="snd-${NAMESPACE_SCOPE}"
         
         echo "Dispatching pipeline for {{inputs.parameters.app_name}} to $TARGET_NS (Deploy Target: $DEPLOY_ENV)..."
         
         # 3. Submit the CI Workflow
         # We assume the ServiceAccount 'workflow-runner' exists in the target namespace
+        # Pass the global config values explicitly to override the internal valueFrom lookups
         argo submit \
           --from clusterworkflowtemplate/luban-ci-kpack-template \
           -n "$TARGET_NS" \
           --serviceaccount workflow-runner \
           -p repo_url="{{inputs.parameters.repo_url}}" \
-          -p registry_namespace="$ORG" \
+          -p registry_namespace="$NAMESPACE_SCOPE" \
           -p revision="{{inputs.parameters.revision}}" \
           -p app_name="{{inputs.parameters.app_name}}" \
           -p git_ref="{{inputs.parameters.git_ref}}" \
           -p git_provider="{{inputs.parameters.git_provider}}" \
           -p git_creds_secret="{{inputs.parameters.git_creds_secret}}" \
           -p deploy_env="$DEPLOY_ENV" \
+          -p registry_server="$REGISTRY_SERVER" \
+          -p default_image_name="$DEFAULT_IMAGE_NAME" \
+          -p default_image_tag="$DEFAULT_IMAGE_TAG" \
           --labels "app={{inputs.parameters.app_name}}"

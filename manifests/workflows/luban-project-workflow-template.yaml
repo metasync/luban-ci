@@ -19,6 +19,9 @@ spec:
     - name: git_provider
       description: "Git Provider (e.g., 'github', 'gitlab')"
       value: "github"
+      enum:
+        - "github"
+        - "azure"
     - name: developer_groups
       description: "List of OIDC groups for developer access (JSON array)"
       value: '[]'
@@ -51,6 +54,9 @@ spec:
           name: luban-config
           key: image_pull_secret
           optional: true
+    - name: luban_provisioner_image
+      description: "Image for Luban provisioner tool"
+      value: "quay.io/luban-ci/luban-provisioner:0.1.45"
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
       value: "quay.io/luban-ci/gitops-utils:0.3.3"
@@ -58,28 +64,18 @@ spec:
   templates:
   - name: setup-project
     steps:
-    - - name: harbor-project
-        templateRef:
-          name: harbor-project-setup-template
-          template: create-project
-        arguments:
-           parameters:
-           - name: project_name
-             value: "{{workflow.parameters.project_name}}"
-           - name: registry_visibility
-             value: "{{workflow.parameters.registry_visibility}}"
-           - name: registry_server
-             value: "{{workflow.parameters.registry_server}}"
-
-      - name: argocd-project
-        templateRef:
-          name: argocd-project-setup-template
-          template: create-projects
+    - - name: git-project-setup
+        template: git-project-setup
         arguments:
           parameters:
-          - name: environment
-            value: "{{item}}"
-        withParam: "{{workflow.parameters.environments}}"
+          - name: project_name
+            value: "{{workflow.parameters.project_name}}"
+          - name: git_organization
+            value: "{{workflow.parameters.git_organization}}"
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: luban_provisioner_image
+            value: "{{workflow.parameters.luban_provisioner_image}}"
 
       - name: namespace-provision
         templateRef:
@@ -103,4 +99,82 @@ spec:
             value: "{{workflow.parameters.create_test_users}}"
           - name: image_pull_secret
             value: "{{workflow.parameters.image_pull_secret}}"
+          - name: luban_provisioner_image
+            value: "{{workflow.parameters.luban_provisioner_image}}"
         withParam: "{{workflow.parameters.environments}}"
+
+      - name: harbor-project
+        templateRef:
+          name: harbor-project-setup-template
+          template: create-project
+        arguments:
+           parameters:
+           - name: project_name
+             value: "{{workflow.parameters.project_name}}"
+           - name: registry_visibility
+             value: "{{workflow.parameters.registry_visibility}}"
+           - name: registry_server
+             value: "{{workflow.parameters.registry_server}}"
+
+      - name: argocd-project
+        templateRef:
+          name: argocd-project-setup-template
+          template: create-projects
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{item}}"
+        withParam: "{{workflow.parameters.environments}}"
+
+  - name: git-project-setup
+    inputs:
+      parameters:
+      - name: project_name
+      - name: git_organization
+      - name: git_provider
+      - name: luban_provisioner_image
+    
+    container:
+      image: "{{inputs.parameters.luban_provisioner_image}}"
+      imagePullPolicy: Always
+      command: ["sh", "-c"]
+      args:
+        - |
+          # Resolve Git Server Domain
+          GIT_SERVER="github.com"
+          if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
+             GIT_SERVER="${AZURE_SERVER:-dev.azure.com}"
+          elif [ "{{inputs.parameters.git_provider}}" = "github" ]; then
+             GIT_SERVER="${GITHUB_SERVER:-github.com}"
+          fi
+
+          python3 /app/src/main.py project \
+            --project-name "{{inputs.parameters.project_name}}" \
+            --git-org "{{inputs.parameters.git_organization}}" \
+            --git-provider "{{inputs.parameters.git_provider}}" \
+            --git-server "$GIT_SERVER"
+      env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-creds
+              key: token
+              optional: true
+        - name: AZURE_DEVOPS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: azure-creds
+              key: token
+              optional: true
+        - name: GITHUB_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: github_server
+              optional: true
+        - name: AZURE_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: azure_server
+              optional: true

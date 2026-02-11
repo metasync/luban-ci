@@ -12,4 +12,8 @@ data:
     ingress:
       - hostname: ${TUNNEL_HOSTNAME}
         service: http://github-event-source-eventsource-svc.${K8S_NAMESPACE}:12000
+        path: /github/push
+      - hostname: ${TUNNEL_HOSTNAME}
+        service: http://azure-event-source-eventsource-svc.${K8S_NAMESPACE}:13000
+        path: /azure/push
       - service: http_status:404

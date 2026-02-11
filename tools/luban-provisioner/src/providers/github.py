@@ -4,9 +4,9 @@ import click
 import json
 
 class GitHubProvider:
-    def __init__(self, token):
+    def __init__(self, token, git_server="github.com"):
         self.token = token
-        self.api_url = "https://api.github.com"
+        self.api_url = f"https://api.{git_server}" if git_server == "github.com" else f"https://{git_server}/api/v3"
         self.headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json"
@@ -77,19 +77,22 @@ class GitHubProvider:
 
     def create_webhook(self, owner, repo_name, webhook_url, secret, events=["push"]):
         """Create a webhook for the repository."""
+        # Ensure correct path
+        target_url = f"{webhook_url}/github/push"
+        
         # Check existing hooks
         hooks_url = f"{self.api_url}/repos/{owner}/{repo_name}/hooks"
         resp = requests.get(hooks_url, headers=self.headers)
         if resp.status_code == 200:
             hooks = resp.json()
             for hook in hooks:
-                if hook.get("config", {}).get("url") == webhook_url:
+                if hook.get("config", {}).get("url") == target_url:
                     click.echo("Webhook already exists.")
                     return hook
 
         # Create new hook
         config = {
-            "url": webhook_url,
+            "url": target_url,
             "content_type": "json",
             "secret": secret,
             "insecure_ssl": "0"
@@ -140,3 +143,45 @@ class GitHubProvider:
             click.echo(f"Failed to enable branch protection. Status: {resp.status_code}, Body: {resp.text}", err=True)
             return False
         return True
+
+    def create_project(self, project_name, description=None):
+        """
+        Create a GitHub Project.
+        For GitHub, 'Projects' are often organizational level or user level projects (V2/Beta).
+        However, in the context of 'Git Project' vs 'Azure Project', GitHub doesn't strictly require
+        a 'Project' container to hold repositories (Repositories belong to Users/Orgs).
+        
+        This method is a no-op for GitHub in the context of creating a 'container for repos' 
+        because the Organization/User already exists.
+        
+        If we wanted to create a GitHub Project Board, we could do that, but likely out of scope for now.
+        """
+        click.echo(f"GitHub Provider: create_project is a no-op for '{project_name}'. Repositories are created directly under Organization/User.")
+        return {"name": project_name, "status": "exists (virtual)"}
+
+    def create_pull_request(self, owner, repo_name, title, body, head, base="main"):
+        """Create a Pull Request."""
+        url = f"{self.api_url}/repos/{owner}/{repo_name}/pulls"
+        
+        payload = {
+            "title": title,
+            "body": body,
+            "head": head,
+            "base": base
+        }
+        
+        click.echo(f"Creating PR '{title}' in {owner}/{repo_name}...")
+        resp = requests.post(url, headers=self.headers, json=payload)
+        
+        if resp.status_code == 201:
+            pr = resp.json()
+            click.echo(f"✅ Pull Request created successfully! URL: {pr.get('html_url')}")
+            return pr
+        elif resp.status_code == 422:
+             click.echo("⚠️ Pull Request might already exist or no changes found.")
+             # We might want to try to find the existing PR to return it?
+             # For now just return None or the error.
+             return None
+        
+        click.echo(f"❌ Error creating Pull Request. Status: {resp.status_code}, Body: {resp.text}", err=True)
+        return None

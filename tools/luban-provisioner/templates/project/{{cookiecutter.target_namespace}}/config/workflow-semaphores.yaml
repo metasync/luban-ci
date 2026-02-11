@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workflow-semaphores
+  namespace: {{cookiecutter.target_namespace}}
+data:
+  kpack-builds: "10"

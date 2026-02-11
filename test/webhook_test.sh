@@ -20,9 +20,9 @@ echo "------------------------------------------------"
 
 # 1. Get Secret
 echo "Retrieving webhook secret from Kubernetes..."
-SECRET_B64=$(kubectl get secret github-webhook-secret -n "$K8S_NAMESPACE" -o jsonpath='{.data.secret}')
+SECRET_B64=$(kubectl get secret webhook-secret -n "$K8S_NAMESPACE" -o jsonpath='{.data.secret}')
 if [ -z "$SECRET_B64" ]; then
-    echo "Error: Secret 'github-webhook-secret' not found in namespace '$K8S_NAMESPACE'"
+    echo "Error: Secret 'webhook-secret' not found in namespace '$K8S_NAMESPACE'"
     exit 1
 fi
 
