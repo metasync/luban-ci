@@ -13,6 +13,7 @@ test-ci-pipeline: ## Trigger the kpack CI Workflow using Argo CLI
 		-p app_name=$(APP_NAME) \
 		-p revision=$(REVISION) \
 		-p tag=$(TAG) \
+		-p project_name=$(PROJECT_NAME) \
 		--watch
 
 test-webhook-py: ## Send signed push payload via gateway to trigger Workflow (Python)

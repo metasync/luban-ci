@@ -78,6 +78,7 @@ def main():
     revision = os.environ.get("REVISION", "main")
     tag = os.environ.get("TAG", "")
     app_name = os.environ.get("APP_NAME", "luban-hello-world-py")
+    project_name = os.environ.get("PROJECT_NAME", "metasync") # Default project
     
     # Construct payload matching the sensor expectation
     if tag:
@@ -85,6 +86,20 @@ def main():
     else:
         ref = f"refs/heads/{revision}"
 
+    # Simulate GitHub push event payload structure
+    # Note: Our sensor expects 'repository.project' for Azure, but 'repository.name' + org extraction for GitHub.
+    # However, the dispatcher script (luban-pipeline-dispatcher-template) logic parses ORG/PROJECT from URL.
+    # But wait, the SENSOR passes data to the dispatcher.
+    # Let's check github-sensor.yaml:
+    # - body.repository.clone_url -> repo_url
+    # - body.after -> revision
+    # - body.repository.name -> app_name
+    # - body.ref -> git_ref
+    #
+    # The dispatcher then parses repo_url to find the project/org.
+    # So we don't need to pass project_name explicitly in the payload for GitHub, 
+    # as long as the repo_url contains it.
+    
     payload = {
         "ref": ref,
         "after": revision, # Simulating commit SHA with revision for now

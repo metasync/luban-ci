@@ -7,6 +7,7 @@ REPO_URL=${REPO_URL:-"https://github.com/metasync/luban-hello-world-py.git"}
 REVISION=${REVISION:-"main"}
 TAG=${TAG:-""}
 APP_NAME=${APP_NAME:-"luban-hello-world-py"}
+PROJECT_NAME=${PROJECT_NAME:-"metasync"}
 K8S_NAMESPACE=${K8S_NAMESPACE:-"luban-ci"}
 
 echo "------------------------------------------------"
@@ -16,6 +17,7 @@ echo "REPO_URL:    $REPO_URL"
 echo "REVISION:    $REVISION"
 echo "TAG:         $TAG"
 echo "APP_NAME:    $APP_NAME"
+echo "PROJECT_NAME:$PROJECT_NAME"
 echo "------------------------------------------------"
 
 # 1. Get Secret
