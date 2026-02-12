@@ -25,7 +25,8 @@ spec:
           optional: true
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
-      value: "quay.io/luban-ci/gitops-utils:0.3.3"
+      value: "quay.io/luban-ci/gitops-utils:0.3.5"
+
   templates:
     - name: create-project
       inputs:

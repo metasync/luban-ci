@@ -37,8 +37,29 @@ if [[ "$CACHED_VERSION" != "$UV_VERSION" ]] || [[ ! -f "$uv_layer/bin/uv" ]]; th
         exit 1
     fi
     
-    # Download and extract
-    wget -O- "$UV_URL" | tar -xz -C "$uv_layer/bin" --strip-components=1
+    # Download
+    echo "Downloading uv from $UV_URL..."
+    wget -q -O uv.tar.gz "$UV_URL"
+    
+    # Verify Checksum
+    echo "Verifying checksum..."
+    CHECKSUM_URL="${UV_URL}.sha256"
+    wget -q -O uv.tar.gz.sha256 "$CHECKSUM_URL"
+    
+    EXPECTED_SHA256=$(cat uv.tar.gz.sha256 | cut -d' ' -f1)
+    ACTUAL_SHA256=$(sha256sum uv.tar.gz | cut -d' ' -f1)
+    
+    if [[ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]]; then
+        echo "Error: Checksum mismatch!"
+        echo "Expected: $EXPECTED_SHA256"
+        echo "Actual:   $ACTUAL_SHA256"
+        exit 1
+    fi
+    echo "Checksum verified."
+
+    # Extract
+    tar -xzf uv.tar.gz -C "$uv_layer/bin" --strip-components=1
+    rm uv.tar.gz uv.tar.gz.sha256
     
     # Save version for caching
     echo "$UV_VERSION" > "$uv_layer/version"

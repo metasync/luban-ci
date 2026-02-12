@@ -56,10 +56,27 @@ This phase used Docker-in-Docker with Argo Workflows and has been retired in fav
 3.  **Automatic Org Fallback**: Improved organization detection logic to automatically use the project name if no organization is specified.
 4.  **Makefile Enhancements**: Standardized deployment and testing targets.
 
-## Phase 8: Unified Provisioner [Completed]
-**Goal:** Consolidate provisioning tools into a single, robust Python application (`luban-provisioner`).
+## Phase 8: Unified Provisioner & Azure DevOps Support [Completed]
+**Goal:** Consolidate provisioning tools into a single, robust Python application (`luban-provisioner`) and add support for Azure DevOps.
 **Deliverables:**
 1.  **Unified Tool**: `tools/luban-provisioner` now handles GitOps repo, source repo, and project namespace provisioning.
-2.  **Native GitHub Integration**: Replaced fragile shell scripts with Python `requests` logic for creating repos, webhooks, and branch protection.
-3.  **Simplified Workflows**: Updated `luban-app-workflow-template`, `gitops-repo-workflow-template`, and `source-repo-workflow-template` to rely on the unified tool.
-4.  **Cleaner Codebase**: Removed disparate provisioner scripts and centralized logic.
+2.  **Provider Abstraction**: Implemented `provider_factory.py` to support pluggable Git providers.
+3.  **GitHub & Azure Support**:
+    - **GitHub**: Native API integration for repos, webhooks, and branch protection.
+    - **Azure DevOps**: Support for Project/Repo creation, Pull Requests, and Webhooks.
+4.  **Simplified Workflows**: Updated all workflows to rely on the unified tool and new parameters (`git_provider`, `git_server`).
+
+## Phase 9: Refactoring & Standardization [Completed]
+**Goal:** Enhance code maintainability, security, and developer experience.
+**Deliverables:**
+1.  **Tooling Refactoring**:
+    - Refactored `luban-provisioner` to use a consistent `provider_factory` pattern.
+    - Optimized Dockerfiles for `gitops-utils` and `luban-provisioner` (non-root users, version pinning).
+    - Removed unnecessary dependencies (e.g., `crane` from `gitops-utils`).
+2.  **Test Suite Enhancements**:
+    - Standardized test configuration in `test/Makefile.env`.
+    - Added `patch-coredns` tool for local DNS resolution during testing.
+    - Improved `webhook_test` scripts to support dynamic project names.
+3.  **Documentation Updates**:
+    - Comprehensive README updates for `luban-provisioner` and root project.
+    - Documented local testing workflows and DNS patching.

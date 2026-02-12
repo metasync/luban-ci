@@ -1,6 +1,7 @@
 import subprocess
 import click
 import os
+from cookiecutter.main import cookiecutter
 
 def copy_secrets(target_ns, source_ns, image_pull_secret):
     """
@@ -45,6 +46,52 @@ def copy_secrets(target_ns, source_ns, image_pull_secret):
         except subprocess.CalledProcessError:
             click.echo(f"Failed to copy secret {secret}", err=True)
 
+def copy_configmaps(target_ns, source_ns):
+    """
+    Copies relevant ConfigMaps from source namespace to target namespace.
+    Specifically handles luban-config, github-config, and azure-config.
+    """
+    configmaps = ["luban-config", "github-config", "azure-config"]
+    
+    for cm in configmaps:
+        click.echo(f"Copying configmap {cm} from {source_ns} to {target_ns}...")
+        # check if exists in source
+        check = subprocess.run(
+            ['kubectl', 'get', 'configmap', cm, '-n', source_ns], 
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        if check.returncode != 0:
+            click.echo(f"Warning: ConfigMap {cm} not found in {source_ns}, skipping.")
+            continue
+
+        # Get and Apply using jq
+        cmd = f"kubectl get configmap {cm} -n {source_ns} -o json | " \
+              f"jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | " \
+              f"kubectl apply -n {target_ns} -f -"
+        
+        try:
+            subprocess.run(cmd, shell=True, check=True)
+        except subprocess.CalledProcessError:
+            click.echo(f"Failed to copy configmap {cm}", err=True)
+
+def render_template(template_path, output_dir, context, overwrite=False):
+    """
+    Renders a cookiecutter template.
+    """
+    click.echo(f"Rendering template from {template_path} to {output_dir}...")
+    try:
+        cookiecutter(
+            template_path,
+            no_input=True,
+            output_dir=output_dir,
+            extra_context=context,
+            overwrite_if_exists=overwrite
+        )
+        click.echo(f"Successfully generated template in {output_dir}")
+    except Exception as e:
+        click.echo(f"Error generating template: {e}", err=True)
+        raise e
+
 def initialize_git_repo(repo_dir, remote_url, user_name="Luban CI", user_email="luban-ci@metasync.io", initial_branch="main"):
     """Initialize a git repository, commit all files, and push to remote."""
     cwd = os.getcwd()
@@ -76,6 +123,9 @@ def initialize_git_repo(repo_dir, remote_url, user_name="Luban CI", user_email="
     except subprocess.CalledProcessError as e:
         click.echo(f"Git operation failed: {e}", err=True)
         raise e
+    finally:
+        os.chdir(cwd)
+
 def patch_default_service_account(target_ns, image_pull_secret):
     """Patch the default service account to use the image pull secret."""
     if not image_pull_secret:

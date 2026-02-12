@@ -22,7 +22,11 @@ spec:
           - "azure"
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
-        value: "quay.io/luban-ci/gitops-utils:0.3.3"
+        value: "quay.io/luban-ci/gitops-utils:0.3.7"
+      - name: luban_provisioner_image
+        description: "Image for the promotion tool"
+        value: "quay.io/luban-ci/luban-provisioner:0.1.55"
+
 
   templates:
     - name: promote-snd-to-prd
@@ -33,8 +37,10 @@ spec:
           - name: git_organization
           - name: git_provider
           - name: gitops_utils_image
+          - name: luban_provisioner_image
+            value: "quay.io/luban-ci/luban-provisioner:0.1.55"
       container:
-        image: "quay.io/luban-ci/luban-provisioner:0.1.45"
+        image: "{{inputs.parameters.luban_provisioner_image}}"
         command: ["/bin/sh", "-c"]
         args:
           - |
@@ -43,23 +49,16 @@ spec:
               --git-organization "{{inputs.parameters.git_organization}}" \
               --git-provider "{{inputs.parameters.git_provider}}" \
               --project-name "{{inputs.parameters.project_name}}" \
-              --git-server "$GIT_SERVER" \
-              --azure-server "$AZURE_SERVER"
+              --git-server "$GIT_SERVER"
         env:
           - name: GIT_TOKEN
             valueFrom:
               secretKeyRef:
                 name: "{{inputs.parameters.git_provider}}-creds"
                 key: token
-          - name: GITHUB_SERVER
+          - name: GIT_SERVER
             valueFrom:
               configMapKeyRef:
-                name: luban-config
-                key: github_server
-                optional: true
-          - name: AZURE_SERVER
-            valueFrom:
-              configMapKeyRef:
-                name: luban-config
-                key: azure_server
+                name: "{{inputs.parameters.git_provider}}-config"
+                key: server
                 optional: true

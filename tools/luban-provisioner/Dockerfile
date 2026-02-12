@@ -5,7 +5,8 @@ FROM python:3.12-alpine
 # jq: for JSON processing in secret copying
 # git: for initializing and pushing repositories
 # openssh-client: for git ssh operations
-RUN apk add --no-cache curl jq git openssh-client
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache curl jq git openssh-client
 
 # Create a non-root user (uid 1000) for SSH compatibility
 RUN adduser -D -u 1000 luban
@@ -34,3 +35,6 @@ ENV HOME=/tmp
 
 # Set entrypoint
 ENTRYPOINT ["python3", "/app/src/main.py"]
+
+# Run as non-root user
+USER 1000

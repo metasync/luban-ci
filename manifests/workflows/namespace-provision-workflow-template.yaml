@@ -14,12 +14,22 @@ spec:
       - name: environment
       - name: git_organization
       - name: git_provider
+        enum:
+          - "github"
+          - "azure"
       - name: admin_groups
       - name: developer_groups
-      - name: create_test_users
       - name: image_pull_secret
+      - name: create_test_users
+        value: "no"
+        enum:
+        - "yes"
+        - "no"
+      - name: gitops_utils_image
+        description: "Image for GitOps utility tools"
+        value: "quay.io/luban-ci/gitops-utils:0.3.7"
     container:
-      image: quay.io/luban-ci/luban-provisioner:0.1.45
+      image: quay.io/luban-ci/luban-provisioner:0.1.55
       command: [python3, /app/src/main.py, k8s]
       args:
       - --project-name={{inputs.parameters.project_name}}

@@ -86,33 +86,71 @@ Luban CI follows a **Trunk-Based Development** model with **Promotion-Based Rele
 
 ## Setup
 
-1.  **Credentials**
-    - Create a `secrets/` directory for local environment files (never commit these):
-      ```bash
-      mkdir secrets
-      ```
-    - Add environment files:
-      - `secrets/github.env`
-        ```bash
-        GITHUB_USERNAME=your_user
-        GITHUB_TOKEN=your_token
-        ```
-      - `secrets/quay.env`
-        ```bash
-        QUAY_USERNAME=your_org+robot
-        QUAY_PASSWORD=your_token
-        ```
-    - **Cloudflare Tunnel (Optional)**: If you want to expose the webhook to the public internet using a tunnel.
-      - The setup script `make tunnel-setup` (detailed in [Development & Testing](#development--testing)) will handle authentication and setup.
+1.  **Credentials Setup**
+    Create a `secrets/` directory and add the following files (these are ignored by git). The `make secrets` command will read these files and create the necessary Kubernetes secrets.
 
-    - The Makefile automatically loads all `secrets/*.env` files. Running `make secrets` applies them into Kubernetes as sealed credentials.
-    - Ensure your VCS ignores these files. Recommended `.gitignore` entry:
-      ```
-      secrets/
-      ```
+    ### 1. Git Provider Credentials (Required)
+    
+    **Option A: GitHub (Default)**
+    Create `secrets/github.env`:
+    ```bash
+    # Personal Access Token (PAT) with repo and workflow scopes
+    GITHUB_USERNAME=your_user
+    GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+    GITHUB_ORGANIZATION=your_org
+    ```
 
-2.  **Initialize Secrets**:
-    Apply credentials to the Kubernetes cluster:
+    **Option B: Azure DevOps**
+    Create `secrets/azure-creds.env`:
+    ```bash
+    # Personal Access Token (PAT) with Code (Read & Write) scope
+    AZURE_DEVOPS_TOKEN=xxxxxxxxxxxx
+    AZURE_ORGANIZATION=your_org
+    ```
+    
+    **Azure SSH Keys (Required for kpack builds on Azure)**:
+    1. Generate an SSH key pair: `ssh-keygen -t rsa -b 4096 -f secrets/azure_id_rsa`
+    2. Add the public key (`secrets/azure_id_rsa.pub`) to your Azure DevOps user settings (SSH Public Keys).
+    3. Add Azure's host key to `secrets/known_hosts`:
+       ```bash
+       ssh-keyscan -t rsa ssh.dev.azure.com > secrets/known_hosts
+       ```
+
+    ### 2. Container Registry Credentials (Required)
+
+    **Quay.io (Public/Private Registry)**
+    Create `secrets/quay.env`:
+    ```bash
+    QUAY_USERNAME=your_org+robot
+    QUAY_PASSWORD=your_token
+    REGISTRY_EMAIL=ci@luban.io
+    ```
+
+    **Harbor (Internal Registry)**
+    Create `secrets/harbor.env`:
+    ```bash
+    # Harbor Server Domain
+    HARBOR_SERVER=harbor.luban.metasync.cc
+    
+    # Admin/RW User (for pushing images)
+    HARBOR_USERNAME=admin
+    HARBOR_PASSWORD=Harbor12345
+    
+    # Read-Only Robot Account (for pulling images in clusters)
+    HARBOR_RO_USERNAME=robot$luban-ro
+    HARBOR_RO_PASSWORD=xxxxxxxxxxxx
+    ```
+
+    ### 3. Optional Credentials
+
+    **Cloudflare (for Tunneling)**
+    Create `secrets/cloudflare.env`:
+    ```bash
+    CLOUDFLARE_API_TOKEN=xxxxxxxxxxxx
+    ```
+
+    ### Apply Secrets
+    Apply all credentials to the Kubernetes cluster:
     ```bash
     make secrets
     ```
@@ -138,6 +176,11 @@ Luban CI follows a **Trunk-Based Development** model with **Promotion-Based Rele
     ```
 
 ## Project & Application Setup
+
+### Unified Provisioning Tool (`luban-provisioner`)
+Luban CI now uses a unified Python-based tool (`luban-provisioner`) to handle all provisioning tasks. This tool abstracts the differences between Git providers (GitHub, Azure DevOps) and ensures consistent configuration.
+
+See `tools/luban-provisioner/README.md` for detailed usage instructions.
 
 ### Luban Project Setup (Team/Domain Level)
 This Master Workflow initializes the infrastructure for a new Team or Domain.
@@ -196,6 +239,7 @@ This Workflow bootstraps a new microservice within an existing Project/Team.
 - **Parameters**:
   - `project_name`: (Required) The name of the team/domain this app belongs to (e.g., `payment`).
   - `app_name`: (Required) The name of the service (e.g., `cart-service`).
+  - `environment`: (Optional) Target environment. Must be one of `["snd", "prd"]`. Default: `snd`.
   - `git_organization`: (Optional) Auto-detected if not provided.
   - `setup_source_repo`: (Optional) Whether to provision the source code repository (`yes`, `no`). Default: `yes`.
   - `luban_provisioner_image`: (Internal) The image used to render templates.
@@ -288,13 +332,13 @@ If you are using Azure DevOps instead of GitHub:
   make tools-image-build
   make tools-image-push
   ```
-- **Usage**: The workflow uses a parameter `gitops_utils_image` (default: `quay.io/luban-ci/gitops-utils:0.3.3`) for checkout/update/provisioning steps.
+- **Usage**: The workflow uses a parameter `gitops_utils_image` (default: `quay.io/luban-ci/gitops-utils:<version>`) for checkout/update/provisioning steps.
 
 ### Concurrency Control
 - Recommended: Argo Workflows Semaphores
-  - A ConfigMap defines a named semaphore and its limit. This repo includes [argo-semaphore.yaml](manifests/argo-semaphore.yaml) with kpack-builds: "10".
+  - A ConfigMap (`workflow-semaphores`) defines a named semaphore and its limit in each project namespace.
   - The CI WorkflowTemplate references this semaphore via `spec.synchronization.semaphore.configMapKeyRef`.
-  - Increase or decrease `kpack-builds` in the ConfigMap to control how many workflows (and thus kpack builds) run concurrently.
+  - Increase or decrease `kpack-builds` in the project's ConfigMap to control how many workflows (and thus kpack builds) run concurrently.
 - Optional: Workflow spec.parallelism
   - Limits concurrent nodes within a single workflow. Our pipeline is sequential, so this is less impactful.
   - For parallel DAG/steps, set `spec.parallelism` in the Workflow/WorkflowTemplate.
@@ -326,6 +370,22 @@ Send a signed GitHub push event payload to the local Gateway to verify the entir
 1.  Gateway is running (`luban-gateway` in `gateway` namespace).
 2.  Webhook secret is configured (`make events-webhook-secret`).
 3.  Gateway URL is accessible (default: `https://webhook.luban.metasync.cc/push`).
+
+**Local DNS Resolution (Patching CoreDNS)**:
+If you are running locally (e.g., OrbStack) and need the cluster to resolve the ingress domains (like `webhook.luban.metasync.cc`) to the internal Gateway LoadBalancer IP, you can use the `patch-coredns` utility.
+
+This script automatically:
+1.  Finds the LoadBalancer IP of the `luban-gateway` service.
+2.  Patches the CoreDNS `NodeHosts` configuration in the `kube-system` namespace.
+3.  Maps the following domains to the Gateway IP:
+    - `harbor.luban.metasync.cc`
+    - `argocd.luban.metasync.cc`
+    - `argo-workflows.luban.metasync.cc`
+    - `webhook.luban.metasync.cc`
+
+```bash
+make patch-coredns
+```
 
 **Cloudflare Tunnel (Optional)**:
 If you need to expose the internal webhook service to the internet (e.g., for real GitHub webhooks), you can use the built-in Cloudflare Tunnel setup. The script will guide you through authentication if needed.

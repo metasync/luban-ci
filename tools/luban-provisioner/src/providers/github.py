@@ -2,10 +2,11 @@ import os
 import requests
 import click
 import json
+from .base import GitProvider
 
-class GitHubProvider:
-    def __init__(self, token, git_server="github.com"):
-        self.token = token
+class GitHubProvider(GitProvider):
+    def __init__(self, token, organization, project=None, git_server="github.com"):
+        super().__init__(token, organization, project, git_server)
         self.api_url = f"https://api.{git_server}" if git_server == "github.com" else f"https://{git_server}/api/v3"
         self.headers = {
             "Authorization": f"token {self.token}",
@@ -19,37 +20,44 @@ class GitHubProvider:
             return resp.json().get("login")
         return None
 
-    def repo_exists(self, owner, repo_name):
+    def repo_exists(self, repo_name):
         """Check if a repository exists."""
-        resp = requests.get(f"{self.api_url}/repos/{owner}/{repo_name}", headers=self.headers)
+        # Check if repo_name contains slash (owner/repo) or if we should use self.organization
+        if "/" in repo_name:
+            owner, name = repo_name.split("/", 1)
+        else:
+            owner = self.organization
+            name = repo_name
+
+        resp = requests.get(f"{self.api_url}/repos/{owner}/{name}", headers=self.headers)
         return resp.status_code == 200
 
-    def create_repo(self, name, org=None, private=False, description=None):
+    def create_repo(self, name, description=None):
         """
         Create a repository. 
-        If org is provided, create in that org.
+        If self.organization is provided, create in that org.
         If org creation fails (e.g. not an org), or org is not provided, try creating in user account.
         """
         payload = {
             "name": name,
-            "private": private,
+            "private": True, # Default to private
             "auto_init": False
         }
         if description:
             payload["description"] = description
 
         # Try creating in Org
-        if org:
-            click.echo(f"Attempting to create repo '{name}' in organization '{org}'...")
-            resp = requests.post(f"{self.api_url}/orgs/{org}/repos", headers=self.headers, json=payload)
+        if self.organization:
+            click.echo(f"Attempting to create repo '{name}' in organization '{self.organization}'...")
+            resp = requests.post(f"{self.api_url}/orgs/{self.organization}/repos", headers=self.headers, json=payload)
             
             if resp.status_code == 201:
                 return resp.json()
             
             if resp.status_code == 404:
-                click.echo(f"Organization '{org}' not found or not accessible. Checking user account...")
+                click.echo(f"Organization '{self.organization}' not found or not accessible. Checking user account...")
             else:
-                click.echo(f"Failed to create in org '{org}'. Status: {resp.status_code}, Body: {resp.text}", err=True)
+                click.echo(f"Failed to create in org '{self.organization}'. Status: {resp.status_code}, Body: {resp.text}", err=True)
                 # If it's a permission error or name collision, we might not want to fallback?
                 # But existing script falls back if 404.
                 if resp.status_code != 404:
@@ -62,8 +70,8 @@ class GitHubProvider:
             click.echo("Could not determine current user.", err=True)
             return None
 
-        if org and org != current_user:
-             click.echo(f"Target '{org}' is not the authenticated user '{current_user}'. Aborting fallback.", err=True)
+        if self.organization and self.organization != current_user:
+             click.echo(f"Target '{self.organization}' is not the authenticated user '{current_user}'. Aborting fallback.", err=True)
              return None
 
         click.echo(f"Creating repo '{name}' for user '{current_user}'...")
@@ -75,11 +83,22 @@ class GitHubProvider:
         click.echo(f"Failed to create repo for user. Status: {resp.status_code}, Body: {resp.text}", err=True)
         return None
 
-    def create_webhook(self, owner, repo_name, webhook_url, secret, events=["push"]):
+    def create_webhook(self, repo_identifier, webhook_url, secret, events=["push"]):
         """Create a webhook for the repository."""
         # Ensure correct path
         target_url = f"{webhook_url}/github/push"
         
+        # repo_identifier can be name (if using self.organization) or full 'owner/name'
+        # But for API consistency, let's assume it's just the name if we have self.organization context
+        if isinstance(repo_identifier, dict):
+            repo_name = repo_identifier.get('name')
+            owner = repo_identifier.get('owner', {}).get('login', self.organization)
+        elif "/" in repo_identifier:
+            owner, repo_name = repo_identifier.split("/", 1)
+        else:
+            owner = self.organization
+            repo_name = repo_identifier
+
         # Check existing hooks
         hooks_url = f"{self.api_url}/repos/{owner}/{repo_name}/hooks"
         resp = requests.get(hooks_url, headers=self.headers)
@@ -112,8 +131,17 @@ class GitHubProvider:
         click.echo(f"Failed to create webhook. Status: {resp.status_code}, Body: {resp.text}", err=True)
         return None
 
-    def set_default_branch(self, owner, repo_name, branch_name):
+    def set_default_branch(self, repo_identifier, branch_name):
         """Set the default branch."""
+        if isinstance(repo_identifier, dict):
+            repo_name = repo_identifier.get('name')
+            owner = repo_identifier.get('owner', {}).get('login', self.organization)
+        elif "/" in repo_identifier:
+            owner, repo_name = repo_identifier.split("/", 1)
+        else:
+            owner = self.organization
+            repo_name = repo_identifier
+
         click.echo(f"Setting default branch to '{branch_name}'...")
         payload = {"default_branch": branch_name}
         resp = requests.patch(f"{self.api_url}/repos/{owner}/{repo_name}", headers=self.headers, json=payload)
@@ -122,8 +150,17 @@ class GitHubProvider:
             return False
         return True
 
-    def enable_branch_protection(self, owner, repo_name, branch_name, required_reviews=1):
+    def enable_branch_protection(self, repo_identifier, branch_name, min_reviewers=1):
         """Enable branch protection."""
+        if isinstance(repo_identifier, dict):
+            repo_name = repo_identifier.get('name')
+            owner = repo_identifier.get('owner', {}).get('login', self.organization)
+        elif "/" in repo_identifier:
+            owner, repo_name = repo_identifier.split("/", 1)
+        else:
+            owner = self.organization
+            repo_name = repo_identifier
+
         click.echo(f"Enabling branch protection for '{branch_name}'...")
         payload = {
             "required_status_checks": None,
@@ -131,7 +168,7 @@ class GitHubProvider:
             "required_pull_request_reviews": {
                 "dismiss_stale_reviews": True,
                 "require_code_owner_reviews": False,
-                "required_approving_review_count": required_reviews
+                "required_approving_review_count": min_reviewers
             },
             "restrictions": None
         }
@@ -147,27 +184,29 @@ class GitHubProvider:
     def create_project(self, project_name, description=None):
         """
         Create a GitHub Project.
-        For GitHub, 'Projects' are often organizational level or user level projects (V2/Beta).
-        However, in the context of 'Git Project' vs 'Azure Project', GitHub doesn't strictly require
-        a 'Project' container to hold repositories (Repositories belong to Users/Orgs).
-        
-        This method is a no-op for GitHub in the context of creating a 'container for repos' 
-        because the Organization/User already exists.
-        
-        If we wanted to create a GitHub Project Board, we could do that, but likely out of scope for now.
+        This method is a no-op for GitHub in the context of creating a 'container for repos'.
         """
         click.echo(f"GitHub Provider: create_project is a no-op for '{project_name}'. Repositories are created directly under Organization/User.")
         return {"name": project_name, "status": "exists (virtual)"}
 
-    def create_pull_request(self, owner, repo_name, title, body, head, base="main"):
+    def create_pull_request(self, repo_identifier, title, description, source_ref, target_ref="main"):
         """Create a Pull Request."""
+        if isinstance(repo_identifier, dict):
+            repo_name = repo_identifier.get('name')
+            owner = repo_identifier.get('owner', {}).get('login', self.organization)
+        elif "/" in repo_identifier:
+            owner, repo_name = repo_identifier.split("/", 1)
+        else:
+            owner = self.organization
+            repo_name = repo_identifier
+
         url = f"{self.api_url}/repos/{owner}/{repo_name}/pulls"
         
         payload = {
             "title": title,
-            "body": body,
-            "head": head,
-            "base": base
+            "body": description,
+            "head": source_ref,
+            "base": target_ref
         }
         
         click.echo(f"Creating PR '{title}' in {owner}/{repo_name}...")
@@ -178,10 +217,8 @@ class GitHubProvider:
             click.echo(f"✅ Pull Request created successfully! URL: {pr.get('html_url')}")
             return pr
         elif resp.status_code == 422:
-             click.echo("⚠️ Pull Request might already exist or no changes found.")
-             # We might want to try to find the existing PR to return it?
-             # For now just return None or the error.
-             return None
+            click.echo("⚠️ Pull Request might already exist or no changes found.")
+            return None
         
         click.echo(f"❌ Error creating Pull Request. Status: {resp.status_code}, Body: {resp.text}", err=True)
         return None

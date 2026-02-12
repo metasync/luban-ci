@@ -36,7 +36,7 @@ spec:
       - name: git_provider
       - name: git_creds_secret
     container:
-      image: quay.io/luban-ci/gitops-utils:0.3.4
+      image: quay.io/luban-ci/gitops-utils:0.3.5
       # Inject configuration from luban-config in the local namespace (luban-ci)
       env:
         - name: REGISTRY_SERVER

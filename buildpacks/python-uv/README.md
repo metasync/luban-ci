@@ -33,18 +33,23 @@ The buildpack detects a Python application if any of the following exist:
 
 ### Runtime Configuration
 
-**Important**: This buildpack does **not** set a default start command (it does not parse `Procfile`).
+The buildpack attempts to automatically detect the start command from `pyproject.toml`.
 
-You must specify the start command in your container configuration (e.g., Kubernetes Deployment).
+1.  **Automatic Detection**: If `[project.scripts]` is defined in `pyproject.toml`, the buildpack will use one of the scripts as the default `web` process.
+    -   It prioritizes scripts named `app`, `start`, `main`, or `run`.
+    -   If none of these are found, it uses the first script defined.
+    -   The command will be: `uv run <script-name>`.
 
-**Recommendation**: Use `args` in Kubernetes to pass arguments to the default entrypoint (CNB Launcher).
+2.  **Manual Configuration**: If no script is detected, or if you want to override the default, you must specify the start command in your container configuration (e.g., Kubernetes Deployment).
+
+**Recommendation**: Use `args` in Kubernetes to pass arguments to the default entrypoint (CNB Launcher). This ensures the CNB Launcher runs first and sets up the environment (PATH, etc.).
 
 ```yaml
 spec:
   containers:
   - name: my-app
     image: my-registry/my-app:latest
-    # Use args so the CNB Launcher runs first and sets up PATH
+    # Override the default command or set one if not detected
     args:
       - uv
       - run
@@ -54,4 +59,4 @@ spec:
       - 0.0.0.0
 ```
 
-If you use `command`, you override the Launcher, and `uv` will not be found in the PATH unless you manually set it.
+**Note**: This buildpack does **not** support `Procfile`.

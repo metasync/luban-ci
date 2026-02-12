@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.1] - 2026-02-12
+
+### Architecture
+- **Configuration**: Unified `luban-config` and provider-specific ConfigMaps (`github-config`, `azure-config`) copying to project namespaces during provisioning. This fixes missing configuration for downstream workflows like promotion.
+- **Robustness**: Updated `luban-provisioner` to default to standard Git provider domains (`github.com`, `dev.azure.com`) if configuration is missing, preventing critical failures.
+
+### Changed
+- **Workflow**: Enforced explicit `enum` validation (`snd`, `prd`) for the `environment` parameter in `luban-app-workflow-template` and `argocd-app-workflow-template`.
+- **Workflow**: Added `enum` validation for `git_provider` in `namespace-provision-workflow-template`.
+- **Workflow**: Updated all workflow templates to use `luban-provisioner:0.1.55`.
+- **Documentation**: Comprehensive update to `README.md` Credentials section, detailing setup for Git Providers, Registries, and optional tools.
+
+### Fixed
+- **Promotion**: Resolved `GIT_SERVER` missing error during promotion by ensuring configuration maps are propagated to tenant namespaces.
+
 ## [v0.9.0] - 2026-02-11
 
 ### Architecture

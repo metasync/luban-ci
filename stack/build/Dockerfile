@@ -17,3 +17,6 @@ RUN dnf install -y \
 
 # Set user to cnb
 USER cnb
+
+# Set working directory
+WORKDIR /workspace

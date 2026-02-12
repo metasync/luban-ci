@@ -186,6 +186,9 @@ test-events-webhook-py: ## Send signed push payload via gateway to trigger Workf
 tunnel-setup: ## Setup Cloudflare Tunnel for webhook exposure (optional)
 	@$(MAKE) -C manifests tunnel-setup
 
+patch-coredns: ## Patch CoreDNS to support internal DNS resolution for local testing
+	@./tools/patch-coredns.sh
+
 venv-clean: ## Cleanup virtual environment
 	@echo "Removing virtual environment..."
 	@rm -rf .venv

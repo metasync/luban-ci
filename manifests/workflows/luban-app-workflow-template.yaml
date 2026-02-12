@@ -23,6 +23,9 @@ spec:
       - name: environment
         description: "Target environment (e.g., 'snd', 'prd')"
         value: "snd"
+        enum:
+          - "snd"
+          - "prd"
       - name: git_organization
         description: "Git Organization/User (defaults to project_name if empty)"
         value: ""
@@ -69,10 +72,10 @@ spec:
             optional: true
       - name: luban_provisioner_image
         description: "Image for Luban provisioner tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.45"
+        value: "quay.io/luban-ci/luban-provisioner:0.1.55"
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
-        value: "quay.io/luban-ci/gitops-utils:0.3.3"
+        value: "quay.io/luban-ci/gitops-utils:0.3.7"
       - name: webhook_url
         description: "Webhook URL for CI integration"
         valueFrom:

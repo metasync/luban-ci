@@ -29,9 +29,12 @@ spec:
         enum:
           - "github"
           - "azure"
+      - name: gitops_utils_image
+        description: "Image for GitOps utility tools"
+        value: "quay.io/luban-ci/gitops-utils:0.3.7"
       - name: luban_provisioner_image
         description: "Image for Luban provisioner tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.45"
+        value: "quay.io/luban-ci/luban-provisioner:0.1.55"
       - name: webhook_url
         description: "Webhook URL for CI integration"
         valueFrom:
@@ -85,14 +88,6 @@ spec:
         command: ["sh", "-c"]
         args:
           - |
-            # Resolve Git Server Domain from Environment Variables
-            GIT_SERVER="github.com" # Default fallback
-            if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
-               GIT_SERVER="${AZURE_SERVER:-dev.azure.com}"
-            elif [ "{{inputs.parameters.git_provider}}" = "github" ]; then
-               GIT_SERVER="${GITHUB_SERVER:-github.com}"
-            fi
-
             python3 /app/src/main.py source \
               --project-name "{{inputs.parameters.project_name}}" \
               --application-name "{{inputs.parameters.application_name}}" \
@@ -102,28 +97,16 @@ spec:
               --webhook-url "{{inputs.parameters.webhook_url}}" \
               --git-server "$GIT_SERVER"
         env:
-          - name: GITHUB_SERVER
+          - name: GIT_SERVER
             valueFrom:
               configMapKeyRef:
-                name: luban-config
-                key: github_server
+                name: "{{inputs.parameters.git_provider}}-config"
+                key: server
                 optional: true
-          - name: AZURE_SERVER
-            valueFrom:
-              configMapKeyRef:
-                name: luban-config
-                key: azure_server
-                optional: true
-          - name: GITHUB_TOKEN
+          - name: GIT_TOKEN
             valueFrom:
               secretKeyRef:
-                name: github-creds
-                key: token
-                optional: true
-          - name: AZURE_DEVOPS_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: azure-creds
+                name: "{{inputs.parameters.git_provider}}-creds"
                 key: token
                 optional: true
           - name: WEBHOOK_SECRET

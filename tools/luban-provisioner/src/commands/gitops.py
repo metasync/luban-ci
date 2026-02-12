@@ -1,10 +1,8 @@
 import sys
 import os
 import click
-from cookiecutter.main import cookiecutter
-from providers.github import GitHubProvider
-from providers.azure import AzureProvider
-from utils import initialize_git_repo, create_and_push_branch
+from utils import initialize_git_repo, create_and_push_branch, render_template
+from provider_factory import get_git_provider, get_remote_url
 
 @click.command(name='gitops')
 @click.option('--project-name', required=True, help='Name of the project/repo')
@@ -17,53 +15,20 @@ from utils import initialize_git_repo, create_and_push_branch
 @click.option('--default-image-tag', required=False, help='Default image tag')
 @click.option('--git-organization', default='metasync', help='Git Organization')
 @click.option('--git-provider', default='github', help='Git Provider')
-@click.option('--github-token', envvar='GITHUB_TOKEN', help='GitHub Token')
-@click.option('--azure-token', envvar='AZURE_DEVOPS_TOKEN', help='Azure DevOps Token')
-@click.option('--git-server', default=None, help='Git Server Domain (e.g., github.com, dev.azure.com)')
-def gitops(project_name, application_name, output_dir, container_port, service_port, domain_suffix, default_image_name, default_image_tag, git_organization, git_provider, github_token, azure_token, git_server):
+@click.option('--git-token', envvar='GIT_TOKEN', required=True, help='Git Token (env: GIT_TOKEN)')
+@click.option('--git-server', envvar='GIT_SERVER', required=True, help='Git Server Domain (env: GIT_SERVER)')
+def gitops(project_name, application_name, output_dir, container_port, service_port, domain_suffix, default_image_name, default_image_tag, git_organization, git_provider, git_token, git_server):
     """Provision GitOps Repository"""
     
     # Git Provider Logic - Pre-check
     org = git_organization if git_organization else project_name
     repo_name = f"{application_name}-gitops"
-    provider = None
-
-    # Resolve defaults if git_server not provided
-    if not git_server:
-        if git_provider == 'github':
-            git_server = 'github.com'
-        elif git_provider == 'azure':
-            git_server = 'dev.azure.com'
-
-    match git_provider:
-        case 'github':
-            if not github_token:
-                click.echo("GITHUB_TOKEN not provided", err=True)
-                sys.exit(1)
-            
-            provider = GitHubProvider(github_token, git_server=git_server)
-            
-            if provider.repo_exists(org, repo_name):
-                click.echo(f"Repository {org}/{repo_name} already exists. Skipping.")
-                sys.exit(0)
-
-        case 'azure':
-            if not azure_token:
-                click.echo("AZURE_DEVOPS_TOKEN not provided", err=True)
-                sys.exit(1)
-            
-            # Azure DevOps uses Organization and Project hierarchy.
-            # We assume git_organization is the ADO Organization and project_name is the ADO Project.
-            click.echo(f"Connecting to Azure DevOps Organization: '{org}', Project: '{project_name}'")
-            provider = AzureProvider(azure_token, organization=org, project=project_name, git_server=git_server)
-            
-            if provider.repo_exists(repo_name):
-                click.echo(f"Repository {repo_name} already exists in project {project_name}. Skipping.")
-                sys.exit(0)
-        
-        case _:
-            click.echo(f"Unsupported git provider: {git_provider}", err=True)
-            sys.exit(1)
+    
+    provider = get_git_provider(git_provider, git_token, server=git_server, organization=org, project=project_name)
+    
+    if provider.repo_exists(repo_name):
+        click.echo(f"Repository {repo_name} already exists. Skipping.")
+        sys.exit(0)
 
     template_path = "/app/templates/gitops/luban-gitops-template"
     
@@ -84,15 +49,8 @@ def gitops(project_name, application_name, output_dir, container_port, service_p
     click.echo(f"Context: {extra_context}")
     
     try:
-        cookiecutter(
-            template_path,
-            no_input=True,
-            output_dir=output_dir,
-            extra_context=extra_context
-        )
-        click.echo(f"Successfully generated template in {output_dir}/{repo_name}")
+        render_template(template_path, output_dir, extra_context)
     except Exception as e:
-        click.echo(f"Error generating template: {e}", err=True)
         sys.exit(1)
 
     # Post-provisioning: Push to Git
@@ -105,16 +63,7 @@ def gitops(project_name, application_name, output_dir, container_port, service_p
             
         # Init and Push Main
         repo_dir = os.path.join(output_dir, repo_name)
-        remote_url = ""
-
-        match git_provider:
-            case 'github':
-                remote_url = f"https://{github_token}@{git_server}/{org}/{repo_name}.git"
-            case 'azure':
-                # Use HTTPS with embedded credentials for provisioning
-                # Format: https://{token}@{git_server}/{org}/{project}/_git/{repo}
-                # Azure DevOps allows arbitrary username with PAT as password.
-                remote_url = f"https://git:{azure_token}@{git_server}/{org}/{project_name}/_git/{repo_name}"
+        remote_url = get_remote_url(git_provider, git_token, git_server, org, project_name, repo_name)
 
         initialize_git_repo(repo_dir, remote_url)
         
@@ -122,9 +71,5 @@ def gitops(project_name, application_name, output_dir, container_port, service_p
         create_and_push_branch(repo_dir, "develop")
         
         # Configure Settings
-        if git_provider == 'github':
-            provider.set_default_branch(org, repo_name, "develop")
-            provider.enable_branch_protection(org, repo_name, "main")
-        elif git_provider == 'azure':
-            provider.set_default_branch(repo.get('id'), "develop")
-            provider.enable_branch_protection(repo.get('id'), "main")
+        provider.set_default_branch(repo, "develop")
+        provider.enable_branch_protection(repo, "main")

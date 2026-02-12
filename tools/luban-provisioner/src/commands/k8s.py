@@ -6,7 +6,7 @@ import subprocess
 import traceback
 import click
 from cookiecutter.main import cookiecutter
-from utils import copy_secrets, patch_default_service_account
+from utils import copy_secrets, copy_configmaps, patch_default_service_account
 
 @click.command(name='k8s')
 @click.option('--project-name', required=True, help='Name of the project')
@@ -54,12 +54,11 @@ def k8s(project_name, environment, git_org, git_provider, admin_groups, develope
 
     # Template directory
     template_dir = "/app/templates/project"
-    output_dir = '/tmp/luban-provisioner'
     
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-    os.makedirs(output_dir)
-
+    # Use a temporary directory for output to avoid collisions/permissions issues
+    import tempfile
+    output_dir = tempfile.mkdtemp(prefix='luban-provisioner-')
+    
     # Generate
     try:
         cookiecutter(
@@ -102,6 +101,9 @@ def k8s(project_name, environment, git_org, git_provider, admin_groups, develope
     # Note: We assume the secret exists in 'luban-ci' namespace.
     copy_secrets(target_ns, "luban-ci", image_pull_secret)
     
+    # Copy ConfigMaps
+    copy_configmaps(target_ns, "luban-ci")
+
     # Also copy azure-creds/azure-ssh-creds if available?
     # The previous logic in utils.py copy_secrets might handle it if we pass it?
     # utils.py copy_secrets only copies the *specific* secret passed.

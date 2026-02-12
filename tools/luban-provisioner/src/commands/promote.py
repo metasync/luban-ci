@@ -3,18 +3,17 @@ import click
 import shutil
 import tempfile
 import subprocess
-from providers.github import GitHubProvider
-from providers.azure import AzureProvider
+from ruamel.yaml import YAML
+from provider_factory import get_git_provider, get_remote_url
 
 @click.command()
 @click.option('--app-name', required=True, help='Application name')
 @click.option('--git-organization', required=True, help='Git Organization')
 @click.option('--git-provider', required=True, type=click.Choice(['github', 'azure']), help='Git Provider')
-@click.option('--token', required=True, envvar='GIT_TOKEN', help='Git Token (env: GIT_TOKEN)')
-@click.option('--git-server', default=None, help='Git Server (optional)')
-@click.option('--azure-server', default=None, help='Azure DevOps Server (optional)')
+@click.option('--git-token', required=True, envvar='GIT_TOKEN', help='Git Token (env: GIT_TOKEN)')
+@click.option('--git-server', required=True, envvar='GIT_SERVER', help='Git Server (env: GIT_SERVER)')
 @click.option('--project-name', required=True, help='Project Name (for Azure)')
-def promote(app_name, git_organization, git_provider, token, git_server, azure_server, project_name):
+def promote(app_name, git_organization, git_provider, git_token, git_server, project_name):
     """
     Promote an application from Sandbox (snd) to Production (prd).
     1. Clone GitOps repo.
@@ -27,51 +26,18 @@ def promote(app_name, git_organization, git_provider, token, git_server, azure_s
     gitops_repo_name = f"{app_name}-gitops"
     
     # Provider Initialization
-    provider = None
-    repo_url = ""
+    # Logic for Azure Organization vs Project
+    # We assume 'git_organization' corresponds to Azure Organization
+    # and 'project_name' corresponds to Azure Project.
     
-    if git_provider == 'github':
-        server = git_server if git_server else "github.com"
-        # If git_organization is empty, use project_name as org/user
-        org = git_organization if git_organization else project_name
-        provider = GitHubProvider(token, git_server=server)
-        repo_url = f"https://{server}/{org}/{gitops_repo_name}.git"
-        
-        # Configure Git Creds for HTTPS
-        subprocess.run(["git", "config", "--global", "credential.helper", "store"], check=True)
-        with open(os.path.expanduser("~/.git-credentials"), "w") as f:
-            f.write(f"https://git:{token}@{server}\n")
-            
-    elif git_provider == 'azure':
-        server = azure_server if azure_server else "dev.azure.com"
-        # Logic for Azure Organization vs Project
-        # We assume 'git_organization' corresponds to Azure Organization
-        # and 'project_name' corresponds to Azure Project.
-        # If git_organization is empty, we might have an issue if project_name is just "dwt".
-        # We need both.
-        
-        az_org = git_organization
-        az_proj = project_name
-        
-        # Fallback logic if org is missing (try to parse from project_name if it looks like org/proj?)
-        if not az_org:
-            # If project_name has a slash, maybe it's org/proj
-            if "/" in project_name:
-                az_org, az_proj = project_name.split("/", 1)
-            else:
-                # Critical error for Azure
-                click.echo("Error: git_organization is required for Azure DevOps.", err=True)
-                exit(1)
-                
-        provider = AzureProvider(token, organization=az_org, project=az_proj, git_server=server)
-        # Correct URL format for Azure: https://{server}/{org}/{project}/_git/{repo}
-        # Assuming project_name argument is the Project (az_proj)
-        repo_url = f"https://{server}/{az_org}/{az_proj}/_git/{gitops_repo_name}"
-        
-        # Configure Git Creds for HTTPS
-        subprocess.run(["git", "config", "--global", "credential.helper", "store"], check=True)
-        with open(os.path.expanduser("~/.git-credentials"), "w") as f:
-            f.write(f"https://git:{token}@{server}\n")
+    org = git_organization if git_organization else project_name
+    provider = get_git_provider(git_provider, git_token, server=git_server, organization=org, project=project_name)
+    repo_url = get_remote_url(git_provider, git_token, git_server, org, project_name, gitops_repo_name)
+    
+    # Configure Git Creds for HTTPS
+    subprocess.run(["git", "config", "--global", "credential.helper", "store"], check=True)
+    with open(os.path.expanduser("~/.git-credentials"), "w") as f:
+        f.write(f"https://git:{git_token}@{git_server}\n")
 
     # Git Config
     subprocess.run(["git", "config", "--global", "user.email", "ci@luban.com"], check=True)
@@ -179,20 +145,10 @@ def promote(app_name, git_organization, git_provider, token, git_server, azure_s
     pr_title = f"Promote {app_name} to prd ({target_tag})"
     pr_body = f"Automated promotion request from snd (develop) to prd (main).<br><br>**App**: {app_name}<br>**Tag**: {target_tag}"
     
-    if git_provider == 'github':
-        provider.create_pull_request(
-            owner=org,
-            repo_name=gitops_repo_name,
-            title=pr_title,
-            body=pr_body,
-            head="develop",
-            base="main"
-        )
-    elif git_provider == 'azure':
-        provider.create_pull_request(
-            repo_name=gitops_repo_name,
-            title=pr_title,
-            description=pr_body,
-            source_ref="develop",
-            target_ref="main"
-        )
+    provider.create_pull_request(
+        repo_identifier=gitops_repo_name,
+        title=pr_title,
+        description=pr_body,
+        source_ref="develop",
+        target_ref="main"
+    )

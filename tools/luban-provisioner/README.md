@@ -2,9 +2,12 @@
 
 Unified provisioning tool for Luban CI/CD platform.
 This tool consolidates functionality for provisioning:
+
 -   **GitOps Repositories**: Scaffolding ArgoCD application manifests.
 -   **Source Repositories**: Scaffolding application source code (Python, etc.).
--   **Project Namespaces**: Bootstrapping Kubernetes namespaces with RBAC and secrets.
+-   **Project Setup**: initializing Git organizations/projects.
+-   **Kubernetes Resources**: Bootstrapping Kubernetes namespaces with RBAC and secrets.
+-   **Promotion**: Automating the promotion of applications from Sandbox (snd) to Production (prd).
 
 ## Architecture
 
@@ -15,20 +18,51 @@ It runs inside a container (Alpine-based) with `kubectl`, `git`, `curl`, and `jq
 
 -   `src/`: Python source code.
     -   `main.py`: Entrypoint.
-    -   `commands/`: Subcommands (`gitops`, `source`, `project`).
-    -   `providers/`: Git provider logic (GitHub API).
+    -   `commands/`: Subcommands (`gitops`, `source`, `project`, `k8s`, `promote`).
+    -   `providers/`: Git provider logic (GitHub, Azure DevOps).
     -   `utils.py`: Shared utilities.
+    -   `provider_factory.py`: Factory for Git provider instantiation.
 -   `templates/`: Cookiecutter templates.
     -   `gitops/`: Templates for GitOps repos.
     -   `source/`: Templates for Source repos.
     -   `project/`: Templates for Namespaces.
 -   `Dockerfile`: Build definition for the tool.
 
+## Configuration
+
+The tool requires the following environment variables for Git provider authentication:
+
+-   `GIT_TOKEN`: Personal Access Token (PAT) for GitHub or Azure DevOps.
+-   `GIT_SERVER`: The Git server domain (e.g., `github.com` or `dev.azure.com`).
+
 ## Usage
 
-### GitOps Provisioning
+### 1. Project Setup (Git Provider)
 
-Provision a GitOps repository, create it on GitHub, push the code, and configure branch protection.
+Ensure the Git organization or project exists on the provider (GitHub/Azure).
+
+```bash
+python3 src/main.py project \
+    --project-name my-project \
+    --git-org my-org \
+    --git-provider github
+```
+
+### 2. Kubernetes Provisioning
+
+Bootstrap a Kubernetes namespace with RBAC, resource quotas, and copied secrets.
+
+```bash
+python3 src/main.py k8s \
+    --project-name my-project \
+    --environment snd \
+    --git-org my-org \
+    --image-pull-secret harbor-creds
+```
+
+### 3. GitOps Provisioning
+
+Provision a GitOps repository, create it on the provider, push the code, and configure branch protection.
 
 ```bash
 python3 src/main.py gitops \
@@ -42,9 +76,9 @@ python3 src/main.py gitops \
     --git-provider github
 ```
 
-### Source Provisioning
+### 4. Source Provisioning
 
-Provision a source code repository, create it on GitHub, configure webhooks, and push the code.
+Provision a source code repository, create it on the provider, configure webhooks, and push the code.
 
 ```bash
 python3 src/main.py source \
@@ -55,16 +89,16 @@ python3 src/main.py source \
     --webhook-url https://webhook.example.com
 ```
 
-### Project Provisioning
+### 5. Promotion
 
-Bootstrap a Kubernetes namespace with RBAC, resource quotas, and copied secrets.
+Promote an application from Sandbox (snd) to Production (prd) by updating the image tag in the GitOps repository and creating a Pull Request.
 
 ```bash
-python3 src/main.py project \
-    --project-name my-project \
-    --environment snd \
-    --git-org my-org \
-    --image-pull-secret harbor-creds
+python3 src/main.py promote \
+    --app-name my-app \
+    --git-organization my-org \
+    --git-provider github \
+    --project-name my-project
 ```
 
 ## Development
