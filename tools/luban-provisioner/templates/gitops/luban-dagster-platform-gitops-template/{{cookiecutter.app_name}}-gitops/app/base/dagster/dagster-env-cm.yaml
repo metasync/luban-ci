@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dagster-env
+data:
+  DAGSTER_HOME: "/tmp/dagster_home"
+  DAGSTER_PG_HOST: "{{cookiecutter.app_name}}-postgresql"
+  DAGSTER_PG_USER: "postgres"
+  DAGSTER_PG_PORT: "5432"
+  DAGSTER_PG_DB: "postgres"

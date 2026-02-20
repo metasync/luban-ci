@@ -4,6 +4,7 @@ from commands.source import source
 from commands.project import project
 from commands.promote import promote
 from commands.k8s import k8s
+from commands.config import config
 
 @click.group()
 def cli():
@@ -15,6 +16,7 @@ cli.add_command(source)
 cli.add_command(project)
 cli.add_command(promote)
 cli.add_command(k8s)
+cli.add_command(config)
 
 if __name__ == '__main__':
     cli()

@@ -13,3 +13,4 @@ labels:
       app.kubernetes.io/part-of: {{cookiecutter.project_name}}
     includeSelectors: true
     includeTemplates: true
+

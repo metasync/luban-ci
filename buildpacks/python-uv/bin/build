@@ -10,7 +10,7 @@ uv_layer="$CNB_LAYERS_DIR/uv"
 mkdir -p "$uv_layer/bin"
 
 # Determine uv version
-DEFAULT_UV_VERSION="0.9.26"
+DEFAULT_UV_VERSION="0.10.4"
 UV_VERSION="$DEFAULT_UV_VERSION"
 
 if [[ -f ".uv-version" ]]; then
@@ -124,29 +124,44 @@ echo "Installing dependencies with uv..."
 # Ensure we are in the app directory (pwd is usually app dir)
 # If uv.lock exists, use frozen, otherwise generate lock
 if [[ -f "uv.lock" ]]; then
-    uv sync --frozen --no-install-project
+    uv sync --frozen
 else
-    uv sync --no-install-project
+    uv sync
 fi
+
+# Prune cache to keep layer size optimized
+echo "Pruning uv cache..."
+uv cache prune
 
 # 5. Set launch configuration
 echo "Configuring launch..."
 
-# Handle launch configuration from pyproject.toml [project.scripts]
+# Detect Execution Mode from pyproject.toml [tool.luban]
+BP_EXECUTION_MODE="standard"
+if [[ -f "pyproject.toml" ]]; then
+    # Parse bp-execution-mode using sed/grep
+    MODE=$(sed -n '/^\[tool.luban\]/,/^\[/p' pyproject.toml | grep 'bp-execution-mode' | cut -d'=' -f2 | tr -d ' "[:space:]' || true)
+    if [[ -n "$MODE" ]]; then
+        if [[ "$MODE" == "standard" || "$MODE" == "direct" ]]; then
+            BP_EXECUTION_MODE="$MODE"
+            echo "Detected bp-execution-mode: $BP_EXECUTION_MODE"
+        else
+            echo "Error: Invalid bp-execution-mode '$MODE'. Supported modes are 'standard' and 'direct'."
+            exit 1
+        fi
+    fi
+fi
+
+# Detect Script Name from [project.scripts]
+SCRIPT_NAME=""
 if [[ -f "pyproject.toml" ]]; then
     echo "pyproject.toml found. Checking for [project.scripts]..."
 
     # Use bash to parse pyproject.toml for [project.scripts]
-    # 1. Extract section
-    # 2. Filter out section headers
-    # 3. Get keys (before =)
-    # 4. Trim whitespace
-    SCRIPTS=$(sed -n '/^\[project.scripts\]/,/^\[/p' pyproject.toml | grep -v '^\[' | grep '=' | cut -d'=' -f1 | tr -d ' ' | tr '\n' ' ')
+    SCRIPTS=$(sed -n '/^\[project.scripts\]/,/^\[/p' pyproject.toml | grep -v '^\[' | grep '=' | cut -d'=' -f1 | tr -d ' ' | tr '\n' ' ' || true)
     
     # Convert space-separated string to array
     read -r -a SCRIPT_KEYS <<< "$SCRIPTS"
-    
-    SCRIPT_NAME=""
     
     if [[ ${#SCRIPT_KEYS[@]} -eq 0 ]]; then
         echo "No scripts found in [project.scripts]"
@@ -171,24 +186,54 @@ if [[ -f "pyproject.toml" ]]; then
 
     if [[ -n "$SCRIPT_NAME" ]]; then
         echo "Found entry point script: $SCRIPT_NAME"
-        echo "Setting default process 'web' to: uv run $SCRIPT_NAME"
-        
+    fi
+else
+    echo "No pyproject.toml found."
+fi
+
+# Generate launch.toml based on Mode
+if [[ "$BP_EXECUTION_MODE" == "direct" ]]; then
+    echo "Enabling direct execution mode..."
+    
+    # Create direct_exec wrapper
+    cat <<EOF > "$venv_layer/bin/direct_exec"
+#!/bin/sh
+exec "\$@"
+EOF
+    chmod +x "$venv_layer/bin/direct_exec"
+    
+    if [[ -n "$SCRIPT_NAME" ]]; then
+        echo "Setting default process 'scripts' to: direct_exec uv run $SCRIPT_NAME"
         cat <<EOF > "$CNB_LAYERS_DIR/launch.toml"
 [[processes]]
-type = "web"
+type = "scripts"
+command = ["$venv_layer/bin/direct_exec", "uv", "run", "$SCRIPT_NAME"]
+default = true
+EOF
+    else
+        echo "No script found. Setting default process 'scripts' to: direct_exec (ad-hoc)"
+        cat <<EOF > "$CNB_LAYERS_DIR/launch.toml"
+[[processes]]
+type = "scripts"
+command = ["$venv_layer/bin/direct_exec"]
+default = true
+EOF
+    fi
+
+else
+    # Standard Mode
+    if [[ -n "$SCRIPT_NAME" ]]; then
+        echo "Setting default process 'scripts' to: uv run $SCRIPT_NAME"
+        cat <<EOF > "$CNB_LAYERS_DIR/launch.toml"
+[[processes]]
+type = "scripts"
 command = ["uv", "run", "$SCRIPT_NAME"]
 default = true
 EOF
     else
-        echo "No [project.scripts] found or unable to determine entry point."
-        # We don't set a default process via Procfile anymore.
-        # Users should provide the start command via Kubernetes Deployment 'command' or 'args'.
-        echo "No default launch process set. Please specify an args or command in your container configuration."
+        echo "No scripts found. No default process set."
+        echo "Please specify an args or command in your container configuration."
     fi
-else
-    # We don't set a default process via Procfile anymore.
-    # Users should provide the start command via Kubernetes Deployment 'command' or 'args'.
-    echo "No pyproject.toml found. Please specify an args or command in your container configuration."
 fi
 
 echo "Build complete."

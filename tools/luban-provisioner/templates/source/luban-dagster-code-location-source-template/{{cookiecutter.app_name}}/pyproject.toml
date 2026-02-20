@@ -1,0 +1,21 @@
+[project]
+name = "{{cookiecutter.app_name}}"
+version = "0.1.0"
+description = "Dagster Code Location for {{cookiecutter.app_name}}"
+readme = "README.md"
+authors = [
+    { name = "{{cookiecutter.author_name}}", email = "{{cookiecutter.author_email}}" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "dagster=={{cookiecutter.dagster_version}}",
+    "dagster-postgres",
+    "dagster-k8s"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.luban]
+bp-execution-mode = "direct"

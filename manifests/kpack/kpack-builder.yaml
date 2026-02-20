@@ -4,7 +4,7 @@ metadata:
   name: luban-store
 spec:
   sources:
-  - image: quay.io/luban-ci/python-uv:0.0.11
+  - image: quay.io/luban-ci/python-uv:0.0.30
 ---
 apiVersion: kpack.io/v1alpha2
 kind: ClusterBuilder

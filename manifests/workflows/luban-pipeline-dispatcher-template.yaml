@@ -24,6 +24,11 @@ spec:
       value: "github"
     - name: git_creds_secret
       value: "github-creds"
+    - name: gitops_utils_image
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: gitops_utils_image
 
   templates:
   - name: dispatch
@@ -36,7 +41,7 @@ spec:
       - name: git_provider
       - name: git_creds_secret
     container:
-      image: quay.io/luban-ci/gitops-utils:0.3.5
+      image: "{{workflow.parameters.gitops_utils_image}}"
       # Inject configuration from luban-config in the local namespace (luban-ci)
       env:
         - name: REGISTRY_SERVER
@@ -44,18 +49,6 @@ spec:
             configMapKeyRef:
               name: luban-config
               key: registry_server
-              optional: true
-        - name: DEFAULT_IMAGE_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: luban-config
-              key: default_image_name
-              optional: true
-        - name: DEFAULT_IMAGE_TAG
-          valueFrom:
-            configMapKeyRef:
-              name: luban-config
-              key: default_image_tag
               optional: true
       command: [sh, -c]
       args:
@@ -111,6 +104,4 @@ spec:
           -p git_creds_secret="{{inputs.parameters.git_creds_secret}}" \
           -p deploy_env="$DEPLOY_ENV" \
           -p registry_server="$REGISTRY_SERVER" \
-          -p default_image_name="$DEFAULT_IMAGE_NAME" \
-          -p default_image_tag="$DEFAULT_IMAGE_TAG" \
           --labels "app={{inputs.parameters.app_name}}"

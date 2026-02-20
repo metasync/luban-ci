@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{cookiecutter.app_name}}-webserver"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "{{cookiecutter.app_name}}-webserver"
+  template:
+    metadata:
+      labels:
+        app: "{{cookiecutter.app_name}}-webserver"
+    spec:
+      serviceAccountName: "{{cookiecutter.app_name}}-sa"
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      initContainers:
+        - name: check-db-ready
+          image: postgres:{{cookiecutter.postgres_version}}-alpine
+          imagePullPolicy: IfNotPresent
+          command: ['sh', '-c', 'until pg_isready -h $DAGSTER_PG_HOST -p $DAGSTER_PG_PORT -U $DAGSTER_PG_USER; do echo waiting for database; sleep 2; done;']
+          envFrom:
+            - configMapRef:
+                name: dagster-env
+      containers:
+        - name: dagster-webserver
+          image: "{{cookiecutter.registry_server}}/{{cookiecutter.project_name}}/{{cookiecutter.app_name}}:latest"
+          imagePullPolicy: Always
+          args: ["dagster-webserver", "-h", "0.0.0.0", "-p", "{{cookiecutter.platform_port}}", "-w", "/opt/dagster/dagster_home/workspace/workspace.yaml"]
+          envFrom:
+            - configMapRef:
+                name: dagster-env
+          env:
+            - name: DAGSTER_K8S_PIPELINE_RUN_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: DAGSTER_PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dagster-postgresql-secret
+                  key: postgresql-password
+          ports:
+            - containerPort: {{cookiecutter.platform_port}}
+          readinessProbe:
+            httpGet:
+              path: /server_info
+              port: {{cookiecutter.platform_port}}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /server_info
+              port: {{cookiecutter.platform_port}}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: dagster-home
+              mountPath: /tmp/dagster_home
+            - name: dagster-instance
+              mountPath: /tmp/dagster_home/dagster.yaml
+              subPath: dagster.yaml
+            - name: dagster-workspace
+              mountPath: /opt/dagster/dagster_home/workspace
+      volumes:
+        - name: dagster-home
+          emptyDir: {}
+        - name: dagster-instance
+          configMap:
+            name: dagster-instance
+        - name: dagster-workspace
+          configMap:
+            name: dagster-workspace

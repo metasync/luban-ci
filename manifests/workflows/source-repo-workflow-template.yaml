@@ -25,34 +25,29 @@ spec:
         value: "metasync"
       - name: git_provider
         description: "Git Provider (github, gitlab, etc.)"
-        value: "github"
+        value: "azure"
         enum:
           - "github"
           - "azure"
-      - name: gitops_utils_image
-        description: "Image for GitOps utility tools"
-        value: "quay.io/luban-ci/gitops-utils:0.3.7"
+      - name: config_file
+        description: "Path to configuration file"
+        value: ""
       - name: luban_provisioner_image
         description: "Image for Luban provisioner tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.55"
-      - name: webhook_url
-        description: "Webhook URL for CI integration"
         valueFrom:
           configMapKeyRef:
             name: luban-config
-            key: webhook_url
-            optional: true
+            key: luban_provisioner_image
 
   templates:
     - name: provision-source-repo
       inputs:
         parameters:
-          - name: project_name
-          - name: application_name
-          - name: git_organization
-          - name: git_provider
-          - name: luban_provisioner_image
-          - name: webhook_url
+        - name: project_name
+        - name: application_name
+        - name: git_organization
+        - name: git_provider
+        - name: config_file
       
       dag:
         tasks:
@@ -68,10 +63,8 @@ spec:
                   value: "{{inputs.parameters.git_organization}}"
                 - name: git_provider
                   value: "{{inputs.parameters.git_provider}}"
-                - name: luban_provisioner_image
-                  value: "{{inputs.parameters.luban_provisioner_image}}"
-                - name: webhook_url
-                  value: "{{inputs.parameters.webhook_url}}"
+                - name: config_file
+                  value: "{{inputs.parameters.config_file}}"
 
     - name: provision-repo
       inputs:
@@ -80,10 +73,9 @@ spec:
           - name: application_name
           - name: git_organization
           - name: git_provider
-          - name: luban_provisioner_image
-          - name: webhook_url
+          - name: config_file
       container:
-        image: "{{inputs.parameters.luban_provisioner_image}}"
+        image: "{{workflow.parameters.luban_provisioner_image}}"
         imagePullPolicy: Always
         command: ["sh", "-c"]
         args:
@@ -94,14 +86,14 @@ spec:
               --output-dir "/workdir" \
               --git-organization "{{inputs.parameters.git_organization}}" \
               --git-provider "{{inputs.parameters.git_provider}}" \
-              --webhook-url "{{inputs.parameters.webhook_url}}" \
-              --git-server "$GIT_SERVER"
+              --git-server "$GIT_SERVER" \
+              --config-file "{{inputs.parameters.config_file}}"
         env:
           - name: GIT_SERVER
             valueFrom:
               configMapKeyRef:
-                name: "{{inputs.parameters.git_provider}}-config"
-                key: server
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_server"
                 optional: true
           - name: GIT_TOKEN
             valueFrom:

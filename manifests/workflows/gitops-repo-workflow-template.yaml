@@ -17,67 +17,29 @@ spec:
         value: "metasync"
       - name: git_provider
         description: "Git Provider (github, gitlab, etc.)"
-        value: "github"
+        value: "azure"
         enum:
           - "github"
           - "azure"
-      - name: gitops_utils_image
-        description: "Image for GitOps utility tools"
-        value: "quay.io/luban-ci/gitops-utils:0.3.7"
+      - name: config_file
+        description: "Path to configuration file"
+        value: ""
       - name: luban_provisioner_image
         description: "Image for the template rendering tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.55"
-      # Configuration (Defaults Managed Here)
-      - name: container_port
-        description: "Port exposed by the container"
         valueFrom:
           configMapKeyRef:
             name: luban-config
-            key: default_container_port
-            optional: true
-      - name: service_port
-        description: "Port exposed by the service"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: default_service_port
-            optional: true
-      - name: domain_suffix
-        description: "Domain suffix for ingress/routes"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: domain_suffix
-            optional: true
-      - name: default_image_name
-        description: "Default placeholder image name"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: default_image_name
-            optional: true
-      - name: default_image_tag
-        description: "Default placeholder image tag"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: default_image_tag
-            optional: true
+            key: luban_provisioner_image
 
   templates:
     - name: provision-gitops-repo
       inputs:
         parameters:
-          - name: project_name
-          - name: application_name
-          - name: git_organization
-          - name: git_provider
-          - name: luban_provisioner_image
-          - name: container_port
-          - name: service_port
-          - name: domain_suffix
-          - name: default_image_name
-          - name: default_image_tag
+        - name: project_name
+        - name: application_name
+        - name: git_organization
+        - name: git_provider
+        - name: config_file
       
       dag:
         tasks:
@@ -93,18 +55,8 @@ spec:
                   value: "{{inputs.parameters.git_organization}}"
                 - name: git_provider
                   value: "{{inputs.parameters.git_provider}}"
-                - name: luban_provisioner_image
-                  value: "{{inputs.parameters.luban_provisioner_image}}"
-                - name: container_port
-                  value: "{{inputs.parameters.container_port}}"
-                - name: service_port
-                  value: "{{inputs.parameters.service_port}}"
-                - name: domain_suffix
-                  value: "{{inputs.parameters.domain_suffix}}"
-                - name: default_image_name
-                  value: "{{inputs.parameters.default_image_name}}"
-                - name: default_image_tag
-                  value: "{{inputs.parameters.default_image_tag}}"
+                - name: config_file
+                  value: "{{inputs.parameters.config_file}}"
 
     - name: provision-repo
       inputs:
@@ -113,14 +65,9 @@ spec:
           - name: application_name
           - name: git_organization
           - name: git_provider
-          - name: luban_provisioner_image
-          - name: container_port
-          - name: service_port
-          - name: domain_suffix
-          - name: default_image_name
-          - name: default_image_tag
+          - name: config_file
       container:
-        image: "{{inputs.parameters.luban_provisioner_image}}"
+        image: "{{workflow.parameters.luban_provisioner_image}}"
         imagePullPolicy: Always
         command: ["sh", "-c"]
         args:
@@ -129,20 +76,16 @@ spec:
               --project-name "{{inputs.parameters.project_name}}" \
               --application-name "{{inputs.parameters.application_name}}" \
               --output-dir "/workdir" \
-              --container-port "{{inputs.parameters.container_port}}" \
-              --service-port "{{inputs.parameters.service_port}}" \
-              --domain-suffix "{{inputs.parameters.domain_suffix}}" \
-              --default-image-name "{{inputs.parameters.default_image_name}}" \
-              --default-image-tag "{{inputs.parameters.default_image_tag}}" \
               --git-organization "{{inputs.parameters.git_organization}}" \
               --git-provider "{{inputs.parameters.git_provider}}" \
-              --git-server "$GIT_SERVER"
+              --git-server "$GIT_SERVER" \
+              --config-file "{{inputs.parameters.config_file}}"
         env:
           - name: GIT_SERVER
             valueFrom:
               configMapKeyRef:
-                name: "{{inputs.parameters.git_provider}}-config"
-                key: server
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_server"
                 optional: true
           - name: GIT_TOKEN
             valueFrom:

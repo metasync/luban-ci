@@ -6,16 +6,21 @@ metadata:
   labels:
     workflows.argoproj.io/configmap-type: Parameter
 data:
-  default_image_name: "harbor.luban.metasync.cc/metasync/hello-world-py"
-  default_image_tag: "latest"
-  # default_image_name: "quay.io/luban-ci/luban-hello-world-py"
-  # default_image_tag: "latest"
-  default_container_port: "8080"
-  default_service_port: "80"
+  # Domain suffix
   domain_suffix: "apps.metasync.cc"
+
+  # Registry server
   registry_server: "harbor.luban.metasync.cc"
   image_pull_secret: "harbor-ro-creds"
-  # webhook_url: "https://webhook.luban.metasync.cc"
+
+  # Web Hook URL
   webhook_url: "https://webhook-luban.metasync.cc"
+  # webhook_url: "https://webhook.luban.metasync.cc"
+
+  # Git providers
   github_server: "github.com"
   azure_server: "dev.azure.com"
+
+  # Tooling Images
+  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.1.196"
+  gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.3.7"

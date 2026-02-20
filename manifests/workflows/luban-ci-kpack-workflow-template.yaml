@@ -63,21 +63,10 @@ spec:
       value: "snd"
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
-      value: "quay.io/luban-ci/gitops-utils:0.3.5"
-    - name: default_image_name
-      description: "Default placeholder image name to replace"
       valueFrom:
         configMapKeyRef:
           name: luban-config
-          key: default_image_name
-          optional: true
-    - name: default_image_tag
-      description: "Default placeholder image tag to replace"
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: default_image_tag
-          optional: true
+          key: gitops_utils_image
 
   volumeClaimTemplates:
   - metadata:
@@ -110,10 +99,6 @@ spec:
         template: git-update
         arguments:
           parameters:
-          - name: default_image_name
-            value: "{{workflow.parameters.default_image_name}}"
-          - name: default_image_tag
-            value: "{{workflow.parameters.default_image_tag}}"
           - name: namespace
             value: "{{workflow.parameters.registry_namespace}}"
 
@@ -295,6 +280,10 @@ spec:
               revision: "$REVISION"
             subPath: "$SUB_PATH_FLAG_VALUE"
           serviceAccountName: workflow-runner
+          build:
+            env:
+            - name: CI_TAG_UPDATE
+              value: "${IMAGE_TAG}"
         EOF
         
         echo "Image resource updated. Waiting for propagation..."
@@ -322,8 +311,6 @@ spec:
   - name: git-update
     inputs:
       parameters:
-      - name: default_image_name
-      - name: default_image_tag
       - name: namespace
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
@@ -397,51 +384,19 @@ spec:
         fi
         export IMAGE_TAG
         
-        DEFAULT_IMAGE_NAME="{{inputs.parameters.default_image_name}}"
-        
         echo "Updating GitOps repo..."
         
-        # 1. Replace Placeholder Image Name (Day 1 Migration)
-        if [ -n "$DEFAULT_IMAGE_NAME" ]; then
-           echo "Checking for default image placeholder: $DEFAULT_IMAGE_NAME"
-           
-           # Replace in Base (Deployment and Kustomization)
-           if [ -d "$BASE_DIR" ]; then
-              if grep -r "$DEFAULT_IMAGE_NAME" "$BASE_DIR" >/dev/null 2>&1; then
-                 echo "Replacing placeholder in Base..."
-                 find "$BASE_DIR" -name "*.yaml" -type f -exec sed -i "s|$DEFAULT_IMAGE_NAME|$APP_IMAGE_NAME|g" {} +
-              fi
-           fi
-           
-           # Replace in ALL Overlays (to ensure future environments are updated)
-           # We search in app/overlays/*
-           OVERLAYS_DIR="app/overlays"
-           if [ -d "$OVERLAYS_DIR" ]; then
-              echo "Scanning overlays for placeholder..."
-              find "$OVERLAYS_DIR" -name "*.yaml" -type f | while read -r FILE; do
-                 if grep "$DEFAULT_IMAGE_NAME" "$FILE" >/dev/null 2>&1; then
-                    echo "Replacing placeholder in $FILE..."
-                    sed -i "s|$DEFAULT_IMAGE_NAME|$APP_IMAGE_NAME|g" "$FILE"
-                 fi
-              done
-           fi
-        fi
-        
-        # 2. Update Image Tag
+        # Update Image Tag
         echo "Updating image tag to $IMAGE_TAG..."
+        
+        # Check if entry exists for APP_IMAGE_NAME
         if yq -e '.images[] | select(.name == env(APP_IMAGE_NAME))' "$KUST_PATH" >/dev/null 2>&1; then
-           yq -i '(.images[] | select(.name == env(APP_IMAGE_NAME))).newTag = env(IMAGE_TAG)' "$KUST_PATH"
-        else
-           # Fallback: Initialize images list if empty or missing
-           if [ "$(yq '.images | length' "$KUST_PATH")" = "0" ]; then
-              echo "Initializing Overlay images list..."
-              yq -i ".images += [{\"name\": env(APP_IMAGE_NAME), \"newTag\": env(IMAGE_TAG)}]" "$KUST_PATH"
-           else
-              # Images list exists but no match found. Append new entry.
-              echo "Image entry not found. Appending..."
-              yq -i ".images += [{\"name\": env(APP_IMAGE_NAME), \"newTag\": env(IMAGE_TAG)}]" "$KUST_PATH"
-           fi
-        fi
+            # Update newTag AND delete newName (to switch from placeholder alias to real image)
+            yq -i 'with(.images[]; select(.name == env(APP_IMAGE_NAME)) | .newTag = env(IMAGE_TAG) | del(.newName))' "$KUST_PATH"
+         else
+            echo "Error: Image entry for $APP_IMAGE_NAME not found in $KUST_PATH. Please ensure the GitOps repository is correctly provisioned with an images block for this application."
+            exit 1
+         fi
         
         if git diff --quiet; then
           echo "No changes to commit."

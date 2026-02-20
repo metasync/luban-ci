@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: luban-python-config
+  namespace: luban-ci
+data:
+  container_port: "8080"
+  service_port: "8080"
+  default_image_name: "harbor.luban.metasync.cc/metasync/hello-world-py"
+  default_image_tag: "latest"
+  template_type: "python"

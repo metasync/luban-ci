@@ -71,3 +71,56 @@ A unified CLI tool (`luban-provisioner`) automates the setup of:
 -   **GitOps Repositories:** ArgoCD application manifests (Base/Overlays).
 -   **Source Repositories:** Application scaffolding.
 -   **Provider Abstraction:** Seamless support for both GitHub and Azure DevOps.
+
+## 7. Dagster Integration
+
+### 7.1 Architecture Overview
+Dagster is integrated as the orchestration layer for data pipeline workflows within the luban-ci ecosystem. The integration follows a GitOps approach with three distinct deployment patterns:
+
+- **Platform GitOps:** Core Dagster infrastructure managed centrally
+- **Code Location Source:** Development and testing environments for data engineers
+- **Code Location GitOps:** Production-grade data pipelines with full GitOps automation
+
+### 7.2 Deployment Templates
+
+#### Platform GitOps Template
+Manages the core Dagster infrastructure components:
+- Dagster daemon and webserver deployment
+- PostgreSQL metadata database
+- Shared compute resources and configuration
+- Cross-namespace RBAC and service mesh integration
+
+#### Code Location Source Template
+Provides isolated development environments:
+- Individual namespace per data engineering team
+- Direct Git repository integration for rapid iteration
+- Sandbox compute resources with development-friendly policies
+- Integration with existing CI/CD workflows for testing
+
+#### Code Location GitOps Template
+Production-ready pipeline deployment:
+- Full GitOps automation with Argo CD integration
+- Separate namespaces for staging and production
+- Resource quotas and security policies enforcement
+- Automated promotion workflows aligned with application deployment patterns
+
+### 7.3 Database Architecture
+**PostgreSQL** is selected as the primary database for Dagster metadata storage:
+- Centralized metadata repository for all pipeline definitions and execution history
+- Integration with existing PostgreSQL operator from luban-bootstrapper
+- Automated backup and disaster recovery through established patterns
+- Connection pooling and performance optimization for high-throughput scenarios
+
+### 7.4 Exposure Strategy
+Dagster services are exposed through **Envoy Gateway** following established patterns:
+- Web UI accessible via authenticated routes with SSO integration
+- gRPC endpoints for programmatic access with mTLS authentication
+- Separate ingress configurations for development, staging, and production environments
+- Integration with existing monitoring and logging infrastructure
+
+### 7.5 Integration with Existing CI/CD
+Dagster pipelines participate in the established GitOps workflow:
+- Pipeline definitions stored in Git repositories alongside application code
+- Automated testing and validation through Argo Workflows
+- Promotion from sandbox to production following the same approval patterns
+- Resource provisioning and namespace management through luban-provisioner

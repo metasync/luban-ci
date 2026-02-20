@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: luban-dagster-config
+  namespace: luban-ci
+data:
+  platform_port: "3000"
+  code_location_port: "4000"
+  dagster_version: "1.12.14"
+  postgres_version: "18.2"

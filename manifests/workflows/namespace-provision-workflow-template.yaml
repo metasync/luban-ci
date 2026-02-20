@@ -14,29 +14,35 @@ spec:
       - name: environment
       - name: git_organization
       - name: git_provider
+        value: "azure"
         enum:
           - "github"
           - "azure"
       - name: admin_groups
       - name: developer_groups
-      - name: image_pull_secret
       - name: create_test_users
         value: "no"
         enum:
         - "yes"
         - "no"
-      - name: gitops_utils_image
-        description: "Image for GitOps utility tools"
-        value: "quay.io/luban-ci/gitops-utils:0.3.7"
     container:
-      image: quay.io/luban-ci/luban-provisioner:0.1.55
-      command: [python3, /app/src/main.py, k8s]
+      image: "{{workflow.parameters.luban_provisioner_image}}"
+      command: ["sh", "-c"]
       args:
-      - --project-name={{inputs.parameters.project_name}}
-      - --environment={{inputs.parameters.environment}}
-      - --git-org={{inputs.parameters.git_organization}}
-      - --git-provider={{inputs.parameters.git_provider}}
-      - --admin-groups={{inputs.parameters.admin_groups}}
-      - --developer-groups={{inputs.parameters.developer_groups}}
-      - --create-test-users={{inputs.parameters.create_test_users}}
-      - --image-pull-secret={{inputs.parameters.image_pull_secret}}
+      - |
+        python3 /app/src/main.py k8s \
+          --project-name={{inputs.parameters.project_name}} \
+          --environment={{inputs.parameters.environment}} \
+          --git-org={{inputs.parameters.git_organization}} \
+          --git-provider={{inputs.parameters.git_provider}} \
+          --admin-groups={{inputs.parameters.admin_groups}} \
+          --developer-groups={{inputs.parameters.developer_groups}} \
+          --create-test-users={{inputs.parameters.create_test_users}} \
+          --image-pull-secret=$IMAGE_PULL_SECRET
+      env:
+        - name: IMAGE_PULL_SECRET
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: image_pull_secret
+              optional: true

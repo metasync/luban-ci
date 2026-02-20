@@ -10,7 +10,7 @@ spec:
       serviceAccountName: workflow-runner
       containers:
         - name: app
-          image: {{cookiecutter.default_image_name}}:{{cookiecutter.default_image_tag}}
+          image: {{cookiecutter.registry_server}}/{{cookiecutter.project_name}}/{{cookiecutter.app_name}}:latest
           imagePullPolicy: Always
           ports:
             - name: http

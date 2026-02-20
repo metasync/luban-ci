@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: luban-app-setup-template
+  name: luban-dagster-code-location-setup-template
   namespace: luban-ci
 spec:
-  entrypoint: setup-luban-application
+  entrypoint: setup-luban-dagster-code-location
   serviceAccountName: luban-ci-sa
   volumeClaimTemplates:
     - metadata:
@@ -31,71 +31,38 @@ spec:
         value: ""
       - name: git_provider
         description: "Git Provider (e.g., 'github', 'gitlab')"
-        value: "github"
+        value: "azure"
         enum:
           - "github"
           - "azure"
-      - name: container_port
-        description: "Container port to expose"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: default_container_port
-            optional: true
-      - name: service_port
-        description: "Service port to expose"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: default_service_port
-            optional: true
-      - name: domain_suffix
-        description: "Domain suffix for Ingress"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: domain_suffix
-            optional: true
-      - name: default_image_name
-        description: "Default placeholder image name"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: default_image_name
-            optional: true
-      - name: default_image_tag
-        description: "Default placeholder image tag"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: default_image_tag
-            optional: true
-      - name: luban_provisioner_image
-        description: "Image for Luban provisioner tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.55"
-      - name: gitops_utils_image
-        description: "Image for GitOps utility tools"
-        value: "quay.io/luban-ci/gitops-utils:0.3.7"
-      - name: webhook_url
-        description: "Webhook URL for CI integration"
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: webhook_url
-            optional: true
       - name: setup_source_repo
         description: "Whether to provision the source code repository"
         value: "yes"
         enum:
           - "yes"
           - "no"
+      - name: gitops_utils_image
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: gitops_utils_image
+      - name: luban_provisioner_image
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: luban_provisioner_image
 
   templates:
-    - name: setup-luban-application
+    - name: setup-luban-dagster-code-location
       dag:
         tasks:
-          # 1. Provision GitOps Repository (Cookiecutter -> GitHub)
+          # 1. Generate Configuration
+          - name: generate-config
+            template: generate-config
+
+          # 2. Provision GitOps Repository
           - name: provision-gitops-repo
+            dependencies: [generate-config]
             templateRef:
               name: gitops-repo-provision-template
               template: provision-gitops-repo
@@ -109,19 +76,9 @@ spec:
                   value: "{{workflow.parameters.git_organization}}"
                 - name: git_provider
                   value: "{{workflow.parameters.git_provider}}"
-                - name: luban_provisioner_image
-                  value: "{{workflow.parameters.luban_provisioner_image}}"
-                # Pass through optional configs
-                - name: container_port
-                  value: "{{workflow.parameters.container_port}}"
-                - name: service_port
-                  value: "{{workflow.parameters.service_port}}"
-                - name: domain_suffix
-                  value: "{{workflow.parameters.domain_suffix}}"
-                - name: default_image_name
-                  value: "{{workflow.parameters.default_image_name}}"
-                - name: default_image_tag
-                  value: "{{workflow.parameters.default_image_tag}}"
+                - name: config_file
+                  value: "/workdir/config.yaml"
+                # Removed inline args that are now in config.yaml
 
           # 3. Setup ArgoCD Application
           - name: setup-argocd-app
@@ -142,10 +99,10 @@ spec:
                 - name: git_provider
                   value: "{{workflow.parameters.git_provider}}"
 
-          # 4. Provision Source Code Repository (Python Hello World)
+          # 4. Provision Source Code Repository
           - name: provision-source-repo
             dependencies: [setup-argocd-app]
-            when: "{{workflow.parameters.setup_source_repo}} == yes"
+            when: "'{{workflow.parameters.setup_source_repo}}' == 'yes'"
             templateRef:
               name: source-repo-provision-template
               template: provision-source-repo
@@ -159,7 +116,33 @@ spec:
                   value: "{{workflow.parameters.git_organization}}"
                 - name: git_provider
                   value: "{{workflow.parameters.git_provider}}"
-                - name: luban_provisioner_image
-                  value: "{{workflow.parameters.luban_provisioner_image}}"
-                - name: webhook_url
-                  value: "{{workflow.parameters.webhook_url}}"
+                - name: config_file
+                  value: "/workdir/config.yaml"
+
+    - name: generate-config
+      container:
+        image: "{{workflow.parameters.luban_provisioner_image}}"
+        command: [sh, -c]
+        args:
+          - |
+            python3 /app/src/main.py config \
+              --luban-config-dir /etc/config/luban \
+              --app-config-dir /etc/config/app \
+              --set dagster_component_type="code-location" \
+              --set template_type="dagster-code-location"
+
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+          - name: luban-config
+            mountPath: /etc/config/luban
+          - name: luban-dagster-config
+            mountPath: /etc/config/app
+            
+      volumes:
+        - name: luban-config
+          configMap:
+            name: luban-config
+        - name: luban-dagster-config
+          configMap:
+            name: luban-dagster-config

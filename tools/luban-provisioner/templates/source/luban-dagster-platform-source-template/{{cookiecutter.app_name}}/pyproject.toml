@@ -1,0 +1,12 @@
+[project]
+name = "{{cookiecutter.app_name}}"
+version = "0.1.0"
+description = "Dagster Platform for {{cookiecutter.app_name}}"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dagster=={{cookiecutter.dagster_version}}",
+    "dagster-webserver",
+    "dagster-postgres",
+    "dagster-k8s"
+]

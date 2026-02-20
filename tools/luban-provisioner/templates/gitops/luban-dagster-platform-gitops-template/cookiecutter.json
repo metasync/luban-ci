@@ -1,0 +1,9 @@
+{
+  "project_name": "",
+  "app_name": "",
+  "domain_suffix": "",
+  "dagster_version": "",
+  "postgres_version": "",
+  "platform_port": "3000",
+  "registry_server": ""
+}

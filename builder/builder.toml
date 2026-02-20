@@ -2,7 +2,7 @@ description = "Luban CI Builder"
 
 [[buildpacks]]
   uri = "../buildpacks/python-uv"
-  version = "0.0.11"
+  version = "0.0.30"
 
 [lifecycle]
   uri = "cache/lifecycle.tgz"
@@ -10,7 +10,7 @@ description = "Luban CI Builder"
 [[order]]
   [[order.group]]
     id = "luban-ci/python-uv"
-    version = "0.0.11"
+    version = "0.0.30"
 
 [[targets]]
   os = "linux"

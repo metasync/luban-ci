@@ -1,0 +1,109 @@
+scheduler:
+  module: dagster.core.scheduler
+  class: DagsterDaemonScheduler
+
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+
+run_launcher:
+  module: dagster_k8s
+  class: K8sRunLauncher
+  config:
+    service_account_name: "{{cookiecutter.app_name}}-sa"
+    job_namespace:
+      env: DAGSTER_K8S_PIPELINE_RUN_NAMESPACE
+    image_pull_policy: Always
+    env_config_maps:
+      - dagster-env
+    instance_config_map: dagster-instance
+    postgres_password_secret: dagster-postgresql-secret
+
+compute_logs:
+  module: dagster.core.storage.noop_compute_log_manager
+  class: NoOpComputeLogManager
+
+run_monitoring:
+  enabled: true
+  start_timeout_seconds: 300
+  max_resume_run_attempts: 0
+  poll_interval_seconds: 120
+  free_slots_after_run_end_seconds: 0
+
+run_retries:
+  enabled: true
+
+sensors:
+  use_threads: true
+  num_workers: 4
+
+schedules:
+  use_threads: true
+  num_workers: 4
+
+run_storage:
+  module: dagster_postgres.run_storage
+  class: PostgresRunStorage
+  config:
+    postgres_db:
+      hostname:
+        env: DAGSTER_PG_HOST
+      username:
+        env: DAGSTER_PG_USER
+      password:
+        env: DAGSTER_PG_PASSWORD
+      db_name:
+        env: DAGSTER_PG_DB
+      port:
+        env: DAGSTER_PG_PORT
+
+event_log_storage:
+  module: dagster_postgres.event_log
+  class: PostgresEventLogStorage
+  config:
+    postgres_db:
+      hostname:
+        env: DAGSTER_PG_HOST
+      username:
+        env: DAGSTER_PG_USER
+      password:
+        env: DAGSTER_PG_PASSWORD
+      db_name:
+        env: DAGSTER_PG_DB
+      port:
+        env: DAGSTER_PG_PORT
+
+schedule_storage:
+  module: dagster_postgres.schedule_storage
+  class: PostgresScheduleStorage
+  config:
+    postgres_db:
+      hostname:
+        env: DAGSTER_PG_HOST
+      username:
+        env: DAGSTER_PG_USER
+      password:
+        env: DAGSTER_PG_PASSWORD
+      db_name:
+        env: DAGSTER_PG_DB
+      port:
+        env: DAGSTER_PG_PORT
+
+retention:
+  sensor:
+    purge_after_days:
+      failure: 7
+      skipped: 7
+      started: 7
+      success: 7
+  schedule:
+    purge_after_days: 7
+  auto_materialize:
+    purge_after_days:
+      failure: 7
+      skipped: 7
+      started: 7
+      success: 7
+
+telemetry:
+  enabled: false

@@ -19,6 +19,13 @@ spec:
       enum:
         - "github"
         - "azure"
+    - name: luban_provisioner_image
+      description: "Image for the promotion tool"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: luban_provisioner_image
+  
   templates:
   - name: main
     inputs:
@@ -42,5 +49,3 @@ spec:
             value: "{{ '{{inputs.parameters.git_organization}}' }}"
           - name: git_provider
             value: "{{ '{{inputs.parameters.git_provider}}' }}"
-          - name: gitops_utils_image
-            value: "quay.io/luban-ci/gitops-utils:0.3.3"

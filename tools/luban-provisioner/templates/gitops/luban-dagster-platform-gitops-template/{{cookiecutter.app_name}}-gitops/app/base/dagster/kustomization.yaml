@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - dagster-env-cm.yaml
+  - daemon-deployment.yaml
+  - webserver-deployment.yaml
+  - webserver-service.yaml
+  - http-route.yaml
+  - rbac.yaml
+  - serviceaccount.yaml
+
+configMapGenerator:
+  - name: dagster-instance
+    files:
+      - dagster.yaml=dagster-instance-cm.yaml
+  - name: dagster-workspace
+    files:
+      - workspace.yaml=dagster-workspace-cm.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true

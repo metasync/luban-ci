@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.2] - 2026-02-21
+
+### Added
+- **Dagster Support**: Introduced comprehensive support for provisioning and managing a Dagster data orchestration platform.
+    - **Platform Provisioning**: New workflow `luban-dagster-platform-setup-template` to deploy a full Dagster instance (Daemon, Webserver, Postgres) with GitOps management.
+    - **Code Locations**: New workflow `luban-dagster-code-location-workflow-template` to onboard new data teams/projects with isolated Code Location deployments.
+    - **Scaffolding**: Added Cookiecutter templates for Dagster Platform GitOps, Code Location GitOps, and Python Source Code (`luban-dagster-*-template`).
+    - **Configuration**: Added `luban-dagster-config` ConfigMap to manage platform-specific settings.
+- **Dynamic Pipeline Dispatch**: Implemented `luban-pipeline-dispatcher-template` to dynamically route CI workflows to the correct tenant namespace based on the source Git repository URL.
+    - **Azure/GitHub Support**: Automatically parses Organization/Project from Git URLs to determine the target `snd-<project>` namespace.
+    - **Event Integration**: Updated `azure-sensor` and `github-sensor` to trigger the dispatcher workflow instead of static pipelines.
+
+### Fixed
+- **Dagster Platform**: Corrected typo `nv_config_maps` -> `env_config_maps` in `dagster-instance` ConfigMap template, ensuring environment variables are correctly injected into Job pods.
+- **Dagster Platform**: Updated `DAGSTER_HOME` to `/tmp/dagster_home` in ConfigMaps and Volume Mounts to resolve permission issues in read-only container environments.
+- **Provisioner**: Fixed potentially broken YAML loading in `utils.py` by switching to `ruamel.yaml`.
+
+### Refactor
+- **Cleanup**: Removed unused `BUILDPACK_IMAGE` variable from `builder/Makefile.env`.
+- **Cleanup**: Removed unused imports and initialized variables in `luban-provisioner` source code.
+
 ## [v0.9.1] - 2026-02-12
 
 ### Architecture

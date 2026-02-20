@@ -5,6 +5,6 @@ metadata:
 spec:
   id: "io.buildpacks.stacks.luban"
   buildImage:
-    image: "quay.io/luban-ci/luban-build:al2023-3dbd5ee1e5066a86368801de191741605af4893f30cdff78f18c8a1c685a745b"
+    image: "quay.io/luban-ci/luban-build:al2023-cd44607e7057766d99e34cbee6a53e4b0b21dda63159682abb09dc99e9b50480"
   runImage:
-    image: "quay.io/luban-ci/luban-run:al2023-3d0f957b3aeabcf67bc3488df65e7c72d7934230b761745804de0d4f84decf50"
+    image: "quay.io/luban-ci/luban-run:al2023-b85157b60a7cd3ca323f600326b1eb38f6617eba5bc26993334f7d1977dfe679"

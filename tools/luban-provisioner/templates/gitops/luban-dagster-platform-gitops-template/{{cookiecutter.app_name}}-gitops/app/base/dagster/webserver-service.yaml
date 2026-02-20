@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{cookiecutter.app_name}}-webserver"
+spec:
+  ports:
+    - port: {{cookiecutter.platform_port}}
+      targetPort: {{cookiecutter.platform_port}}
+  selector:
+    app: "{{cookiecutter.app_name}}-webserver"

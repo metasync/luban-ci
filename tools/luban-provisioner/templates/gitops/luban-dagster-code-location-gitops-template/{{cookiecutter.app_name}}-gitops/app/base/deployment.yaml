@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{cookiecutter.app_name}}
+  labels:
+    app: {{cookiecutter.app_name}}
+    component: code-location
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{cookiecutter.app_name}}
+  template:
+    metadata:
+      labels:
+        app: {{cookiecutter.app_name}}
+    spec:
+      containers:
+        - name: {{cookiecutter.app_name}}
+          image: "{{cookiecutter.registry_server}}/{{cookiecutter.project_name}}/{{cookiecutter.app_name}}:latest"
+          imagePullPolicy: Always
+          args: ["dagster", "code-server", "start", "-h", "0.0.0.0", "-p", "{{cookiecutter.code_location_port}}", "-m", "{{cookiecutter.package_name}}"]
+          ports:
+            - containerPort: {{cookiecutter.code_location_port}}
+              name: grpc
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: dagster-env
+                optional: true
+          env:
+            - name: DAGSTER_CURRENT_IMAGE
+              value: "$(DAGSTER_APP_IMAGE)"
+            - name: DAGSTER_PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dagster-postgresql-secret
+                  key: postgresql-password
+                  optional: true
+          livenessProbe:
+            grpc:
+              port: {{cookiecutter.code_location_port}}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            grpc:
+              port: {{cookiecutter.code_location_port}}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: dagster-home
+              mountPath: /tmp/dagster_home
+      volumes:
+        - name: dagster-home
+          emptyDir: {}

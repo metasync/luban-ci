@@ -22,7 +22,8 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f config/global-workflow-restrictions.yaml || echo "Warning: Failed to apply global config. Ensure you have admin access to 'argo' namespace."
 	@echo "Applying Luban Configuration..."
 	@kubectl apply -f config/luban-config.yaml
-	@kubectl apply -f config/git-providers.yaml
+	@kubectl apply -f config/luban-python-config.yaml
+	@kubectl apply -f config/luban-dagster-config.yaml
 	@echo "Deploying Workflow Templates..."
 	@kubectl apply -f workflows/luban-ci-kpack-workflow-template.yaml
 	@kubectl apply -f workflows/argocd-project-workflow-template.yaml
@@ -32,7 +33,9 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f workflows/gitops-repo-workflow-template.yaml
 	@kubectl apply -f workflows/source-repo-workflow-template.yaml
 	@kubectl apply -f workflows/luban-project-workflow-template.yaml
-	@kubectl apply -f workflows/luban-app-workflow-template.yaml
+	@kubectl apply -f workflows/luban-python-app-workflow-template.yaml
+	@kubectl apply -f workflows/luban-dagster-code-location-workflow-template.yaml
+	@kubectl apply -f workflows/luban-dagster-platform-setup-template.yaml
 	@kubectl apply -f workflows/luban-promotion-workflow-template.yaml
 	@kubectl apply -f workflows/luban-pipeline-dispatcher-template.yaml
 	@echo "Pipeline deployed."

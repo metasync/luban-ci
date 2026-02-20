@@ -25,7 +25,10 @@ spec:
           optional: true
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
-      value: "quay.io/luban-ci/gitops-utils:0.3.5"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: gitops_utils_image
 
   templates:
     - name: create-project
@@ -33,14 +36,12 @@ spec:
         parameters:
           - name: project_name
           - name: registry_visibility
-          - name: registry_server
       container:
         image: "{{workflow.parameters.gitops_utils_image}}"
         command: [sh, -c]
         args:
           - |
             PROJECT_NAME="{{inputs.parameters.project_name}}"
-            REGISTRY_SERVER="{{inputs.parameters.registry_server}}"
             HARBOR_URL="https://${REGISTRY_SERVER}"
             VISIBILITY="{{inputs.parameters.registry_visibility}}"
             
@@ -82,6 +83,12 @@ spec:
                 exit 1
             fi
         env:
+          - name: REGISTRY_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: registry_server
+                optional: true
           - name: HARBOR_USERNAME
             valueFrom:
               secretKeyRef:

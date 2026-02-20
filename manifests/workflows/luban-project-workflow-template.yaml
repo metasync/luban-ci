@@ -18,7 +18,7 @@ spec:
       value: ""
     - name: git_provider
       description: "Git Provider (e.g., 'github', 'gitlab')"
-      value: "github"
+      value: "azure"
       enum:
         - "github"
         - "azure"
@@ -40,26 +40,18 @@ spec:
       enum:
       - "public"
       - "private"
-    - name: registry_server
-      description: "Registry server domain (e.g. harbor.example.com)"
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: registry_server
-          optional: true
-    - name: image_pull_secret
-      description: "Name of the secret to copy to project namespaces"
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: image_pull_secret
-          optional: true
     - name: luban_provisioner_image
       description: "Image for Luban provisioner tool"
-      value: "quay.io/luban-ci/luban-provisioner:0.1.55"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: luban_provisioner_image
     - name: gitops_utils_image
       description: "Image for GitOps utility tools"
-      value: "quay.io/luban-ci/gitops-utils:0.3.7"
+      valueFrom:
+        configMapKeyRef:
+          name: luban-config
+          key: gitops_utils_image
 
 
   templates:
@@ -75,8 +67,6 @@ spec:
             value: "{{workflow.parameters.git_organization}}"
           - name: git_provider
             value: "{{workflow.parameters.git_provider}}"
-          - name: luban_provisioner_image
-            value: "{{workflow.parameters.luban_provisioner_image}}"
 
       - name: namespace-provision
         templateRef:
@@ -98,10 +88,6 @@ spec:
             value: "{{workflow.parameters.developer_groups}}"
           - name: create_test_users
             value: "{{workflow.parameters.create_test_users}}"
-          - name: image_pull_secret
-            value: "{{workflow.parameters.image_pull_secret}}"
-          - name: luban_provisioner_image
-            value: "{{workflow.parameters.luban_provisioner_image}}"
         withParam: "{{workflow.parameters.environments}}"
 
       - name: harbor-project
@@ -114,8 +100,6 @@ spec:
              value: "{{workflow.parameters.project_name}}"
            - name: registry_visibility
              value: "{{workflow.parameters.registry_visibility}}"
-           - name: registry_server
-             value: "{{workflow.parameters.registry_server}}"
 
       - name: argocd-project
         templateRef:
@@ -133,10 +117,9 @@ spec:
       - name: project_name
       - name: git_organization
       - name: git_provider
-      - name: luban_provisioner_image
     
     container:
-      image: "{{inputs.parameters.luban_provisioner_image}}"
+      image: "{{workflow.parameters.luban_provisioner_image}}"
       imagePullPolicy: Always
       command: ["sh", "-c"]
       args:
@@ -156,6 +139,6 @@ spec:
         - name: GIT_SERVER
           valueFrom:
             configMapKeyRef:
-              name: "{{inputs.parameters.git_provider}}-config"
-              key: server
+              name: luban-config
+              key: "{{inputs.parameters.git_provider}}_server"
               optional: true

@@ -80,3 +80,22 @@ This phase used Docker-in-Docker with Argo Workflows and has been retired in fav
 3.  **Documentation Updates**:
     - Comprehensive README updates for `luban-provisioner` and root project.
     - Documented local testing workflows and DNS patching.
+
+## Phase 10: Data Platform Support (Dagster) [Completed]
+**Goal:** Integrate Dagster for data orchestration with GitOps management.
+**Deliverables:**
+1.  **Platform Provisioning**:
+    - `manifests/workflows/luban-dagster-platform-setup-template.yaml`
+    - `luban-dagster-platform-gitops-template` (Cookiecutter)
+2.  **Code Location Support**:
+    - `manifests/workflows/luban-dagster-code-location-workflow-template.yaml`
+    - `luban-dagster-code-location-gitops-template` (Cookiecutter)
+    - `luban-dagster-code-location-source-template` (Cookiecutter)
+3.  **Verification**: Successfully provisioned Dagster Platform and deployed sample Code Locations.
+
+## Phase 11: Dynamic Pipeline Dispatch [Completed]
+**Goal:** Decouple pipeline triggers from static namespace configuration to support multi-tenancy dynamically.
+**Deliverables:**
+1.  **Dispatcher**: `manifests/workflows/luban-pipeline-dispatcher-template.yaml`
+2.  **Event Integration**: Updated `azure-sensor` and `github-sensor` to use the dispatcher.
+3.  **Logic**: Implemented robust Git URL parsing to route events to `snd-<project>` namespaces automatically.

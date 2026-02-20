@@ -1,7 +1,51 @@
 import subprocess
 import click
 import os
+from ruamel.yaml import YAML
+import json
 from cookiecutter.main import cookiecutter
+
+def load_config(config_file):
+    """
+    Load configuration from a YAML or JSON file.
+    """
+    if not config_file or not os.path.exists(config_file):
+        return {}
+        
+    try:
+        with open(config_file, 'r') as f:
+            if config_file.endswith('.json'):
+                return json.load(f)
+            else:
+                return YAML(typ='safe').load(f)
+    except Exception as e:
+        click.echo(f"Error loading config file {config_file}: {e}", err=True)
+        return {}
+
+def load_config_from_dir(config_dir):
+    """
+    Load all config files from a directory and return a merged dict.
+    Ignores hidden files.
+    This is useful for loading ConfigMaps mounted as volumes.
+    """
+    config = {}
+    if not os.path.exists(config_dir):
+        return config
+        
+    for filename in os.listdir(config_dir):
+        if filename.startswith('..') or filename.startswith('.'):
+            continue
+            
+        file_path = os.path.join(config_dir, filename)
+        if os.path.isfile(file_path):
+            try:
+                with open(file_path, 'r') as f:
+                    content = f.read().strip()
+                    if content:
+                        config[filename] = content
+            except Exception as e:
+                click.echo(f"Warning: Failed to read config file {file_path}: {e}", err=True)
+    return config
 
 def copy_secrets(target_ns, source_ns, image_pull_secret):
     """
@@ -51,7 +95,7 @@ def copy_configmaps(target_ns, source_ns):
     Copies relevant ConfigMaps from source namespace to target namespace.
     Specifically handles luban-config, github-config, and azure-config.
     """
-    configmaps = ["luban-config", "github-config", "azure-config"]
+    configmaps = ["luban-config"]
     
     for cm in configmaps:
         click.echo(f"Copying configmap {cm} from {source_ns} to {target_ns}...")

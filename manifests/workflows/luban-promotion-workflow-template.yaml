@@ -16,17 +16,15 @@ spec:
         value: ""
       - name: git_provider
         description: "Git Provider (e.g., 'github', 'azure')"
-        value: "github"
+        value: "azure"
         enum:
           - "github"
           - "azure"
-      - name: gitops_utils_image
-        description: "Image for GitOps utility tools"
-        value: "quay.io/luban-ci/gitops-utils:0.3.7"
       - name: luban_provisioner_image
-        description: "Image for the promotion tool"
-        value: "quay.io/luban-ci/luban-provisioner:0.1.55"
-
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: luban_provisioner_image
 
   templates:
     - name: promote-snd-to-prd
@@ -36,11 +34,8 @@ spec:
           - name: app_name
           - name: git_organization
           - name: git_provider
-          - name: gitops_utils_image
-          - name: luban_provisioner_image
-            value: "quay.io/luban-ci/luban-provisioner:0.1.55"
       container:
-        image: "{{inputs.parameters.luban_provisioner_image}}"
+        image: "{{workflow.parameters.luban_provisioner_image}}"
         command: ["/bin/sh", "-c"]
         args:
           - |
@@ -59,6 +54,6 @@ spec:
           - name: GIT_SERVER
             valueFrom:
               configMapKeyRef:
-                name: "{{inputs.parameters.git_provider}}-config"
-                key: server
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_server"
                 optional: true

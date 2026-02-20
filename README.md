@@ -13,6 +13,10 @@ Luban CI is a GitOps-based Continuous Integration system running on Kubernetes, 
   - Minimal base images (Amazon Linux 2023 Minimal).
 - **Python Support**: Custom buildpack for Python with `uv` for fast dependency management.
   - Supports custom `uv` version via `.uv-version` file.
+- **Dagster Support**:
+  - Full platform provisioning (Daemon, Webserver, Postgres).
+  - Isolated Code Location deployments for data teams.
+  - GitOps-managed infrastructure.
 
 ## Naming Conventions & Architecture
 
@@ -243,6 +247,29 @@ This Workflow bootstraps a new microservice within an existing Project/Team.
   - `git_organization`: (Optional) Auto-detected if not provided.
   - `setup_source_repo`: (Optional) Whether to provision the source code repository (`yes`, `no`). Default: `yes`.
   - `luban_provisioner_image`: (Internal) The image used to render templates.
+
+### Dagster Platform Setup
+This Workflow bootstraps a full Dagster instance (Daemon, Webserver, Postgres) for a team.
+- **Template**: [luban-dagster-platform-setup-template.yaml](manifests/workflows/luban-dagster-platform-setup-template.yaml)
+- **What it does**:
+  1.  **GitOps Repository**: Provisions `<app_name>-gitops` with Dagster Platform Helm/Kustomize base.
+  2.  **ArgoCD Application**: Deploys the platform components to the target environment (e.g., `snd-data`).
+- **Parameters**:
+  - `project_name`: (Required) The team/domain name (e.g., `data-platform`).
+  - `app_name`: (Optional) Default: `dagster-platform`.
+  - `environment`: (Optional) Default: `snd`.
+
+### Dagster Code Location Setup
+This Workflow bootstraps a new Code Location (User Code Deployment) for Dagster.
+- **Template**: [luban-dagster-code-location-workflow-template.yaml](manifests/workflows/luban-dagster-code-location-workflow-template.yaml)
+- **What it does**:
+  1.  **GitOps Repository**: Provisions `<app_name>-gitops` with Code Location deployment manifests.
+  2.  **ArgoCD Application**: Deploys the code location server.
+  3.  **Source Code**: (Optional) Scaffolds a new Python repo with Dagster assets/definitions.
+- **Parameters**:
+  - `project_name`: (Required) The team/domain name.
+  - `app_name`: (Required) The name of the code location (e.g., `etl-jobs`).
+  - `setup_source_repo`: (Optional) Whether to scaffold source code. Default: `yes`.
 
 ### Environment Promotion
 To promote an application from `snd` to `prd`, use the `luban-promotion-template`:

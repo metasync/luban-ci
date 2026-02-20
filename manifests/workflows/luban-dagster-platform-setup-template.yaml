@@ -1,0 +1,148 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: luban-dagster-platform-setup-template
+  namespace: luban-ci
+spec:
+  entrypoint: setup-luban-dagster-platform
+  serviceAccountName: luban-ci-sa
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 100Mi
+  arguments:
+    parameters:
+      - name: project_name
+        description: "Name of the project/team (e.g., 'data-platform')"
+      - name: app_name
+        description: "Name of the application (e.g., 'dagster')"
+        value: "dagster-platform"
+      - name: environment
+        description: "Target environment (e.g., 'snd', 'prd')"
+        value: "snd"
+        enum:
+          - "snd"
+          - "prd"
+      - name: git_organization
+        description: "Git Organization/User (defaults to project_name if empty)"
+        value: ""
+      - name: git_provider
+        description: "Git Provider (e.g., 'github', 'gitlab')"
+        value: "azure"
+        enum:
+          - "github"
+          - "azure"
+      - name: setup_source_repo
+        description: "Whether to provision the source code repository"
+        value: "yes"
+        enum:
+          - "yes"
+          - "no"
+      - name: gitops_utils_image
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: gitops_utils_image
+      - name: luban_provisioner_image
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: luban_provisioner_image
+
+  templates:
+    - name: setup-luban-dagster-platform
+      dag:
+        tasks:
+          # 1. Generate Configuration
+          - name: generate-config
+            template: generate-config
+
+          # 2. Provision GitOps Repository
+          - name: provision-gitops-repo
+            dependencies: [generate-config]
+            templateRef:
+              name: gitops-repo-provision-template
+              template: provision-gitops-repo
+            arguments:
+              parameters:
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+                - name: application_name
+                  value: "{{workflow.parameters.app_name}}"
+                - name: git_organization
+                  value: "{{workflow.parameters.git_organization}}"
+                - name: git_provider
+                  value: "{{workflow.parameters.git_provider}}"
+                - name: config_file
+                  value: "/workdir/config.yaml"
+
+          # 3. Setup ArgoCD Application
+          - name: setup-argocd-app
+            dependencies: [provision-gitops-repo]
+            templateRef:
+              name: argocd-app-setup-template
+              template: create-applications
+            arguments:
+              parameters:
+                - name: app_name
+                  value: "{{workflow.parameters.app_name}}"
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+                - name: environment
+                  value: "{{workflow.parameters.environment}}"
+                - name: git_organization
+                  value: "{{workflow.parameters.git_organization}}"
+                - name: git_provider
+                  value: "{{workflow.parameters.git_provider}}"
+
+          # 4. Provision Source Code Repository
+          - name: provision-source-repo
+            dependencies: [setup-argocd-app]
+            when: "{{workflow.parameters.setup_source_repo}} == yes"
+            templateRef:
+              name: source-repo-provision-template
+              template: provision-source-repo
+            arguments:
+              parameters:
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+                - name: application_name
+                  value: "{{workflow.parameters.app_name}}"
+                - name: git_organization
+                  value: "{{workflow.parameters.git_organization}}"
+                - name: git_provider
+                  value: "{{workflow.parameters.git_provider}}"
+                - name: config_file
+                  value: "/workdir/config.yaml"
+
+    - name: generate-config
+      container:
+        image: "{{workflow.parameters.luban_provisioner_image}}"
+        command: [sh, -c]
+        args:
+          - |
+            # Set template_type to dagster-platform explicitly
+            python3 /app/src/main.py config \
+              --luban-config-dir /etc/config/luban \
+              --app-config-dir /etc/config/app \
+              --set template_type=dagster-platform
+
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+          - name: luban-config
+            mountPath: /etc/config/luban
+          - name: luban-dagster-config
+            mountPath: /etc/config/app
+            
+      volumes:
+        - name: luban-config
+          configMap:
+            name: luban-config
+        - name: luban-dagster-config
+          configMap:
+            name: luban-dagster-config

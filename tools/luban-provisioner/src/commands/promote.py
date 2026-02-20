@@ -118,6 +118,8 @@ def promote(app_name, git_organization, git_provider, git_token, git_server, pro
     for img in prd_images:
         if img.get('name') == target_image:
             img['newTag'] = target_tag
+            if 'newName' in img:
+                del img['newName']
             found = True
             break
             

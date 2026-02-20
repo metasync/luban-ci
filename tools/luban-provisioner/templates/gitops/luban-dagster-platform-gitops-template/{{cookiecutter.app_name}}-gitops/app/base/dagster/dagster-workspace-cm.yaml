@@ -1,0 +1,6 @@
+load_from: []
+# Example of loading a code location via gRPC:
+# - grpc_server:
+#     host: "my-code-location-service"
+#     port: 4000
+#     location_name: "my-code-location"
