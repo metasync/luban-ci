@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.3] - 2026-02-23
+
+### Changed
+- **Tooling**: Migrated `luban-provisioner` to use `uv` for dependency management, ensuring faster and more reproducible builds.
+- **Tooling**: Updated `luban-provisioner` entrypoint to use `uv run`, improving runtime environment handling.
+- **Workflow**: Updated all workflow templates to use the `luban-provisioner` CLI command instead of direct `python3` invocation, fixing `ModuleNotFoundError` issues.
+- **Security**: Fixed `workflow-runner` ServiceAccount template to prevent duplicate secret mounting, resolving `401 Unauthorized` errors during kpack image pushing.
+- **Documentation**: Updated `README.md`, `PLAN.md`, and `REQUIREMENTS.md` to reflect the new tooling architecture.
+
+### Fixed
+- **Provisioner**: Pinned `kubectl` version to `v1.35.1` in `luban-provisioner` Dockerfile for stability.
+- **GitOps Utils**: Pinned `kubectl` version in `gitops-utils` Dockerfile.
+
 ## [v0.9.2] - 2026-02-21
 
 ### Added

@@ -72,6 +72,7 @@ This phase used Docker-in-Docker with Argo Workflows and has been retired in fav
 1.  **Tooling Refactoring**:
     - Refactored `luban-provisioner` to use a consistent `provider_factory` pattern.
     - Optimized Dockerfiles for `gitops-utils` and `luban-provisioner` (non-root users, version pinning).
+    - Migrated `luban-provisioner` to use `uv` for modern, fast Python dependency management.
     - Removed unnecessary dependencies (e.g., `crane` from `gitops-utils`).
 2.  **Test Suite Enhancements**:
     - Standardized test configuration in `test/Makefile.env`.

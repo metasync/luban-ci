@@ -124,7 +124,7 @@ spec:
       command: ["sh", "-c"]
       args:
         - |
-          python3 /app/src/main.py project \
+          luban-provisioner project \
             --project-name "{{inputs.parameters.project_name}}" \
             --git-org "{{inputs.parameters.git_organization}}" \
             --git-provider "{{inputs.parameters.git_provider}}" \

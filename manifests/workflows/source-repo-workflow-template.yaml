@@ -80,7 +80,7 @@ spec:
         command: ["sh", "-c"]
         args:
           - |
-            python3 /app/src/main.py source \
+            luban-provisioner source \
               --project-name "{{inputs.parameters.project_name}}" \
               --application-name "{{inputs.parameters.application_name}}" \
               --output-dir "/workdir" \

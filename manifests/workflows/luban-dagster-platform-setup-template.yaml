@@ -126,7 +126,7 @@ spec:
         args:
           - |
             # Set template_type to dagster-platform explicitly
-            python3 /app/src/main.py config \
+            luban-provisioner config \
               --luban-config-dir /etc/config/luban \
               --app-config-dir /etc/config/app \
               --set template_type=dagster-platform

@@ -12,7 +12,7 @@ This tool consolidates functionality for provisioning:
 ## Architecture
 
 The tool is a Python CLI application built with `click` and `cookiecutter`.
-It runs inside a container (Alpine-based) with `kubectl`, `git`, `curl`, and `jq` installed.
+It uses `uv` for dependency management and runs inside a container (Alpine-based) with `kubectl`, `git`, `curl`, and `jq` installed.
 
 ### Directory Structure
 
@@ -27,6 +27,8 @@ It runs inside a container (Alpine-based) with `kubectl`, `git`, `curl`, and `jq
     -   `source/`: Templates for Source repos.
     -   `project/`: Templates for Namespaces.
 -   `Dockerfile`: Build definition for the tool.
+-   `pyproject.toml`: Project configuration and dependencies.
+-   `uv.lock`: Dependency lockfile.
 
 ## Configuration
 
@@ -37,12 +39,37 @@ The tool requires the following environment variables for Git provider authentic
 
 ## Usage
 
+### Local Development
+
+This project uses [uv](https://github.com/astral-sh/uv) for dependency management.
+
+1.  Install dependencies:
+    ```bash
+    uv sync
+    ```
+
+2.  Run the tool:
+    ```bash
+    uv run luban-provisioner --help
+    ```
+
+### Container Usage
+
+Inside the container, the tool is available as `luban-provisioner` (or via the entrypoint).
+
+```bash
+docker run --rm -it \
+    -e GIT_TOKEN=$GIT_TOKEN \
+    quay.io/luban-ci/luban-provisioner:latest \
+    project --help
+```
+
 ### 1. Project Setup (Git Provider)
 
 Ensure the Git organization or project exists on the provider (GitHub/Azure).
 
 ```bash
-python3 src/main.py project \
+uv run luban-provisioner project \
     --project-name my-project \
     --git-org my-org \
     --git-provider github
@@ -53,7 +80,7 @@ python3 src/main.py project \
 Bootstrap a Kubernetes namespace with RBAC, resource quotas, and copied secrets.
 
 ```bash
-python3 src/main.py k8s \
+uv run luban-provisioner k8s \
     --project-name my-project \
     --environment snd \
     --git-org my-org \
@@ -65,7 +92,7 @@ python3 src/main.py k8s \
 Provision a GitOps repository, create it on the provider, push the code, and configure branch protection.
 
 ```bash
-python3 src/main.py gitops \
+uv run luban-provisioner gitops \
     --project-name my-project \
     --application-name my-app \
     --output-dir /tmp/out \
@@ -81,7 +108,7 @@ python3 src/main.py gitops \
 Provision a source code repository, create it on the provider, configure webhooks, and push the code.
 
 ```bash
-python3 src/main.py source \
+uv run luban-provisioner source \
     --project-name my-project \
     --application-name my-app \
     --output-dir /tmp/out \
@@ -94,7 +121,7 @@ python3 src/main.py source \
 Promote an application from Sandbox (snd) to Production (prd) by updating the image tag in the GitOps repository and creating a Pull Request.
 
 ```bash
-python3 src/main.py promote \
+uv run luban-provisioner promote \
     --app-name my-app \
     --git-organization my-org \
     --git-provider github \
@@ -115,5 +142,6 @@ python3 src/main.py promote \
 
 ## Versioning
 
-Update `Makefile.env` to bump the version.
-Ensure you update the Workflow Templates in `manifests/workflows/` to reference the new version.
+1.  Update `Makefile.env` to bump the version.
+2.  **Important**: Update `pyproject.toml` `version` field to match `Makefile.env`.
+3.  Ensure you update the Workflow Templates in `manifests/workflows/` or `manifests/config/` to reference the new version.

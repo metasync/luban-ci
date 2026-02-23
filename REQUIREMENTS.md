@@ -71,6 +71,7 @@ A unified CLI tool (`luban-provisioner`) automates the setup of:
 -   **GitOps Repositories:** ArgoCD application manifests (Base/Overlays).
 -   **Source Repositories:** Application scaffolding.
 -   **Provider Abstraction:** Seamless support for both GitHub and Azure DevOps.
+-   **Dependency Management:** Uses `uv` for fast, reproducible builds.
 
 ## 7. Dagster Integration
 

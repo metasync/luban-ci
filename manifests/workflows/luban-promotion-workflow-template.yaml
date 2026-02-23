@@ -39,7 +39,7 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
           - |
-            python3 /app/src/main.py promote \
+            luban-provisioner promote \
               --app-name "{{inputs.parameters.app_name}}" \
               --git-organization "{{inputs.parameters.git_organization}}" \
               --git-provider "{{inputs.parameters.git_provider}}" \

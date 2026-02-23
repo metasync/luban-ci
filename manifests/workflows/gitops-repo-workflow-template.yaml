@@ -72,7 +72,7 @@ spec:
         command: ["sh", "-c"]
         args:
           - |
-            python3 /app/src/main.py gitops \
+            luban-provisioner gitops \
               --project-name "{{inputs.parameters.project_name}}" \
               --application-name "{{inputs.parameters.application_name}}" \
               --output-dir "/workdir" \

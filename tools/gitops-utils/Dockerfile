@@ -12,6 +12,7 @@ RUN curl -sLO https://github.com/argoproj/argo-workflows/releases/download/${ARG
     gunzip argo-linux-amd64.gz && \
     chmod +x argo-linux-amd64 && \
     mv argo-linux-amd64 /usr/local/bin/argo
+
 # Install kp CLI
 RUN curl -L https://github.com/buildpacks-community/kpack-cli/releases/download/v${KP_VERSION}/kp-linux-amd64-${KP_VERSION} -o /usr/local/bin/kp && \
     chmod +x /usr/local/bin/kp

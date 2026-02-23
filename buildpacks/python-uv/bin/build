@@ -4,6 +4,7 @@ set -eo pipefail
 echo "---> Luban Python uv Buildpack"
 
 # CNB_LAYERS_DIR, CNB_PLATFORM_DIR, CNB_BP_PLAN_PATH are provided by the lifecycle
+# CNB_BUILDPACK_DIR is the root of the buildpack
 
 # 1. Install uv
 uv_layer="$CNB_LAYERS_DIR/uv"
@@ -11,11 +12,23 @@ mkdir -p "$uv_layer/bin"
 
 # Determine uv version
 DEFAULT_UV_VERSION="0.10.4"
+
+# Try to read default version from buildpack.toml
+if [[ -f "$CNB_BUILDPACK_DIR/buildpack.toml" ]]; then
+    # Simple grep fallback because we don't have python yet
+    TOML_VERSION=$(grep 'uv = "' "$CNB_BUILDPACK_DIR/buildpack.toml" | cut -d'"' -f2)
+    if [[ -n "$TOML_VERSION" ]]; then
+        DEFAULT_UV_VERSION="$TOML_VERSION"
+    fi
+fi
+
 UV_VERSION="$DEFAULT_UV_VERSION"
 
 if [[ -f ".uv-version" ]]; then
     UV_VERSION=$(cat .uv-version | tr -d '[:space:]')
     echo "User requested uv version: $UV_VERSION"
+else
+    echo "Using default uv version: $UV_VERSION"
 fi
 
 # Check cached version
@@ -69,7 +82,6 @@ else
 fi
 
 # Write layer metadata for uv
-# launch=true ensures uv is available in the run image
 cat <<EOF > "$uv_layer.toml"
 [types]
 cache = true
@@ -80,12 +92,10 @@ EOF
 export PATH="$uv_layer/bin:$PATH"
 
 # 2. Configure uv paths
-# We want Python toolchains to be cached and available at launch
 python_layer="$CNB_LAYERS_DIR/python"
 mkdir -p "$python_layer"
 export UV_PYTHON_INSTALL_DIR="$python_layer"
 
-# Write layer metadata for python
 cat <<EOF > "$python_layer.toml"
 [types]
 cache = true
@@ -93,11 +103,9 @@ build = true
 launch = true
 EOF
 
-# UV Cache for package downloads
 uv_cache_layer="$CNB_LAYERS_DIR/uv_cache"
 export UV_CACHE_DIR="$uv_cache_layer"
 
-# Write layer metadata for uv cache (only needed for build)
 cat <<EOF > "$uv_cache_layer.toml"
 [types]
 cache = true
@@ -107,7 +115,6 @@ EOF
 # 3. Setup Virtual Environment Layer (Cached)
 venv_layer="$CNB_LAYERS_DIR/venv"
 mkdir -p "$venv_layer"
-# Create symlink .venv -> venv_layer to persist venv across builds
 rm -rf .venv
 ln -s "$venv_layer" .venv
 
@@ -121,81 +128,51 @@ EOF
 # 4. Install Python and Dependencies
 echo "Installing dependencies with uv..."
 
-# Ensure we are in the app directory (pwd is usually app dir)
-# If uv.lock exists, use frozen, otherwise generate lock
 if [[ -f "uv.lock" ]]; then
     uv sync --frozen
 else
     uv sync
 fi
 
-# Prune cache to keep layer size optimized
 echo "Pruning uv cache..."
 uv cache prune
 
 # 5. Set launch configuration
 echo "Configuring launch..."
 
-# Detect Execution Mode from pyproject.toml [tool.luban]
-BP_EXECUTION_MODE="standard"
-if [[ -f "pyproject.toml" ]]; then
-    # Parse bp-execution-mode using sed/grep
-    MODE=$(sed -n '/^\[tool.luban\]/,/^\[/p' pyproject.toml | grep 'bp-execution-mode' | cut -d'=' -f2 | tr -d ' "[:space:]' || true)
-    if [[ -n "$MODE" ]]; then
-        if [[ "$MODE" == "standard" || "$MODE" == "direct" ]]; then
-            BP_EXECUTION_MODE="$MODE"
-            echo "Detected bp-execution-mode: $BP_EXECUTION_MODE"
-        else
-            echo "Error: Invalid bp-execution-mode '$MODE'. Supported modes are 'standard' and 'direct'."
-            exit 1
-        fi
-    fi
-fi
+# Use extracted python script to parse pyproject.toml
+PYTHON_BIN=".venv/bin/python"
+PARSE_SCRIPT="$CNB_BUILDPACK_DIR/bin/parse_config.py"
 
-# Detect Script Name from [project.scripts]
-SCRIPT_NAME=""
-if [[ -f "pyproject.toml" ]]; then
-    echo "pyproject.toml found. Checking for [project.scripts]..."
-
-    # Use bash to parse pyproject.toml for [project.scripts]
-    SCRIPTS=$(sed -n '/^\[project.scripts\]/,/^\[/p' pyproject.toml | grep -v '^\[' | grep '=' | cut -d'=' -f1 | tr -d ' ' | tr '\n' ' ' || true)
-    
-    # Convert space-separated string to array
-    read -r -a SCRIPT_KEYS <<< "$SCRIPTS"
-    
-    if [[ ${#SCRIPT_KEYS[@]} -eq 0 ]]; then
-        echo "No scripts found in [project.scripts]"
-    elif [[ ${#SCRIPT_KEYS[@]} -eq 1 ]]; then
-        SCRIPT_NAME="${SCRIPT_KEYS[0]}"
+if [[ -f "$PYTHON_BIN" ]] && [[ -f "$PARSE_SCRIPT" ]]; then
+    # Run the parsing script and eval its output
+    PARSED_OUTPUT=$($PYTHON_BIN "$PARSE_SCRIPT")
+    if [[ $? -eq 0 ]]; then
+        eval "$PARSED_OUTPUT"
     else
-        # Heuristic: look for common names
-        for name in "app" "start" "main" "run"; do
-            for key in "${SCRIPT_KEYS[@]}"; do
-                if [[ "$key" == "$name" ]]; then
-                    SCRIPT_NAME="$name"
-                    break 2
-                fi
-            done
-        done
-        
-        # Fallback to first one if no common name found
-        if [[ -z "$SCRIPT_NAME" ]]; then
-            SCRIPT_NAME="${SCRIPT_KEYS[0]}"
-        fi
-    fi
-
-    if [[ -n "$SCRIPT_NAME" ]]; then
-        echo "Found entry point script: $SCRIPT_NAME"
+        echo "Warning: Failed to parse pyproject.toml. Falling back to defaults."
+        BP_EXECUTION_MODE="standard"
+        SCRIPT_NAME=""
     fi
 else
-    echo "No pyproject.toml found."
+    echo "Warning: Python or parse script not found. Using defaults."
+    BP_EXECUTION_MODE="standard"
+    SCRIPT_NAME=""
 fi
 
-# Generate launch.toml based on Mode
+# Set defaults if empty
+BP_EXECUTION_MODE=${MODE:-"standard"}
+SCRIPT_NAME=${SCRIPT_NAME:-""}
+
+echo "Detected bp-execution-mode: $BP_EXECUTION_MODE"
+if [[ -n "$SCRIPT_NAME" ]]; then
+    echo "Found entry point script: $SCRIPT_NAME"
+fi
+
+# Generate launch.toml
 if [[ "$BP_EXECUTION_MODE" == "direct" ]]; then
     echo "Enabling direct execution mode..."
     
-    # Create direct_exec wrapper
     cat <<EOF > "$venv_layer/bin/direct_exec"
 #!/bin/sh
 exec "\$@"

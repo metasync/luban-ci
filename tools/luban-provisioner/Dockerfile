@@ -1,40 +1,45 @@
 FROM python:3.12-alpine
 
 # Install system dependencies
-# curl: for downloading kubectl
-# jq: for JSON processing in secret copying
-# git: for initializing and pushing repositories
-# openssh-client: for git ssh operations
 RUN apk update && apk upgrade --no-cache && \
     apk add --no-cache curl jq git openssh-client
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # Create a non-root user (uid 1000) for SSH compatibility
 RUN adduser -D -u 1000 luban
 
 # Install kubectl
-RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+ARG KUBECTL_VERSION=v1.35.1
+RUN curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
     && chmod +x kubectl \
     && mv kubectl /usr/local/bin/
 
-# Install python dependencies directly
-RUN pip install --no-cache-dir cookiecutter click requests ruamel.yaml
-
-# Workdir
 WORKDIR /app
+
+# Install python dependencies (caching step)
+COPY pyproject.toml uv.lock ./
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+RUN uv sync --frozen --no-install-project
 
 # Copy tool code
 COPY . .
 
-# Set PYTHONPATH to include src
-ENV PYTHONPATH=/app/src
+# Install the project itself to enable [project.scripts]
+# Dependencies are already cached/installed
+RUN uv sync --frozen
 
-# Set HOME to /tmp because tools like Cookiecutter need a writable home directory.
-# When running in Argo Workflows or restricted security contexts (non-root),
-# the default HOME (/) is often read-only.
+# Set environment variables
+ENV PATH="/app/.venv/bin:$PATH"
+# PYTHONPATH is less critical now as the project is installed, but keeping it for safety
+ENV PYTHONPATH=/app/src
 ENV HOME=/tmp
 
-# Set entrypoint
-ENTRYPOINT ["python3", "/app/src/main.py"]
+# Set entrypoint to use the installed script via uv run
+# 'uv run' ensures the environment is activated correctly
+ENTRYPOINT ["uv", "run", "luban-provisioner"]
 
 # Run as non-root user
 USER 1000

@@ -41,6 +41,12 @@ spec:
         enum:
           - "yes"
           - "no"
+      - name: dagster_platform_project
+        description: "Project where Dagster Platform is running (defaults to project_name)"
+        value: ""
+      - name: dagster_platform_app
+        description: "Application name of Dagster Platform"
+        value: "dagster-platform"
       - name: gitops_utils_image
         valueFrom:
           configMapKeyRef:
@@ -78,7 +84,6 @@ spec:
                   value: "{{workflow.parameters.git_provider}}"
                 - name: config_file
                   value: "/workdir/config.yaml"
-                # Removed inline args that are now in config.yaml
 
           # 3. Setup ArgoCD Application
           - name: setup-argocd-app
@@ -119,13 +124,34 @@ spec:
                 - name: config_file
                   value: "/workdir/config.yaml"
 
+          # 5. Register Code Location in Platform
+          - name: register-code-location
+            dependencies: [provision-source-repo]
+            template: register-code-location
+            arguments:
+              parameters:
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+                - name: app_name
+                  value: "{{workflow.parameters.app_name}}"
+                - name: environment
+                  value: "{{workflow.parameters.environment}}"
+                - name: git_organization
+                  value: "{{workflow.parameters.git_organization}}"
+                - name: git_provider
+                  value: "{{workflow.parameters.git_provider}}"
+                - name: dagster_platform_project
+                  value: "{{workflow.parameters.dagster_platform_project}}"
+                - name: dagster_platform_app
+                  value: "{{workflow.parameters.dagster_platform_app}}"
+
     - name: generate-config
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
         command: [sh, -c]
         args:
           - |
-            python3 /app/src/main.py config \
+            luban-provisioner config \
               --luban-config-dir /etc/config/luban \
               --app-config-dir /etc/config/app \
               --set dagster_component_type="code-location" \
@@ -146,3 +172,68 @@ spec:
         - name: luban-dagster-config
           configMap:
             name: luban-dagster-config
+
+    - name: register-code-location
+      inputs:
+        parameters:
+          - name: project_name
+          - name: app_name
+          - name: environment
+          - name: git_organization
+          - name: git_provider
+          - name: dagster_platform_project
+          - name: dagster_platform_app
+      container:
+        image: "{{workflow.parameters.luban_provisioner_image}}"
+        command: [sh, -c]
+        args:
+          - |
+            # Define variables first
+            DAGSTER_PLATFORM_PROJECT="{{inputs.parameters.dagster_platform_project}}"
+            PROJECT_NAME="{{inputs.parameters.project_name}}"
+            DAGSTER_PLATFORM_APP="{{inputs.parameters.dagster_platform_app}}"
+            ENV="{{inputs.parameters.environment}}"
+            APP="{{inputs.parameters.app_name}}"
+            GIT_ORG="{{inputs.parameters.git_organization}}"
+            GIT_PROVIDER="{{inputs.parameters.git_provider}}"
+            
+            # Logic
+            PLATFORM_PROJECT="$DAGSTER_PLATFORM_PROJECT"
+            if [ -z "$PLATFORM_PROJECT" ]; then
+              PLATFORM_PROJECT="$PROJECT_NAME"
+            fi
+            
+            DOMAIN_SUFFIX="svc.cluster.local"
+            LOCATION_HOST="${APP}.${ENV}-${PROJECT_NAME}.${DOMAIN_SUFFIX}"
+            LOCATION_PORT="4000"
+            
+            echo "Registering Code Location:"
+            echo "  Name: $APP"
+            echo "  Host: $LOCATION_HOST"
+            echo "  Port: $LOCATION_PORT"
+            echo "  Env:  $ENV"
+            echo "  Platform: $PLATFORM_PROJECT/$DAGSTER_PLATFORM_APP"
+            
+            luban-provisioner dagster register-location \
+              --platform-project "$PLATFORM_PROJECT" \
+              --platform-app "$DAGSTER_PLATFORM_APP" \
+              --environment "$ENV" \
+              --location-name "$APP" \
+              --location-host "$LOCATION_HOST" \
+              --location-port "$LOCATION_PORT" \
+              --git-organization "$GIT_ORG" \
+              --git-provider "$GIT_PROVIDER" \
+              --git-server "$GIT_SERVER"
+
+        env:
+          - name: GIT_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: "{{inputs.parameters.git_provider}}-creds"
+                key: token
+          - name: GIT_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_server"
+                optional: true

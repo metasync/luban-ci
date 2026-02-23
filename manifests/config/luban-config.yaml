@@ -22,5 +22,6 @@ data:
   azure_server: "dev.azure.com"
 
   # Tooling Images
-  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.1.196"
+  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.1.202"
   gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.3.7"
+  

@@ -124,7 +124,7 @@ spec:
         command: [sh, -c]
         args:
           - |
-            python3 /app/src/main.py config \
+            luban-provisioner config \
               --luban-config-dir /etc/config/luban \
               --app-config-dir /etc/config/app
 

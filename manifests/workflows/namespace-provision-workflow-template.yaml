@@ -30,7 +30,7 @@ spec:
       command: ["sh", "-c"]
       args:
       - |
-        python3 /app/src/main.py k8s \
+        luban-provisioner k8s \
           --project-name={{inputs.parameters.project_name}} \
           --environment={{inputs.parameters.environment}} \
           --git-org={{inputs.parameters.git_organization}} \

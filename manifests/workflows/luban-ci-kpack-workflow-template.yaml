@@ -113,6 +113,13 @@ spec:
           path: /tmp/image_tag
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
       command: [sh, -c]
       args:
       - |
@@ -128,7 +135,8 @@ spec:
         kubectl config use-context local
         
         # Calculate derived parameters in shell for robustness
-        REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
+        # REGISTRY_NAMESPACE is passed as env var to prevent shell injection vulnerabilities
+        # and ensure robust handling of special characters.
         
         # Convert Azure DevOps HTTPS URL to SSH if needed
         # HTTPS: https://dev.azure.com/{org}/{project}/_git/{repo}
@@ -187,6 +195,8 @@ spec:
         kp build logs "$APP_NAME"
 
       env:
+      - name: REGISTRY_NAMESPACE
+        value: "{{inputs.parameters.namespace}}"
       - name: REPO_URL
         value: "{{workflow.parameters.repo_url}}"
       - name: REVISION
@@ -212,6 +222,13 @@ spec:
           path: /tmp/image_tag
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
       command: [sh, -c]
       args:
       - |
@@ -227,7 +244,8 @@ spec:
         kubectl config use-context local
 
         # Calculate derived parameters in shell for robustness
-        REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
+        # REGISTRY_NAMESPACE is passed as env var to prevent shell injection vulnerabilities
+        # and ensure robust handling of special characters.
 
         # Convert Azure DevOps HTTPS URL to SSH if needed
         # HTTPS: https://dev.azure.com/{org}/{project}/_git/{repo}
@@ -294,6 +312,8 @@ spec:
         kp build logs "$APP_NAME"
 
       env:
+      - name: REGISTRY_NAMESPACE
+        value: "{{inputs.parameters.namespace}}"
       - name: REPO_URL
         value: "{{workflow.parameters.repo_url}}"
       - name: REVISION
@@ -314,6 +334,13 @@ spec:
       - name: namespace
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
       command: [sh, -c]
       args:
       - |
@@ -321,7 +348,8 @@ spec:
         git config --global --add safe.directory "*"
         
         # Calculate derived parameters in shell for robustness
-        REGISTRY_NAMESPACE="{{inputs.parameters.namespace}}"
+        # REGISTRY_NAMESPACE is passed as env var to prevent shell injection vulnerabilities
+        # and ensure robust handling of special characters.
         # Determine GitOps Repo URL
         if [ "$GIT_PROVIDER" = "azure" ]; then
            # Extract org/project from REPO_URL (SSH or HTTPS)
@@ -406,6 +434,8 @@ spec:
           git push
         fi
       env:
+      - name: REGISTRY_NAMESPACE
+        value: "{{inputs.parameters.namespace}}"
       - name: GIT_USERNAME
         valueFrom:
           secretKeyRef:
