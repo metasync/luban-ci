@@ -148,14 +148,18 @@ spec:
     - name: generate-config
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
-        command: [sh, -c]
+        imagePullPolicy: Always
+        command: ["luban-provisioner"]
         args:
-          - |
-            luban-provisioner config \
-              --luban-config-dir /etc/config/luban \
-              --app-config-dir /etc/config/app \
-              --set dagster_component_type="code-location" \
-              --set template_type="dagster-code-location"
+          - config
+          - --luban-config-dir
+          - /etc/config/luban
+          - --app-config-dir
+          - /etc/config/app
+          - --set
+          - dagster_component_type=code-location
+          - --set
+          - template_type=dagster-code-location
 
         volumeMounts:
           - name: workdir
@@ -214,7 +218,7 @@ spec:
             echo "  Env:  $ENV"
             echo "  Platform: $PLATFORM_PROJECT/$DAGSTER_PLATFORM_APP"
             
-            luban-provisioner dagster register-location \
+            uv run --frozen --no-sync luban-provisioner dagster register-location \
               --platform-project "$PLATFORM_PROJECT" \
               --platform-app "$DAGSTER_PLATFORM_APP" \
               --environment "$ENV" \

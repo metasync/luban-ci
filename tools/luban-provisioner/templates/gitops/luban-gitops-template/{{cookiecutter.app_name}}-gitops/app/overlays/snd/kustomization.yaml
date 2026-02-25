@@ -13,7 +13,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/hostnames/0
-        value: "snd-{{cookiecutter.app_name}}.{{cookiecutter.domain_suffix}}"
+        value: "snd-{{cookiecutter.project_name}}-{{cookiecutter.app_name}}.{{cookiecutter.domain_suffix}}"
   - path: configmap.yaml
 
 # Explicitly defining images allows Kustomize to override the tag

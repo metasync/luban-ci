@@ -9,6 +9,7 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@echo "Deploying Workflow RBAC..."
 	@kubectl apply -f rbac/pipeline-sa.yaml
 	@kubectl apply -f rbac/kpack-admin-role.yaml
+	@kubectl apply -f rbac/argo-controller-role.yaml
 	@kubectl apply -f rbac/luban-view-templates-clusterrole.yaml
 	@echo "Deploying kpack Stack and Builder..."
 	@kubectl apply -f kpack/kpack-stack.yaml

@@ -6,19 +6,19 @@ import subprocess
 import traceback
 import click
 from cookiecutter.main import cookiecutter
-from utils import copy_secrets, copy_configmaps, patch_default_service_account
+from luban_provisioner.utils import copy_secrets, copy_configmaps, patch_default_service_account
 
 @click.command(name='k8s')
 @click.option('--project-name', required=True, help='Name of the project')
 @click.option('--environment', required=True, help='Environment (snd/prd)')
-@click.option('--git-org', required=True, help='Git Organization (for templates)')
+@click.option('--git-organization', required=True, help='Git Organization (for templates)')
 @click.option('--git-provider', default='github', help='Git Provider (for templates)')
 @click.option('--admin-groups', default='', help='Comma-separated list of admin groups')
 @click.option('--developer-groups', default='', help='Comma-separated list of developer groups')
 @click.option('--create-test-users', default='no', help='Create test service accounts (yes/no)')
 @click.option('--image-pull-secret', required=True, help='Name of the image pull secret to copy and use')
 @click.option('--dry-run', is_flag=True, help='Only generate files, do not apply')
-def k8s(project_name, environment, git_org, git_provider, admin_groups, developer_groups, create_test_users, image_pull_secret, dry_run):
+def k8s(project_name, environment, git_organization, git_provider, admin_groups, developer_groups, create_test_users, image_pull_secret, dry_run):
     """Provision Kubernetes Namespace and Resources."""
     
     target_ns = f"{environment}-{project_name}"
@@ -44,7 +44,7 @@ def k8s(project_name, environment, git_org, git_provider, admin_groups, develope
         "project_name": project_name,
         "environment": environment,
         "target_namespace": target_ns,
-        "git_organization": git_org,
+        "git_organization": git_organization,
         "git_provider": git_provider,
         "admin_groups": ",".join(admins_list),
         "developer_groups": ",".join(devs_list),

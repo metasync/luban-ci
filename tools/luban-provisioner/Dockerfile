@@ -29,17 +29,20 @@ COPY . .
 
 # Install the project itself to enable [project.scripts]
 # Dependencies are already cached/installed
+# We need to run sync again to install the project package
 RUN uv sync --frozen
 
 # Set environment variables
+# Ensure the bin directory is in PATH so uv run can find the script
 ENV PATH="/app/.venv/bin:$PATH"
-# PYTHONPATH is less critical now as the project is installed, but keeping it for safety
-ENV PYTHONPATH=/app/src
-ENV HOME=/tmp
 
-# Set entrypoint to use the installed script via uv run
-# 'uv run' ensures the environment is activated correctly
-ENTRYPOINT ["uv", "run", "luban-provisioner"]
+# Ensure non-root user owns the app directory and venv
+RUN chown -R luban:luban /app
+
+# Set entrypoint to use the installed script directly
+# The venv bin directory is in PATH
+# We use the installed script directly since it's in PATH
+ENTRYPOINT ["luban-provisioner"]
 
 # Run as non-root user
 USER 1000

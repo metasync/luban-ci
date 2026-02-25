@@ -32,6 +32,13 @@ spec:
         - name: dagster-daemon
           image: "{{cookiecutter.registry_server}}/{{cookiecutter.project_name}}/{{cookiecutter.app_name}}:latest"
           imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
           args: ["dagster-daemon", "run", "-w", "/opt/dagster/dagster_home/workspace/workspace.yaml"]
           envFrom:
             - configMapRef:

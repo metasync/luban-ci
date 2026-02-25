@@ -114,31 +114,34 @@ spec:
   - name: git-project-setup
     inputs:
       parameters:
-      - name: project_name
-      - name: git_organization
-      - name: git_provider
-    
+        - name: project_name
+        - name: git_organization
+        - name: git_provider
+
     container:
       image: "{{workflow.parameters.luban_provisioner_image}}"
       imagePullPolicy: Always
-      command: ["sh", "-c"]
+      command: ["luban-provisioner"]
       args:
-        - |
-          luban-provisioner project \
-            --project-name "{{inputs.parameters.project_name}}" \
-            --git-org "{{inputs.parameters.git_organization}}" \
-            --git-provider "{{inputs.parameters.git_provider}}" \
-            --git-server "$GIT_SERVER"
+        - project
+        - --project-name
+        - "{{inputs.parameters.project_name}}"
+        - --git-organization
+        - "{{inputs.parameters.git_organization}}"
+        - --git-provider
+        - "{{inputs.parameters.git_provider}}"
+        - --git-server
+        - "$(GIT_SERVER)"
+        - --git-token
+        - "$(GIT_TOKEN)"
       env:
         - name: GIT_TOKEN
           valueFrom:
             secretKeyRef:
               name: "{{inputs.parameters.git_provider}}-creds"
               key: token
-              optional: true
         - name: GIT_SERVER
           valueFrom:
             configMapKeyRef:
               name: luban-config
               key: "{{inputs.parameters.git_provider}}_server"
-              optional: true

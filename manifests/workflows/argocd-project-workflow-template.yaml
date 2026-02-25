@@ -8,32 +8,32 @@ spec:
   serviceAccountName: luban-ci-sa
   arguments:
     parameters:
-    - name: project_name
-      description: "Name of the project/team (e.g., 'payment')"
-    - name: environment
-      description: "Target environment (e.g., 'snd', 'prd')"
-      value: "snd"
-    - name: git_organization
-      description: "Git Organization/User (defaults to project_name if empty)"
-      value: ""
-    - name: git_provider
-      description: "Git Provider (e.g., 'github', 'azure')"
-      value: "azure"
-      enum:
-      - "github"
-      - "azure"
-    - name: developer_groups
-      description: "List of OIDC groups for developer access (JSON array)"
-      value: '[]'
-    - name: admin_groups
-      description: "List of OIDC groups for admin access (JSON array)"
-      value: '[]'
-    - name: gitops_utils_image
-      description: "Image for GitOps utility tools"
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: gitops_utils_image
+      - name: project_name
+        description: "Name of the project/team (e.g., 'payment')"
+      - name: environment
+        description: "Target environment (e.g., 'snd', 'prd')"
+        value: "snd"
+      - name: git_organization
+        description: "Git Organization/User (defaults to project_name if empty)"
+        value: ""
+      - name: git_provider
+        description: "Git Provider (e.g., 'github', 'azure')"
+        value: "azure"
+        enum:
+          - "github"
+          - "azure"
+      - name: developer_groups
+        description: "List of OIDC groups for developer access (JSON array)"
+        value: '[]'
+      - name: admin_groups
+        description: "List of OIDC groups for admin access (JSON array)"
+        value: '[]'
+      - name: gitops_utils_image
+        description: "Image for GitOps utility tools"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: gitops_utils_image
 
   templates:
   - name: create-projects

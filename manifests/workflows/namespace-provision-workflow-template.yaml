@@ -6,6 +6,14 @@ metadata:
 spec:
   entrypoint: bootstrap-namespace
   serviceAccountName: luban-ci-sa
+  arguments:
+    parameters:
+      - name: luban_provisioner_image
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: luban_provisioner_image
+
   templates:
   - name: bootstrap-namespace
     inputs:
@@ -27,22 +35,28 @@ spec:
         - "no"
     container:
       image: "{{workflow.parameters.luban_provisioner_image}}"
-      command: ["sh", "-c"]
+      command: ["luban-provisioner"]
       args:
-      - |
-        luban-provisioner k8s \
-          --project-name={{inputs.parameters.project_name}} \
-          --environment={{inputs.parameters.environment}} \
-          --git-org={{inputs.parameters.git_organization}} \
-          --git-provider={{inputs.parameters.git_provider}} \
-          --admin-groups={{inputs.parameters.admin_groups}} \
-          --developer-groups={{inputs.parameters.developer_groups}} \
-          --create-test-users={{inputs.parameters.create_test_users}} \
-          --image-pull-secret=$IMAGE_PULL_SECRET
+        - k8s
+        - --project-name
+        - "{{inputs.parameters.project_name}}"
+        - --environment
+        - "{{inputs.parameters.environment}}"
+        - --git-organization
+        - "{{inputs.parameters.git_organization}}"
+        - --git-provider
+        - "{{inputs.parameters.git_provider}}"
+        - --admin-groups
+        - "{{inputs.parameters.admin_groups}}"
+        - --developer-groups
+        - "{{inputs.parameters.developer_groups}}"
+        - --create-test-users
+        - "{{inputs.parameters.create_test_users}}"
+        - --image-pull-secret
+        - "$(IMAGE_PULL_SECRET)"
       env:
         - name: IMAGE_PULL_SECRET
           valueFrom:
             configMapKeyRef:
               name: luban-config
               key: image_pull_secret
-              optional: true

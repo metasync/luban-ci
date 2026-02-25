@@ -1,7 +1,7 @@
 import click
 import os
 import yaml
-from utils import load_config_from_dir
+from luban_provisioner.utils import load_config_from_dir
 
 @click.command(name='config')
 @click.option('--output-file', default='/workdir/config.yaml', help='Output path for config file')

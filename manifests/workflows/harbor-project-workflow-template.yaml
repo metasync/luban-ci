@@ -8,27 +8,27 @@ spec:
   serviceAccountName: luban-ci-sa
   arguments:
     parameters:
-    - name: project_name
-      description: "Name of the Harbor project to create"
-    - name: registry_visibility
-      description: "Project visibility (public or private)"
-      value: "public"
-      enum:
-      - "public"
-      - "private"
-    - name: registry_server
-      description: "Registry server domain (e.g. harbor.example.com)"
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: registry_server
-          optional: true
-    - name: gitops_utils_image
-      description: "Image for GitOps utility tools"
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: gitops_utils_image
+      - name: project_name
+        description: "Name of the Harbor project to create"
+      - name: registry_visibility
+        description: "Project visibility (public or private)"
+        value: "public"
+        enum:
+          - "public"
+          - "private"
+      - name: registry_server
+        description: "Registry server domain (e.g. harbor.example.com)"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: registry_server
+            optional: true
+      - name: gitops_utils_image
+        description: "Image for GitOps utility tools"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: gitops_utils_image
 
   templates:
     - name: create-project

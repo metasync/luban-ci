@@ -36,15 +36,21 @@ spec:
           - name: git_provider
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
-        command: ["/bin/sh", "-c"]
+        command: ["luban-provisioner"]
         args:
-          - |
-            luban-provisioner promote \
-              --app-name "{{inputs.parameters.app_name}}" \
-              --git-organization "{{inputs.parameters.git_organization}}" \
-              --git-provider "{{inputs.parameters.git_provider}}" \
-              --project-name "{{inputs.parameters.project_name}}" \
-              --git-server "$GIT_SERVER"
+          - promote
+          - --app-name
+          - "{{inputs.parameters.app_name}}"
+          - --git-organization
+          - "{{inputs.parameters.git_organization}}"
+          - --git-provider
+          - "{{inputs.parameters.git_provider}}"
+          - --project-name
+          - "{{inputs.parameters.project_name}}"
+          - --git-server
+          - "$(GIT_SERVER)"
+          - --git-token
+          - "$(GIT_TOKEN)"
         env:
           - name: GIT_TOKEN
             valueFrom:
@@ -56,4 +62,3 @@ spec:
               configMapKeyRef:
                 name: luban-config
                 key: "{{inputs.parameters.git_provider}}_server"
-                optional: true

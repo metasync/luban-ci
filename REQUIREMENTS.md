@@ -108,9 +108,10 @@ Production-ready pipeline deployment:
 ### 7.3 Database Architecture
 **PostgreSQL** is selected as the primary database for Dagster metadata storage:
 - Centralized metadata repository for all pipeline definitions and execution history
-- Integration with existing PostgreSQL operator from luban-bootstrapper
-- Automated backup and disaster recovery through established patterns
-- Connection pooling and performance optimization for high-throughput scenarios
+- **Dedicated PostgreSQL StatefulSet** provisioning for isolation and simplicity
+- Automated persistence via PVCs
+- Configurable resource limits and storage classes
+- Connection pooling managed via Dagster instance configuration
 
 ### 7.4 Exposure Strategy
 Dagster services are exposed through **Envoy Gateway** following established patterns:

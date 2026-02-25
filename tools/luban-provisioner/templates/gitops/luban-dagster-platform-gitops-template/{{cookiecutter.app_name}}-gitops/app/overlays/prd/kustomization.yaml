@@ -17,4 +17,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/hostnames/0
-        value: "{{cookiecutter.app_name}}.{{cookiecutter.domain_suffix}}"
+        value: "{{cookiecutter.project_name}}-{{cookiecutter.app_name}}.{{cookiecutter.domain_suffix}}"

@@ -1,15 +1,21 @@
 [project]
 name = "luban-provisioner"
-version = "0.1.202"
+version = "0.1.223"
 description = "Tooling for provisioning Luban CI/CD resources and project scaffolding"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "click>=8.3.1",
     "cookiecutter>=2.6.0",
-    "requests>=2.32.5",
+    "requests>=2.32.0",
+    "urllib3<3.0.0",
     "ruamel-yaml>=0.19.1",
 ]
 
 [project.scripts]
-luban-provisioner = "main:cli"
+luban-provisioner = "luban_provisioner.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+

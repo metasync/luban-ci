@@ -25,48 +25,48 @@ spec:
         key: kpack-builds
   arguments:
     parameters:
-    - name: repo_url
-      description: "URL of the source code repository"
-    - name: registry_namespace
-      description: "Organization/Namespace for the registry (e.g., 'metasync')"
-    - name: revision
-      description: "Commit revision to build"
-    - name: app_name
-      description: "Name of the application"
-    - name: sub_path
-      description: "Sub-path within the repository to build"
-      value: ""
-    - name: git_ref
-      description: "Git reference (branch or tag)"
-      value: ""
-    - name: tag
-      description: "Explicit image tag to use (overrides revision)"
-      value: ""
-    - name: git_provider
-      description: "Git Provider (e.g., 'github', 'gitlab')"
-      value: "github"
-    - name: git_creds_secret
-      description: "Name of the secret containing git credentials"
-      value: "github-creds"
-    - name: registry_server
-      description: "Registry server to push image to"
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: registry_server
-          optional: true
-    - name: gitops_branch
-      description: "Branch in GitOps repo to update (usually 'develop')"
-      value: "develop"
-    - name: deploy_env
-      description: "Deployment environment (e.g., 'snd', 'prd')"
-      value: "snd"
-    - name: gitops_utils_image
-      description: "Image for GitOps utility tools"
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: gitops_utils_image
+      - name: repo_url
+        description: "URL of the source code repository"
+      - name: registry_namespace
+        description: "Organization/Namespace for the registry (e.g., 'metasync')"
+      - name: revision
+        description: "Commit revision to build"
+      - name: app_name
+        description: "Name of the application"
+      - name: sub_path
+        description: "Sub-path within the repository to build"
+        value: ""
+      - name: git_ref
+        description: "Git reference (branch or tag)"
+        value: ""
+      - name: tag
+        description: "Explicit image tag to use (overrides revision)"
+        value: ""
+      - name: git_provider
+        description: "Git Provider (e.g., 'github', 'gitlab')"
+        value: "github"
+      - name: git_creds_secret
+        description: "Name of the secret containing git credentials"
+        value: "github-creds"
+      - name: registry_server
+        description: "Registry server to push image to"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: registry_server
+            optional: true
+      - name: gitops_branch
+        description: "Branch in GitOps repo to update (usually 'develop')"
+        value: "develop"
+      - name: deploy_env
+        description: "Deployment environment (e.g., 'snd', 'prd')"
+        value: "snd"
+      - name: gitops_utils_image
+        description: "Image for GitOps utility tools"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: gitops_utils_image
 
   volumeClaimTemplates:
   - metadata:
@@ -85,27 +85,27 @@ spec:
         when: "'{{workflow.parameters.git_ref}}' !~ '^refs/tags/'"
         arguments:
           parameters:
-          - name: namespace
-            value: "{{workflow.parameters.registry_namespace}}"
+            - name: namespace
+              value: "{{workflow.parameters.registry_namespace}}"
       - name: build-push-by-tag
         template: build-push-by-tag
         when: "'{{workflow.parameters.git_ref}}' =~ '^refs/tags/'"
         arguments:
           parameters:
-          - name: namespace
-            value: "{{workflow.parameters.registry_namespace}}"
+            - name: namespace
+              value: "{{workflow.parameters.registry_namespace}}"
     
     - - name: update-gitops
         template: git-update
         arguments:
           parameters:
-          - name: namespace
-            value: "{{workflow.parameters.registry_namespace}}"
+            - name: namespace
+              value: "{{workflow.parameters.registry_namespace}}"
 
   - name: build-push-by-commit
     inputs:
       parameters:
-      - name: namespace
+        - name: namespace
     outputs:
       parameters:
       - name: image_tag
@@ -214,7 +214,7 @@ spec:
   - name: build-push-by-tag
     inputs:
       parameters:
-      - name: namespace
+        - name: namespace
     outputs:
       parameters:
       - name: image_tag
@@ -331,7 +331,7 @@ spec:
   - name: git-update
     inputs:
       parameters:
-      - name: namespace
+        - name: namespace
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
       resources:

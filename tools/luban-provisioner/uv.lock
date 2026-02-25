@@ -165,21 +165,23 @@ wheels = [
 
 [[package]]
 name = "luban-provisioner"
-version = "0.1.0"
-source = { virtual = "." }
+version = "0.1.213"
+source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "cookiecutter" },
     { name = "requests" },
     { name = "ruamel-yaml" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.3.1" },
     { name = "cookiecutter", specifier = ">=2.6.0" },
-    { name = "requests", specifier = ">=2.32.5" },
+    { name = "requests", specifier = ">=2.32.0" },
     { name = "ruamel-yaml", specifier = ">=0.19.1" },
+    { name = "urllib3", specifier = "<3.0.0" },
 ]
 
 [[package]]

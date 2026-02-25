@@ -1,7 +1,7 @@
 import click
 import sys
-from providers.github import GitHubProvider
-from providers.azure import AzureProvider
+from luban_provisioner.providers.github import GitHubProvider
+from luban_provisioner.providers.azure import AzureProvider
 
 def get_git_provider(provider_name, token, server=None, organization=None, project=None):
     """

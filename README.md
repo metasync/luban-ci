@@ -354,12 +354,10 @@ If you are using Azure DevOps instead of GitHub:
 
 ### GitOps CLI Tooling & Robustness
 - **Internal Logic**: To ensure reliability across different Argo controller versions, all complex parameter derivation (e.g., extracting organization from URL, constructing GitOps repo paths) has been moved from Argo expressions into native shell scripts within the task containers.
-- **Tooling Image**: To avoid installing git and yq on every workflow run, build and push a small tooling image (gitops-utils):
-  ```bash
-  make tools-image-build
-  make tools-image-push
-  ```
-- **Usage**: The workflow uses a parameter `gitops_utils_image` (default: `quay.io/luban-ci/gitops-utils:<version>`) for checkout/update/provisioning steps.
+- **Tooling Images**:
+  - **`luban-provisioner`**: Used for all provisioning tasks (Project, App, GitOps, K8s).
+  - **`gitops-utils`**: A lightweight image (git, yq, kubectl) used in the CI pipeline for checkout and GitOps updates.
+- **Usage**: Workflows reference these images via parameters defined in `luban-config`.
 
 ### Concurrency Control
 - Recommended: Argo Workflows Semaphores

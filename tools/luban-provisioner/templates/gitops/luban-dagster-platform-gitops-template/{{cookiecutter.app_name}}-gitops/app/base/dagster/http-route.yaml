@@ -7,7 +7,7 @@ spec:
     - name: luban-gateway
       namespace: gateway
   hostnames:
-    - "{{cookiecutter.app_name}}.{{cookiecutter.domain_suffix}}"
+    - "{{cookiecutter.project_name}}-{{cookiecutter.app_name}}.{{cookiecutter.domain_suffix}}"
   rules:
     - matches:
         - path:
@@ -15,4 +15,4 @@ spec:
             value: /
       backendRefs:
         - name: "{{cookiecutter.app_name}}-webserver"
-          port: 3000
+          port: {{cookiecutter.platform_port}}

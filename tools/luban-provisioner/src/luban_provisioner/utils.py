@@ -47,76 +47,74 @@ def load_config_from_dir(config_dir):
                 click.echo(f"Warning: Failed to read config file {file_path}: {e}", err=True)
     return config
 
+def _copy_k8s_resource(resource_type, resource_name, target_ns, source_ns):
+    """
+    Helper to copy a K8s resource from source_ns to target_ns.
+    """
+    click.echo(f"Copying {resource_type} {resource_name} from {source_ns} to {target_ns}...")
+    
+    # Check if exists in source
+    try:
+        subprocess.run(
+            ['kubectl', 'get', resource_type, resource_name, '-n', source_ns], 
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
+        )
+    except subprocess.CalledProcessError:
+        click.echo(f"Warning: {resource_type} {resource_name} not found in {source_ns}, skipping.")
+        return
+
+    # Get resource as JSON
+    try:
+        proc = subprocess.run(
+            ['kubectl', 'get', resource_type, resource_name, '-n', source_ns, '-o', 'json'],
+            capture_output=True, text=True, check=True
+        )
+        resource_data = json.loads(proc.stdout)
+        
+        # Clean metadata
+        if 'metadata' in resource_data:
+            meta = resource_data['metadata']
+            for field in ['namespace', 'resourceVersion', 'uid', 'creationTimestamp', 'ownerReferences', 'managedFields']:
+                if field in meta:
+                    del meta[field]
+        
+        # Apply to target namespace
+        proc_apply = subprocess.Popen(
+            ['kubectl', 'apply', '-n', target_ns, '-f', '-'],
+            stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
+        )
+        stdout, stderr = proc_apply.communicate(input=json.dumps(resource_data))
+        
+        if proc_apply.returncode != 0:
+             click.echo(f"Failed to copy {resource_type} {resource_name}: {stderr}", err=True)
+
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to get {resource_type} {resource_name}: {e}", err=True)
+    except json.JSONDecodeError as e:
+        click.echo(f"Failed to parse {resource_type} {resource_name} JSON: {e}", err=True)
+
 def copy_secrets(target_ns, source_ns, image_pull_secret):
     """
     Copies secrets from source namespace to target namespace.
     Specifically handles image pull secrets and harbor credentials.
     """
-    secrets = ["github-creds"]
+    secrets = {"github-creds", "harbor-creds", "azure-ssh-creds", "azure-creds"}
+    
     if image_pull_secret:
-        secrets.append(image_pull_secret)
-    
-    # Always try to copy harbor-creds (RW) for Kpack builds
-    # This ensures workflow-runner has write access even if image_pull_secret is RO
-    if image_pull_secret != "harbor-creds":
-        secrets.append("harbor-creds")
+        secrets.add(image_pull_secret)
         
-    # Copy Azure SSH creds if available (always copy to be safe, or make it conditional?)
-    # Since we might use Azure, let's copy it. It's harmless if unused.
-    secrets.append("azure-ssh-creds")
-    
-    # Also copy azure-creds (HTTPS PAT) for GitOps updates which use HTTPS
-    secrets.append("azure-creds")
-    
     for secret in secrets:
-        click.echo(f"Copying secret {secret} from {source_ns} to {target_ns}...")
-        # check if exists in source
-        check = subprocess.run(
-            ['kubectl', 'get', 'secret', secret, '-n', source_ns], 
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        if check.returncode != 0:
-            click.echo(f"Warning: Secret {secret} not found in {source_ns}, skipping.")
-            continue
-
-        # Get and Apply using jq
-        # Note: we assume jq is installed in the container
-        cmd = f"kubectl get secret {secret} -n {source_ns} -o json | " \
-              f"jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | " \
-              f"kubectl apply -n {target_ns} -f -"
-        
-        try:
-            subprocess.run(cmd, shell=True, check=True)
-        except subprocess.CalledProcessError:
-            click.echo(f"Failed to copy secret {secret}", err=True)
+        _copy_k8s_resource('secret', secret, target_ns, source_ns)
 
 def copy_configmaps(target_ns, source_ns):
     """
     Copies relevant ConfigMaps from source namespace to target namespace.
-    Specifically handles luban-config, github-config, and azure-config.
+    Specifically handles luban-config.
     """
     configmaps = ["luban-config"]
     
     for cm in configmaps:
-        click.echo(f"Copying configmap {cm} from {source_ns} to {target_ns}...")
-        # check if exists in source
-        check = subprocess.run(
-            ['kubectl', 'get', 'configmap', cm, '-n', source_ns], 
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        if check.returncode != 0:
-            click.echo(f"Warning: ConfigMap {cm} not found in {source_ns}, skipping.")
-            continue
-
-        # Get and Apply using jq
-        cmd = f"kubectl get configmap {cm} -n {source_ns} -o json | " \
-              f"jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp)' | " \
-              f"kubectl apply -n {target_ns} -f -"
-        
-        try:
-            subprocess.run(cmd, shell=True, check=True)
-        except subprocess.CalledProcessError:
-            click.echo(f"Failed to copy configmap {cm}", err=True)
+        _copy_k8s_resource('configmap', cm, target_ns, source_ns)
 
 def render_template(template_path, output_dir, context, overwrite=False):
     """

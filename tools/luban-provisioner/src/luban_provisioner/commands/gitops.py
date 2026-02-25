@@ -2,8 +2,8 @@ import sys
 import os
 import click
 
-from utils import initialize_git_repo, create_and_push_branch, render_template, load_config
-from provider_factory import get_git_provider, get_remote_url
+from luban_provisioner.utils import initialize_git_repo, create_and_push_branch, render_template, load_config
+from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 
 @click.command(name='gitops')
 @click.option('--project-name', required=True, help='Name of the project/repo')

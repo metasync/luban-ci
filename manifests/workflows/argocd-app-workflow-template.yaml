@@ -8,31 +8,31 @@ spec:
   serviceAccountName: luban-ci-sa
   arguments:
     parameters:
-    - name: project_name
-      description: "Name of the project/team (e.g., 'payment')"
-    - name: app_name
-      description: "Name of the application (e.g., 'cart-service')"
-    - name: environment
-      description: "Target environment (e.g., 'snd', 'prd')"
-      value: "snd"
-      enum:
-        - "snd"
-        - "prd"
-    - name: git_organization
-      description: "Git Organization/User (defaults to project_name if empty)"
-      value: ""
-    - name: git_provider
-      description: "Git Provider (github, azure, etc.)"
-      value: "azure"
-      enum:
-        - "github"
-        - "azure"
-    - name: gitops_utils_image
-      description: "Image for GitOps utility tools"
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: gitops_utils_image
+      - name: project_name
+        description: "Name of the project/team (e.g., 'payment')"
+      - name: app_name
+        description: "Name of the application (e.g., 'cart-service')"
+      - name: environment
+        description: "Target environment (e.g., 'snd', 'prd')"
+        value: "snd"
+        enum:
+          - "snd"
+          - "prd"
+      - name: git_organization
+        description: "Git Organization/User (defaults to project_name if empty)"
+        value: ""
+      - name: git_provider
+        description: "Git Provider (github, azure, etc.)"
+        value: "azure"
+        enum:
+          - "github"
+          - "azure"
+      - name: gitops_utils_image
+        description: "Image for GitOps utility tools"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: gitops_utils_image
 
   templates:
   - name: create-applications
@@ -41,16 +41,18 @@ spec:
         template: ensure-application
         arguments:
           parameters:
-          - name: environment
-            value: "{{workflow.parameters.environment}}"
-          - name: app_name
-            value: "{{workflow.parameters.app_name}}"
-          - name: project_name
-            value: "{{workflow.parameters.project_name}}"
-          - name: git_provider
-            value: "{{workflow.parameters.git_provider}}"
-          - name: git_organization
-            value: "{{workflow.parameters.git_organization}}"
+            - name: environment
+              value: "{{workflow.parameters.environment}}"
+            - name: app_name
+              value: "{{workflow.parameters.app_name}}"
+            - name: project_name
+              value: "{{workflow.parameters.project_name}}"
+            - name: git_provider
+              value: "{{workflow.parameters.git_provider}}"
+            - name: git_organization
+              value: "{{workflow.parameters.git_organization}}"
+            - name: gitops_utils_image
+              value: "{{workflow.parameters.gitops_utils_image}}"
 
   - name: ensure-application
     inputs:
@@ -69,6 +71,8 @@ spec:
             value: "{{inputs.parameters.environment}}"
           - name: app_name
             value: "{{inputs.parameters.app_name}}"
+          - name: project_name
+            value: "{{inputs.parameters.project_name}}"
     - - name: create-app
         template: create-app-resource
         arguments:
@@ -90,12 +94,13 @@ spec:
       parameters:
       - name: environment
       - name: app_name
+      - name: project_name
     script:
       image: "{{workflow.parameters.gitops_utils_image}}"
       command: [sh]
       source: |
-        APP_NAME="{{inputs.parameters.environment}}-{{inputs.parameters.app_name}}"
-        echo "Checking if ArgoCD application $APP_NAME exists..." >&2
+        APP_NAME="{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}-{{inputs.parameters.app_name}}"
+        echo "Checking if ArgoCD application $APP_NAME exists in namespace argocd..." >&2
         if kubectl get application $APP_NAME -n argocd > /dev/null 2>&1; then
           echo "Application $APP_NAME already exists." >&2
           echo "true"
@@ -167,13 +172,13 @@ spec:
               selfHeal: true"
         fi
         
-        echo "Creating Application {{inputs.parameters.environment}}-{{inputs.parameters.app_name}}..."
+        echo "Creating Application {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}-{{inputs.parameters.app_name}} in namespace argocd..."
         
         cat <<EOF | kubectl apply -f -
         apiVersion: argoproj.io/v1alpha1
         kind: Application
         metadata:
-          name: {{inputs.parameters.environment}}-{{inputs.parameters.app_name}}
+          name: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}-{{inputs.parameters.app_name}}
           namespace: argocd
         spec:
           project: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}

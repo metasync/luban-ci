@@ -40,7 +40,6 @@ The tool requires the following environment variables for Git provider authentic
 ## Usage
 
 ### Local Development
-
 This project uses [uv](https://github.com/astral-sh/uv) for dependency management.
 
 1.  Install dependencies:
@@ -48,14 +47,13 @@ This project uses [uv](https://github.com/astral-sh/uv) for dependency managemen
     uv sync
     ```
 
-2.  Run the tool:
+2.  Run the tool locally:
     ```bash
     uv run luban-provisioner --help
     ```
 
 ### Container Usage
-
-Inside the container, the tool is available as `luban-provisioner` (or via the entrypoint).
+The container image uses `luban-provisioner` as the entrypoint. You can pass arguments directly.
 
 ```bash
 docker run --rm -it \
@@ -63,6 +61,8 @@ docker run --rm -it \
     quay.io/luban-ci/luban-provisioner:latest \
     project --help
 ```
+
+## Examples (Local)
 
 ### 1. Project Setup (Git Provider)
 

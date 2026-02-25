@@ -16,30 +16,30 @@ spec:
     secondsAfterFailure: 86400
   arguments:
     parameters:
-    - name: repo_url
-    - name: revision
-    - name: app_name
-    - name: git_ref
-    - name: git_provider
-      value: "github"
-    - name: git_creds_secret
-      value: "github-creds"
-    - name: gitops_utils_image
-      valueFrom:
-        configMapKeyRef:
-          name: luban-config
-          key: gitops_utils_image
-
-  templates:
-  - name: dispatch
-    inputs:
-      parameters:
       - name: repo_url
       - name: revision
       - name: app_name
       - name: git_ref
       - name: git_provider
+        value: "github"
       - name: git_creds_secret
+        value: "github-creds"
+      - name: gitops_utils_image
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: gitops_utils_image
+
+  templates:
+  - name: dispatch
+    inputs:
+      parameters:
+        - name: repo_url
+        - name: revision
+        - name: app_name
+        - name: git_ref
+        - name: git_provider
+        - name: git_creds_secret
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
       # Inject configuration from luban-config in the local namespace (luban-ci)

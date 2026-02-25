@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.4] - 2026-02-25
+
+### Architecture
+- **Tooling**: Standardized all provisioning logic into `luban-provisioner` (v0.1.223), improving security and maintainability.
+- **Workflow**: Updated all workflow templates to explicitly pass Git credentials and server configuration, removing reliance on fragile implicit environment variables.
+- **Configuration**: Unified `luban-config` key naming for Git providers (`github_server`, `azure_server`) to support cleaner dynamic lookups in workflows.
+
+### Changed
+- **Workflow**: Refactored `luban-promotion-workflow-template` and other core templates to use a consistent, explicit argument passing pattern for `git-token` and `git-server`.
+- **Workflow**: Removed `optional: true` from critical credential environment variables to ensure fail-fast behavior when configuration is missing.
+- **Workflow**: Normalized indentation and YAML structure across all workflow templates.
+- **Provisioner**: Updated `luban-provisioner` to use `sys.exit` for proper exit code handling and improved error messaging.
+- **Provisioner**: Refactored `utils.py` to prevent shell injection vulnerabilities in secret/configmap copying functions.
+- **GitOps**: Updated Dagster GitOps templates to use correct port variables and resource limits/requests for better stability.
+
+### Fixed
+- **Promotion**: Resolved "Bad hostname" and "Missing option --git-token" errors in `luban-promotion-workflow-template` by using explicit arguments and static ConfigMap keys.
+- **Provisioner**: Fixed `http-route.yaml` port mismatch in Dagster GitOps template.
+- **Security**: Added `argo-controller-role.yaml` to the deployment manifest list to ensure correct RBAC for the Argo controller.
+
 ## [v0.9.3] - 2026-02-23
 
 ### Changed

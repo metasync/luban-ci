@@ -1,18 +1,19 @@
 import os
 import sys
 import click
-from provider_factory import get_git_provider
+from luban_provisioner.provider_factory import get_git_provider
+from luban_provisioner.utils import load_config_from_dir
 
 @click.command(name='project')
 @click.option('--project-name', required=True, help='Name of the project')
-@click.option('--git-org', required=True, help='Git Organization')
+@click.option('--git-organization', required=True, help='Git Organization')
 @click.option('--git-provider', default='github', help='Git Provider')
 @click.option('--git-token', envvar='GIT_TOKEN', required=True, help='Git Token (env: GIT_TOKEN)')
 @click.option('--git-server', envvar='GIT_SERVER', required=True, help='Git Server Domain (env: GIT_SERVER)')
-def project(project_name, git_org, git_provider, git_token, git_server):
+def project(project_name, git_organization, git_provider, git_token, git_server):
     """Ensure Git Project/Organization exists."""
 
-    provider = get_git_provider(git_provider, git_token, server=git_server, organization=git_org, project=project_name)
+    provider = get_git_provider(git_provider, git_token, server=git_server, organization=git_organization, project=project_name)
 
     if provider:
         try:

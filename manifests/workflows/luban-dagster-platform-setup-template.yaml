@@ -122,14 +122,16 @@ spec:
     - name: generate-config
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
-        command: [sh, -c]
+        imagePullPolicy: Always
+        command: ["luban-provisioner"]
         args:
-          - |
-            # Set template_type to dagster-platform explicitly
-            luban-provisioner config \
-              --luban-config-dir /etc/config/luban \
-              --app-config-dir /etc/config/app \
-              --set template_type=dagster-platform
+          - config
+          - --luban-config-dir
+          - /etc/config/luban
+          - --app-config-dir
+          - /etc/config/app
+          - --set
+          - template_type=dagster-platform
 
         volumeMounts:
           - name: workdir

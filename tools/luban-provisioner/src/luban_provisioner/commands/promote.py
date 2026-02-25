@@ -1,10 +1,11 @@
 import os
+import sys
 import click
 import shutil
 import tempfile
 import subprocess
 from ruamel.yaml import YAML
-from provider_factory import get_git_provider, get_remote_url
+from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 
 @click.command()
 @click.option('--app-name', required=True, help='Application name')
@@ -51,7 +52,7 @@ def promote(app_name, git_organization, git_provider, git_token, git_server, pro
         subprocess.run(["git", "clone", "-b", "develop", repo_url, work_dir], check=True)
     except subprocess.CalledProcessError:
         click.echo("Failed to clone repository. Check credentials and URL.", err=True)
-        exit(1)
+        sys.exit(1)
         
     os.chdir(work_dir)
     
@@ -61,7 +62,7 @@ def promote(app_name, git_organization, git_provider, git_token, git_server, pro
     
     if not os.path.exists(snd_kust):
         click.echo(f"Error: {snd_kust} not found.", err=True)
-        exit(1)
+        sys.exit(1)
         
     # Use yq (subprocess) to extract tag. 
     # We use 'ruamel.yaml' for editing to preserve comments, but yq/jq is fine for reading.
@@ -86,7 +87,7 @@ def promote(app_name, git_organization, git_provider, git_token, git_server, pro
     images = snd_data.get('images', [])
     if not images:
         click.echo("Error: No images found in snd kustomization.yaml", err=True)
-        exit(1)
+        sys.exit(1)
         
     # Try to find specific app image? 
     # The shell script logic: APP_IMAGE_NAME=$(yq '.images[0].name' ...)
@@ -99,7 +100,7 @@ def promote(app_name, git_organization, git_provider, git_token, git_server, pro
     
     if not target_tag:
         click.echo("Error: Could not extract newTag from first image in snd.", err=True)
-        exit(1)
+        sys.exit(1)
         
     click.echo(f"Promoting Image: {target_image}")
     click.echo(f"Promoting Tag:   {target_tag}")
@@ -107,7 +108,7 @@ def promote(app_name, git_organization, git_provider, git_token, git_server, pro
     # 4. Update PRD Overlay
     if not os.path.exists(prd_kust):
         click.echo(f"Error: {prd_kust} not found.", err=True)
-        exit(1)
+        sys.exit(1)
         
     with open(prd_kust, 'r') as f:
         prd_data = yaml.load(f)

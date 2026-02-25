@@ -43,11 +43,11 @@ spec:
     - name: provision-source-repo
       inputs:
         parameters:
-        - name: project_name
-        - name: application_name
-        - name: git_organization
-        - name: git_provider
-        - name: config_file
+          - name: project_name
+          - name: application_name
+          - name: git_organization
+          - name: git_provider
+          - name: config_file
       
       dag:
         tasks:
@@ -77,30 +77,36 @@ spec:
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
         imagePullPolicy: Always
-        command: ["sh", "-c"]
+        command: ["luban-provisioner"]
         args:
-          - |
-            luban-provisioner source \
-              --project-name "{{inputs.parameters.project_name}}" \
-              --application-name "{{inputs.parameters.application_name}}" \
-              --output-dir "/workdir" \
-              --git-organization "{{inputs.parameters.git_organization}}" \
-              --git-provider "{{inputs.parameters.git_provider}}" \
-              --git-server "$GIT_SERVER" \
-              --config-file "{{inputs.parameters.config_file}}"
+          - source
+          - --project-name
+          - "{{inputs.parameters.project_name}}"
+          - --application-name
+          - "{{inputs.parameters.application_name}}"
+          - --output-dir
+          - "/workdir"
+          - --git-organization
+          - "{{inputs.parameters.git_organization}}"
+          - --git-provider
+          - "{{inputs.parameters.git_provider}}"
+          - --git-server
+          - "$(GIT_SERVER)"
+          - --config-file
+          - "{{inputs.parameters.config_file}}"
+          - --git-token
+          - "$(GIT_TOKEN)"
         env:
           - name: GIT_SERVER
             valueFrom:
               configMapKeyRef:
                 name: luban-config
                 key: "{{inputs.parameters.git_provider}}_server"
-                optional: true
           - name: GIT_TOKEN
             valueFrom:
               secretKeyRef:
                 name: "{{inputs.parameters.git_provider}}-creds"
                 key: token
-                optional: true
           - name: WEBHOOK_SECRET
             valueFrom:
               secretKeyRef:

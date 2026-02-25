@@ -121,12 +121,16 @@ spec:
     - name: generate-config
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
-        command: [sh, -c]
+        imagePullPolicy: Always
+        command: ["luban-provisioner"]
         args:
-          - |
-            luban-provisioner config \
-              --luban-config-dir /etc/config/luban \
-              --app-config-dir /etc/config/app
+          - config
+          - --luban-config-dir
+          - /etc/config/luban
+          - --app-config-dir
+          - /etc/config/app
+          - --set
+          - template_type=python-app
 
         volumeMounts:
           - name: workdir

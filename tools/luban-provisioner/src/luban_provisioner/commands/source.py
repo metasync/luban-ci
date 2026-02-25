@@ -1,8 +1,8 @@
 import sys
 import os
 import click
-from utils import initialize_git_repo, render_template, load_config
-from provider_factory import get_git_provider, get_remote_url
+from luban_provisioner.utils import initialize_git_repo, render_template, load_config
+from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 
 @click.command(name='source')
 @click.option('--project-name', required=True, help='Name of the project (e.g., team name)')
