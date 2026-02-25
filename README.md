@@ -309,6 +309,8 @@ make pipeline-run
     - `default_service_port`: Default service port (e.g., `80`).
     - `domain_suffix`: Suffix for app ingress (e.g., `apps.metasync.cc`).
     - `azure_server`: (Optional) Azure DevOps server hostname (e.g., `dev.azure.com`). Required for Azure DevOps.
+    - `python_index_url`: (Optional) Custom Python Package Index URL (e.g., `https://devpi.luban-ci.io/root/pypi`). If set, it will be injected into the `pyproject.toml` of new Python/Dagster projects.
+    - `python_index_name`: (Optional) Name for the custom index (default: `custom`).
 
 ### Git Provider Configuration (Azure DevOps)
 If you are using Azure DevOps instead of GitHub:

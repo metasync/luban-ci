@@ -3,5 +3,7 @@
   "project_name": "",
   "package_name": "",
   "description": "",
-  "version": ""
+  "version": "",
+  "python_index_url": "",
+  "python_index_name": "custom"
 }

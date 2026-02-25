@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.5] - 2026-02-25
+
+### Added
+- **Configuration**: Added support for custom Python Package Index (`python_index_url`) in `luban-config`.
+- **Templates**: Updated Dagster and Python source templates to support custom PyPI mirrors/indexes in `pyproject.toml`.
+- **Tooling**: Updated `luban-provisioner` (v0.1.226) to support index configuration injection.
+
+### Changed
+- **Buildpack**: Updated `python-uv` buildpack (v0.0.32) to skip development dependencies (`--no-dev`) during production builds, optimizing image size.
+
 ## [v0.9.4] - 2026-02-25
 
 ### Architecture

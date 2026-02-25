@@ -129,9 +129,9 @@ EOF
 echo "Installing dependencies with uv..."
 
 if [[ -f "uv.lock" ]]; then
-    uv sync --frozen
+    uv sync --frozen --no-dev
 else
-    uv sync
+    uv sync --no-dev
 fi
 
 echo "Pruning uv cache..."

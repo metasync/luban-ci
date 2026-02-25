@@ -37,6 +37,11 @@ The tool requires the following environment variables for Git provider authentic
 -   `GIT_TOKEN`: Personal Access Token (PAT) for GitHub or Azure DevOps.
 -   `GIT_SERVER`: The Git server domain (e.g., `github.com` or `dev.azure.com`).
 
+### Configuration File (Optional)
+The `source` and `gitops` commands accept a `--config-file` argument (YAML/JSON). This allows injecting custom variables into templates, such as:
+- `python_index_url`: Custom Python Package Index URL (injected into `pyproject.toml`).
+- `python_index_name`: Name for the custom index (default: `custom`).
+
 ## Usage
 
 ### Local Development

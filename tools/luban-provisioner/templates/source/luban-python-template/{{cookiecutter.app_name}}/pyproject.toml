@@ -9,6 +9,13 @@ dependencies = [
     "uvicorn",
 ]
 
+{% if cookiecutter.python_index_url %}
+[[tool.uv.index]]
+name = "{{ cookiecutter.python_index_name }}"
+url = "{{ cookiecutter.python_index_url }}"
+default = true
+{% endif %}
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

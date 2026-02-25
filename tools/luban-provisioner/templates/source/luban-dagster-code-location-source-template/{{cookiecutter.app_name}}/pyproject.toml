@@ -13,6 +13,20 @@ dependencies = [
     "dagster-k8s"
 ]
 
+[dependency-groups]
+dev = [
+    "dagster-webserver=={{cookiecutter.dagster_version}}",
+    "pytest>=9.0.2",
+    "ruff>=0.15.2",
+]
+
+{% if cookiecutter.python_index_url %}
+[[tool.uv.index]]
+name = "{{ cookiecutter.python_index_name }}"
+url = "{{ cookiecutter.python_index_url }}"
+default = true
+{% endif %}
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
