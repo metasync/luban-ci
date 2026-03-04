@@ -197,35 +197,36 @@ This Master Workflow initializes the infrastructure for a new Team or Domain.
   - `project_name`: (Required) The name of the team or domain (e.g., `payment`).
   - `environments`: (Optional) List of environments to setup (default: `["snd", "prd"]`).
   - `git_organization`: (Optional) The GitHub Org/User where source code lives.
-  - `developer_groups`: (Optional) OIDC groups for read/write access.
-  - `admin_groups`: (Optional) OIDC groups for admin access.
-  - `create_test_users`: (Optional) Create local ServiceAccounts (`test-project-admin`, `test-project-developer`) for verifying permissions (default: `no`).
+  - `developer_group`: (Optional) Single OIDC group for read/write access.
+  - `admin_group`: (Optional) Single OIDC group for admin access.
 
 ### User Access Management
-Luban CI automatically configures RBAC for your project namespaces to enable OIDC group access to the Argo Workflows UI.
+Luban CI automatically configures RBAC for your project namespaces to enable OIDC group access to the Argo Workflows UI via ServiceAccount mapping.
 
 - **Admin Access**:
-  - Groups defined in `admin_groups` are bound to the `admin` ClusterRole within the project namespace.
+  - The OIDC group defined in `admin_group` is mapped to the `project-admin` ServiceAccount.
+  - Bound to the `admin` ClusterRole within the project namespace.
   - Can view, submit, resubmit, and delete workflows.
   - Can view logs and artifacts.
 - **Developer Access**:
-  - Groups defined in `developer_groups` are bound to the `edit` ClusterRole within the project namespace.
+  - The OIDC group defined in `developer_group` is mapped to the `project-developer` ServiceAccount.
+  - Bound to the `edit` ClusterRole within the project namespace.
   - Can view, submit, and resubmit workflows.
   - Can view logs.
 
-**Test Users**:
-If you set `create_test_users: "yes"` when creating a project, the system will provision two ServiceAccounts in each environment namespace (e.g., `snd-payment`):
-1.  `test-project-admin`: Has the same permissions as your admin OIDC groups.
-2.  `test-project-developer`: Has the same permissions as your developer OIDC groups.
+**Service Accounts**:
+The system provisions two permanent ServiceAccounts in each environment namespace (e.g., `snd-payment`) which are used by Argo Workflows to execute actions on behalf of the user:
+1.  `project-admin`: Used by users in the `admin_group`.
+2.  `project-developer`: Used by users in the `developer_group`.
 
 You can use these accounts to verify permissions using `kubectl auth can-i`:
 ```bash
 # Verify Admin Access
-kubectl auth can-i delete workflow --as=system:serviceaccount:snd-payment:test-project-admin -n snd-payment
+kubectl auth can-i delete workflow --as=system:serviceaccount:snd-payment:project-admin -n snd-payment
 # > yes
 
 # Verify Developer Access (cannot delete)
-kubectl auth can-i delete workflow --as=system:serviceaccount:snd-payment:test-project-developer -n snd-payment
+kubectl auth can-i delete workflow --as=system:serviceaccount:snd-payment:project-developer -n snd-payment
 # > no
 ```
 

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: cloudflared
-          image: cloudflare/cloudflared:2026.1.2
+          image: cloudflare/cloudflared:2026.2.0
           args:
             - tunnel
             - --config
@@ -27,9 +27,10 @@ spec:
             httpGet:
               path: /ready
               port: 2000
-            failureThreshold: 1
+            failureThreshold: 3
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
           volumeMounts:
             - name: config
               mountPath: /etc/cloudflared/config

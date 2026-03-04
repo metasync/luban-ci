@@ -22,12 +22,12 @@ spec:
         enum:
           - "github"
           - "azure"
-      - name: developer_groups
-        description: "List of OIDC groups for developer access (JSON array)"
-        value: '[]'
-      - name: admin_groups
-        description: "List of OIDC groups for admin access (JSON array)"
-        value: '[]'
+      - name: developer_group
+        description: "OIDC group for developer access (Single Group)"
+        value: ""
+      - name: admin_group
+        description: "OIDC group for admin access (Single Group)"
+        value: ""
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
         valueFrom:
@@ -178,13 +178,13 @@ spec:
           roles:
           - name: project-developer
             description: Developer role with read and sync access
-            groups: {{workflow.parameters.developer_groups}}
+            groups: ["{{workflow.parameters.developer_group}}"]
             policies:
             - "p, proj:{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}:project-developer, applications, get, {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}/*, allow"
             - "p, proj:{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}:project-developer, applications, sync, {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}/*, allow"
           - name: project-admin
             description: Admin role with full access
-            groups: {{workflow.parameters.admin_groups}}
+            groups: ["{{workflow.parameters.admin_group}}"]
             policies:
             - "p, proj:{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}:project-admin, applications, *, {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}/*, allow"
         EOF

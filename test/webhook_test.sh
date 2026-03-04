@@ -2,7 +2,7 @@
 set -e
 
 # Default values if env vars are not set
-GATEWAY_URL=${GATEWAY_URL:-"https://webhook.luban.metasync.cc/push"}
+GATEWAY_URL=${GATEWAY_URL:-"https://webhook-luban.metasync.cc/push"}
 REPO_URL=${REPO_URL:-"https://github.com/metasync/luban-hello-world-py.git"}
 REVISION=${REVISION:-"main"}
 TAG=${TAG:-""}

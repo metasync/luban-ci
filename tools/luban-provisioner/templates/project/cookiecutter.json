@@ -5,7 +5,6 @@
   "git_provider": "",
   "git_organization": "",
   "image_pull_secret": "",
-  "admin_groups": "",
-  "developer_groups": "",
-  "create_test_users": "no"
+  "admin_group": "",
+  "developer_group": ""
 }

@@ -5,5 +5,6 @@
   "dagster_version": "",
   "postgres_version": "",
   "platform_port": "3000",
-  "registry_server": ""
+  "registry_server": "",
+  "image_pull_secret": ""
 }

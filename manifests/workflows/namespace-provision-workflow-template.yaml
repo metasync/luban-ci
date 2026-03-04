@@ -26,13 +26,8 @@ spec:
         enum:
           - "github"
           - "azure"
-      - name: admin_groups
-      - name: developer_groups
-      - name: create_test_users
-        value: "no"
-        enum:
-        - "yes"
-        - "no"
+      - name: admin_group
+      - name: developer_group
     container:
       image: "{{workflow.parameters.luban_provisioner_image}}"
       command: ["luban-provisioner"]
@@ -46,12 +41,10 @@ spec:
         - "{{inputs.parameters.git_organization}}"
         - --git-provider
         - "{{inputs.parameters.git_provider}}"
-        - --admin-groups
-        - "{{inputs.parameters.admin_groups}}"
-        - --developer-groups
-        - "{{inputs.parameters.developer_groups}}"
-        - --create-test-users
-        - "{{inputs.parameters.create_test_users}}"
+        - --admin-group
+        - "{{inputs.parameters.admin_group}}"
+        - --developer-group
+        - "{{inputs.parameters.developer_group}}"
         - --image-pull-secret
         - "$(IMAGE_PULL_SECRET)"
       env:

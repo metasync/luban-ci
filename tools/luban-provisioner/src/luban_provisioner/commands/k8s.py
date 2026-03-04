@@ -13,31 +13,15 @@ from luban_provisioner.utils import copy_secrets, copy_configmaps, patch_default
 @click.option('--environment', required=True, help='Environment (snd/prd)')
 @click.option('--git-organization', required=True, help='Git Organization (for templates)')
 @click.option('--git-provider', default='github', help='Git Provider (for templates)')
-@click.option('--admin-groups', default='', help='Comma-separated list of admin groups')
-@click.option('--developer-groups', default='', help='Comma-separated list of developer groups')
-@click.option('--create-test-users', default='no', help='Create test service accounts (yes/no)')
+@click.option('--admin-group', default='', help='AD Group for Project Admins')
+@click.option('--developer-group', default='', help='AD Group for Project Developers')
 @click.option('--image-pull-secret', required=True, help='Name of the image pull secret to copy and use')
 @click.option('--dry-run', is_flag=True, help='Only generate files, do not apply')
-def k8s(project_name, environment, git_organization, git_provider, admin_groups, developer_groups, create_test_users, image_pull_secret, dry_run):
+def k8s(project_name, environment, git_organization, git_provider, admin_group, developer_group, image_pull_secret, dry_run):
     """Provision Kubernetes Namespace and Resources."""
     
     target_ns = f"{environment}-{project_name}"
     click.echo(f"Bootstrapping project {project_name} in {target_ns}...")
-
-    # Parse groups
-    try:
-        admins_list = json.loads(admin_groups) if admin_groups.startswith('[') else [g.strip() for g in admin_groups.split(',') if g.strip()]
-    except json.JSONDecodeError:
-        click.echo(f"Warning: Failed to parse admin_groups JSON: {admin_groups}", err=True)
-        admins_list = []
-
-    try:
-        devs_list = json.loads(developer_groups) if developer_groups.startswith('[') else [g.strip() for g in developer_groups.split(',') if g.strip()]
-    except json.JSONDecodeError:
-        click.echo(f"Warning: Failed to parse developer_groups JSON: {developer_groups}", err=True)
-        devs_list = []
-    
-    should_create_test_users = create_test_users.lower() == 'yes'
 
     # Context for Cookiecutter
     context = {
@@ -46,9 +30,8 @@ def k8s(project_name, environment, git_organization, git_provider, admin_groups,
         "target_namespace": target_ns,
         "git_organization": git_organization,
         "git_provider": git_provider,
-        "admin_groups": ",".join(admins_list),
-        "developer_groups": ",".join(devs_list),
-        "create_test_users": "yes" if should_create_test_users else "no",
+        "admin_group": admin_group,
+        "developer_group": developer_group,
         "image_pull_secret": image_pull_secret
     }
 
@@ -104,19 +87,5 @@ def k8s(project_name, environment, git_organization, git_provider, admin_groups,
     # Copy ConfigMaps
     copy_configmaps(target_ns, "luban-ci")
 
-    # Also copy azure-creds/azure-ssh-creds if available?
-    # The previous logic in utils.py copy_secrets might handle it if we pass it?
-    # utils.py copy_secrets only copies the *specific* secret passed.
-    # The 'project.py' didn't explicitly call copy_secrets for 'azure-creds',
-    # but 'utils.py' has a method 'copy_secrets' which might have been updated by me earlier?
-    # Let's check utils.py content.
-    
-    # But wait, in the previous 'project.py' (lines 163-164):
-    # copy_secrets(target_ns, "luban-ci", image_pull_secret)
-    # patch_default_service_account(target_ns, image_pull_secret)
-    # It seems it only copied image_pull_secret.
-    # Did I update utils.py to copy azure-creds?
-    # Yes, I updated utils.py in a previous turn (Task 10) to copy azure-creds.
-    # Let's double check utils.py to be sure.
-    
+    # Patch default service account to use image pull secret
     patch_default_service_account(target_ns, image_pull_secret)

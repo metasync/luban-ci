@@ -22,18 +22,12 @@ spec:
       enum:
         - "github"
         - "azure"
-    - name: developer_groups
-      description: "List of OIDC groups for developer access (JSON array)"
-      value: '[]'
-    - name: admin_groups
-      description: "List of OIDC groups for admin access (JSON array)"
-      value: '[]'
-    - name: create_test_users
-      description: "Create local ServiceAccounts for testing RBAC (yes/no)"
-      value: "no"
-      enum:
-      - "yes"
-      - "no"
+    - name: developer_group
+      description: "OIDC group for developer access (Single Group)"
+      value: ""
+    - name: admin_group
+      description: "OIDC group for admin access (Single Group)"
+      value: ""
     - name: registry_visibility
       description: "Project visibility (public or private)"
       value: "public"
@@ -82,12 +76,10 @@ spec:
             value: "{{workflow.parameters.git_organization}}"
           - name: git_provider
             value: "{{workflow.parameters.git_provider}}"
-          - name: admin_groups
-            value: "{{workflow.parameters.admin_groups}}"
-          - name: developer_groups
-            value: "{{workflow.parameters.developer_groups}}"
-          - name: create_test_users
-            value: "{{workflow.parameters.create_test_users}}"
+          - name: admin_group
+            value: "{{workflow.parameters.admin_group}}"
+          - name: developer_group
+            value: "{{workflow.parameters.developer_group}}"
         withParam: "{{workflow.parameters.environments}}"
 
       - name: harbor-project

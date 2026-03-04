@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.6] - 2026-03-04
+
+### Architecture
+- **Identity & Access**: Refactored Project Provisioning to use ServiceAccount-based RBAC instead of direct Group bindings, enabling seamless integration with Argo Workflows SSO.
+  - Introduced `project-admin` and `project-developer` ServiceAccounts in project namespaces.
+  - Configured `workflows.argoproj.io/rbac-rule` annotations to map OIDC groups to these ServiceAccounts.
+  - Enabled `SSO_DELEGATE_RBAC_TO_NAMESPACE=true` in Argo Workflows to support multi-tenant RBAC.
+  - Explicitly managed ServiceAccount tokens (Secrets) for Argo Workflows integration on K8s 1.24+.
+- **Tunnel**: Updated Cloudflare Tunnel configuration to use short internal service names, resolving upstream connection issues (530 errors).
+
+### Changed
+- **Templates**: Updated `luban-project-workflow-template` and `luban-provisioner` to accept single OIDC group names (`admin_group`, `developer_group`) instead of lists, simplifying configuration.
+- **Templates**: Added `imagePullSecrets` to Dagster Platform ServiceAccounts, ensuring private registry images can be pulled by Daemon/Webserver pods.
+- **Infrastructure**: Updated `cloudflared` image to `2026.2.0` and relaxed Liveness Probes to improve tunnel stability.
+
+### Fixed
+- **Provisioner**: Fixed `jinja2.exceptions.UndefinedError` in `view-templates-binding.yaml` by updating legacy variable references.
+- **Tunnel**: Resolved `530 Origin DNS Error` for Azure DevOps webhooks by correcting the internal service DNS resolution.
+
 ## [v0.9.5] - 2026-02-25
 
 ### Added

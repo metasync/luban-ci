@@ -73,7 +73,7 @@ def check_workflow():
     subprocess.run(cmd)
 
 def main():
-    gateway_url = os.environ.get("GATEWAY_URL", "https://webhook.luban.metasync.cc/push")
+    gateway_url = os.environ.get("GATEWAY_URL", "https://webhook-luban.metasync.cc/push")
     repo_url = os.environ.get("REPO_URL", "https://github.com/metasync/luban-hello-world-py.git")
     revision = os.environ.get("REVISION", "main")
     tag = os.environ.get("TAG", "")
