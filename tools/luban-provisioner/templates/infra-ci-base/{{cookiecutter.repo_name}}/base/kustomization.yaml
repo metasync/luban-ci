@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - config/luban-config.yaml
+  - service_accounts/workflow-runner.yaml
+  - service_accounts/project-users.yaml
+  - rbac/workflow-runner-binding.yaml
+  - rbac/project-users-binding.yaml
+  - secrets/quay-creds.yaml
+  - secrets/harbor-creds.yaml
+  - secrets/azure-ssh-creds.yaml
+  - secrets/github-creds.yaml
+  - secrets/azure-creds.yaml
+  - workflow-semaphores.yaml

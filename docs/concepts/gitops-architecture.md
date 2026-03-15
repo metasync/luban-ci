@@ -11,7 +11,7 @@ Luban CI enforces strict naming conventions and a GitOps-based architecture to s
 | **GitOps Repo** | `<org>/<app-name>-gitops` | `metasync/cart-service-gitops` |
 | **Registry Namespace** | `<org>` | `metasync` (e.g., `harbor.io/metasync/cart-service`) |
 | **ArgoCD Project** | `<env>-<project-name>` | `snd-payment` (where `payment` is the Team/Project) |
-| **ArgoCD Application** | `<env>-<app-name>` | `snd-cart-service` |
+| **ArgoCD Application** | `<env>-<project-name>-<app-name>` | `snd-payment-cart-service` |
 
 ## GitOps Branching Strategy
 
@@ -60,7 +60,10 @@ The **Luban Project Setup** workflow initializes the infrastructure for a new Te
 
 The **Luban App Setup** workflow bootstraps a new microservice within an existing Project.
 
-- **Template**: [luban-app-workflow-template.yaml](../../manifests/workflows/luban-app-workflow-template.yaml)
+- **Templates**:
+  - [source-repo-workflow-template.yaml](../../manifests/workflows/source-repo-workflow-template.yaml) (source repo scaffolding)
+  - [gitops-repo-workflow-template.yaml](../../manifests/workflows/gitops-repo-workflow-template.yaml) (GitOps repo scaffolding)
+  - [argocd-app-workflow-template.yaml](../../manifests/workflows/argocd-app-workflow-template.yaml) (ArgoCD Application creation)
 - **Actions**:
   1.  **GitOps Repository**:
       - Provisions a new Git repository named `<app_name>-gitops`.

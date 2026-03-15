@@ -123,7 +123,6 @@ spec:
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
         imagePullPolicy: Always
-        command: ["luban-provisioner"]
         args:
           - config
           - --luban-config-dir

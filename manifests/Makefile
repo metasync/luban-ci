@@ -3,7 +3,7 @@
 include Makefile.env
 export
 
-.PHONY: deploy clean logs tunnel-setup
+.PHONY: deploy clean logs tunnel-setup secrets secrets-dry-run
 
 deploy: ## Deploy Argo Workflow Template and RBAC
 	@echo "Deploying Workflow RBAC..."
@@ -40,6 +40,12 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f workflows/luban-promotion-workflow-template.yaml
 	@kubectl apply -f workflows/luban-pipeline-dispatcher-template.yaml
 	@echo "Pipeline deployed."
+
+secrets: ## Create/Update Kubernetes secrets from env files
+	@./secrets/setup-secrets.sh
+
+secrets-dry-run: ## Validate secret templates render (does not write to cluster)
+	@./secrets/setup-secrets.sh --dry-run
 
 clean: ## Delete all workflows
 	@kubectl delete wf --all -n $(K8S_NAMESPACE)

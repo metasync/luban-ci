@@ -64,6 +64,7 @@ spec:
       - name: git_organization
     steps:
     - - name: check-exists
+      # ... (no changes needed for check-exists unless we want to check remote cluster existence, but for now we check app existence in ArgoCD locally)
         template: check-app-exists
         arguments:
           parameters:
@@ -120,75 +121,95 @@ spec:
     container:
       image: "{{workflow.parameters.gitops_utils_image}}"
       env:
-        - name: GITHUB_SERVER
+        - name: GIT_SERVER
           valueFrom:
             configMapKeyRef:
               name: luban-config
-              key: github_server
-              optional: true
-        - name: AZURE_SERVER
+              key: "{{inputs.parameters.git_provider}}_server"
+        - name: CLUSTER_MAP
           valueFrom:
             configMapKeyRef:
               name: luban-config
-              key: azure_server
-              optional: true
+              key: cluster_map
       command: [sh, -c]
       args:
       - |
+        die() { echo "$1" >&2; exit 1; }
+        has_cntrl() { printf '%s' "$1" | LC_ALL=C grep -q '[[:cntrl:]]'; }
+        require_no_cntrl() { if has_cntrl "$2"; then die "Error: $1 contains control characters"; fi; }
+        require_dns_label() { printf '%s' "$2" | grep -Eq '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$' || die "Error: $1 is not a valid DNS label: $2"; }
+
+        ENV="{{inputs.parameters.environment}}"
+        case "$ENV" in snd|prd) ;; *) die "Error: invalid environment: $ENV" ;; esac
+
+        PROJECT_NAME="{{inputs.parameters.project_name}}"
+        APP_NAME_RAW="{{inputs.parameters.app_name}}"
+        require_no_cntrl project_name "$PROJECT_NAME"
+        require_no_cntrl app_name "$APP_NAME_RAW"
+        require_dns_label project_name "$PROJECT_NAME"
+        require_dns_label app_name "$APP_NAME_RAW"
+
         # Calculate derived parameters in shell for robustness
         ORG="{{inputs.parameters.git_organization}}"
         if [ -z "$ORG" ]; then
-          ORG="{{inputs.parameters.project_name}}"
+          ORG="$PROJECT_NAME"
+        fi
+
+        require_no_cntrl git_organization "$ORG"
+        if ! printf '%s' "$ORG" | grep -Eq '^[A-Za-z0-9._-]+$'; then
+          die "Error: invalid git_organization: $ORG"
         fi
         
         REVISION="main"
-        if [ "{{inputs.parameters.environment}}" = "snd" ]; then
+        if [ "$ENV" = "snd" ]; then
           REVISION="develop"
         fi
         
-        # Resolve Git Server Domain from Environment Variables
-        GIT_SERVER="github.com" # Default fallback
-        if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
-           GIT_SERVER="${AZURE_SERVER:-dev.azure.com}"
-        elif [ "{{inputs.parameters.git_provider}}" = "github" ]; then
-           GIT_SERVER="${GITHUB_SERVER:-github.com}"
-        fi
-
         # Repo URL Construction
         if [ "{{inputs.parameters.git_provider}}" = "azure" ] && [ -n "{{inputs.parameters.git_organization}}" ]; then
             # Azure DevOps with Organization
             # URL: https://dev.azure.com/{ORG}/{PROJECT}/_git/{REPO}
-            REPO_URL="https://${GIT_SERVER}/{{inputs.parameters.git_organization}}/{{inputs.parameters.project_name}}/_git/{{inputs.parameters.app_name}}-gitops"
+            REPO_URL="https://${GIT_SERVER}/${ORG}/${PROJECT_NAME}/_git/${APP_NAME_RAW}-gitops"
         else
             # Standard GitHub or Azure without Org (Org=Project)
-            REPO_URL="https://${GIT_SERVER}/${ORG}/{{inputs.parameters.app_name}}-gitops.git"
+            REPO_URL="https://${GIT_SERVER}/${ORG}/${APP_NAME_RAW}-gitops.git"
         fi
-        
+
         # Determine Sync Policy
         SYNC_POLICY_BLOCK=""
-        if [ "{{inputs.parameters.environment}}" != "prd" ]; then
+        if [ "$ENV" != "prd" ]; then
           SYNC_POLICY_BLOCK="automated:
               prune: true
               selfHeal: true"
         fi
-        
-        echo "Creating Application {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}-{{inputs.parameters.app_name}} in namespace argocd..."
-        
+
+        # Resolve Cluster URL from Map
+        DEST_SERVER=$(echo "$CLUSTER_MAP" | jq -r --arg env "$ENV" '.[$env]')
+
+        if [ -z "$DEST_SERVER" ] || [ "$DEST_SERVER" = "null" ]; then
+          echo "Error: Could not find cluster URL for environment '$ENV' in cluster_map." >&2
+          echo "Cluster Map: $CLUSTER_MAP" >&2
+          exit 1
+        fi
+
+        echo "Creating Application ${ENV}-${PROJECT_NAME}-${APP_NAME_RAW} in namespace argocd..."
+        echo "Target Cluster: $DEST_SERVER"
+
         cat <<EOF | kubectl apply -f -
         apiVersion: argoproj.io/v1alpha1
         kind: Application
         metadata:
-          name: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}-{{inputs.parameters.app_name}}
+          name: ${ENV}-${PROJECT_NAME}-${APP_NAME_RAW}
           namespace: argocd
         spec:
-          project: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}
+          project: ${ENV}-${PROJECT_NAME}
           source:
-            repoURL: ${REPO_URL}
-            targetRevision: ${REVISION}
-            path: app/overlays/{{inputs.parameters.environment}}
+            repoURL: "${REPO_URL}"
+            targetRevision: "${REVISION}"
+            path: app/overlays/${ENV}
           destination:
-            server: https://kubernetes.default.svc
-            namespace: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}
+            server: "${DEST_SERVER}"
+            namespace: ${ENV}-${PROJECT_NAME}
           syncPolicy:
             ${SYNC_POLICY_BLOCK}
             syncOptions:

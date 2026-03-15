@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [v1.0.0] - 2026-03-15
+
+### Architecture
+- **Multi-Cluster v2**: Formalized the split between an **admin/control-plane cluster** (CI + ArgoCD + registry access) and **worker/runtime clusters** (application workloads).
+  - Introduced a centralized infra-repo pattern: `luban-infra-ci` (CI infra) and `luban-infra-cd` (CD/ArgoCD infra), with per-app GitOps repos kept application-only.
+  - Added environment → cluster routing via `luban-config.cluster_map` and updated ArgoCD provisioning templates to resolve `spec.destination.server` from it.
+
+### Added
+- **Provisioner**: Added `luban-provisioner infra` commands to init/update centralized infra repos (CI and CD overlays).
+- **Workflows**: Added infra provisioning/update workflow templates to support the centralized infra-repo + multi-cluster approach.
+- **Docs**: Added/expanded multi-cluster architecture documentation and aligned guides with the centralized infra-repo pattern.
+
+### Changed
+- **CI Project Defaults**: Default Harbor project visibility is now `private` in `luban-project-setup-template`.
+- **Provisioner**: Updated `luban-provisioner` image to `0.2.0`.
+
+### Docs
+- Moved planning and requirements documents under `docs/` and refreshed guides to match current secrets and workflow behavior.
+
+### Fixed
+- **Secrets**: Standardized secrets application via `manifests/secrets/templates/*` and `manifests/secrets/setup-secrets.sh`, including correct handling of `$` in `secrets/*.env`.
+
+### Removed
+- **Legacy Templates**: Removed the deprecated per-project `templates/project/*` scaffolding in favor of the centralized infra-repo templates.
+
+### Fixed
+- **kpack Workflow**: Improved `luban-ci-kpack` reliability by targeting the correct `ci-<project>` namespace, handling kpack `latestBuildRef` shape differences, waiting on the `Build` `Succeeded` condition, and starting log streaming as soon as a Build is created.
+- **Secret Replication**: Standardized `azure-ssh-creds` in `ci-*` namespaces as a placeholder `kubernetes.io/ssh-auth` Secret replicated from `luban-ci`, while ensuring GitOps does not overwrite replicated key material.
+- **RBAC**: Granted `luban-ci-sa` the minimal kpack permissions required to manage `Image` resources and observe `Build` status.
+
 ## [v0.9.6] - 2026-03-04
 
 ### Architecture
@@ -61,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tooling**: Updated `luban-provisioner` entrypoint to use `uv run`, improving runtime environment handling.
 - **Workflow**: Updated all workflow templates to use the `luban-provisioner` CLI command instead of direct `python3` invocation, fixing `ModuleNotFoundError` issues.
 - **Security**: Fixed `workflow-runner` ServiceAccount template to prevent duplicate secret mounting, resolving `401 Unauthorized` errors during kpack image pushing.
-- **Documentation**: Updated `README.md`, `PLAN.md`, and `REQUIREMENTS.md` to reflect the new tooling architecture.
+- **Documentation**: Updated `README.md`, `docs/ROADMAP.md`, and `docs/requirements.md` to reflect the new tooling architecture.
 
 ### Fixed
 - **Provisioner**: Pinned `kubectl` version to `v1.35.1` in `luban-provisioner` Dockerfile for stability.
@@ -76,7 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **Scaffolding**: Added Cookiecutter templates for Dagster Platform GitOps, Code Location GitOps, and Python Source Code (`luban-dagster-*-template`).
     - **Configuration**: Added `luban-dagster-config` ConfigMap to manage platform-specific settings.
 - **Dynamic Pipeline Dispatch**: Implemented `luban-pipeline-dispatcher-template` to dynamically route CI workflows to the correct tenant namespace based on the source Git repository URL.
-    - **Azure/GitHub Support**: Automatically parses Organization/Project from Git URLs to determine the target `snd-<project>` namespace.
+    - **Azure/GitHub Support**: Automatically parses Organization/Project from Git URLs to determine the target `ci-<project>` namespace.
     - **Event Integration**: Updated `azure-sensor` and `github-sensor` to trigger the dispatcher workflow instead of static pipelines.
 
 ### Fixed
@@ -95,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Robustness**: Updated `luban-provisioner` to default to standard Git provider domains (`github.com`, `dev.azure.com`) if configuration is missing, preventing critical failures.
 
 ### Changed
-- **Workflow**: Enforced explicit `enum` validation (`snd`, `prd`) for the `environment` parameter in `luban-app-workflow-template` and `argocd-app-workflow-template`.
+- **Workflow**: Enforced explicit `enum` validation (`snd`, `prd`) for the `environment` parameter in `luban-python-app-workflow-template` and `argocd-app-workflow-template`.
 - **Workflow**: Added `enum` validation for `git_provider` in `namespace-provision-workflow-template`.
 - **Workflow**: Updated all workflow templates to use `luban-provisioner:0.1.55`.
 - **Documentation**: Comprehensive update to `README.md` Credentials section, detailing setup for Git Providers, Registries, and optional tools.
@@ -131,9 +163,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented native GitHub API integration for repository creation, webhook configuration, and branch protection.
 
 ### Changed
-- **Workflow**: Updated `luban-app-workflow-template`, `gitops-repo-workflow-template`, and `source-repo-workflow-template` to use `luban-provisioner:0.1.16`.
+- **Workflow**: Updated `luban-python-app-workflow-template`, `gitops-repo-workflow-template`, and `source-repo-workflow-template` to use `luban-provisioner:0.1.16`.
 - **Workflow**: Simplified workflow templates by removing complex inline scripts and delegating logic to the provisioner tool.
-- **Workflow**: Restored `gitops_utils_image` in `luban-app-workflow-template` to support ArgoCD application management steps.
+- **Workflow**: Restored `gitops_utils_image` in `luban-python-app-workflow-template` to support ArgoCD application management steps.
 - **Tooling**: Updated `luban-provisioner` Dockerfile to include `git` and `requests` for full standalone capability.
 
 ### Fixed
@@ -149,7 +181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reduced Docker image footprint and unified dependency management (one Dockerfile).
 
 ### Changed
-- **Workflow**: Updated `gitops-repo-workflow-template`, `source-repo-workflow-template`, and `luban-app-workflow-template` to use the new `luban-provisioner:0.1.14` image.
+- **Workflow**: Updated `gitops-repo-workflow-template`, `source-repo-workflow-template`, and `luban-python-app-workflow-template` to use the new `luban-provisioner:0.1.14` image.
 - **Workflow**: Renamed parameters `gitops_provisioner_image` and `gitsrc_provisioner_image` to `luban_provisioner_image` for consistency.
 - **Provisioner**: Updated `luban-provisioner` to automatically copy `harbor-creds` (RW) to project namespaces, resolving kpack push authentication issues (`UNAUTHORIZED`).
 - **Makefile**: Updated `tools-image-build` and `tools-image-push` targets to reflect the merged toolset.
@@ -187,7 +219,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Robustness**: Refactored all workflow templates to use native shell logic instead of complex Argo expressions for parameter derivation (e.g., Git organization fallback, URL construction).
-- **Documentation**: Updated `README.md` and `PLAN.md` to reflect new architecture and features.
+- **Documentation**: Updated `README.md` and planning docs under `docs/` to reflect new architecture and features.
 
 ### Fixed
 - **Stability**: Standardized enum values to lowercase and fixed case-sensitive `when` conditions in workflows.
@@ -249,7 +281,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Workflow**: Fixed "User cannot get resource secrets" error in `gitops-repo-workflow-template` by explicitly defining the container `command`, bypassing Argo's image entrypoint lookup.
-- **Workflow**: Removed unused `default_image` parameter from `gitops-repo-workflow-template` and `luban-app-workflow-template` interfaces.
+- **Workflow**: Removed unused `default_image` parameter from `gitops-repo-workflow-template` and `luban-python-app-workflow-template` interfaces.
 - **Workflow**: Enhanced `push-to-github` script to handle repository existence gracefully (idempotency) and added fallback support for User vs Organization endpoints.
 - **Workflow**: Enforced naming convention: GitOps repositories are now strictly named `<app-name>-gitops`.
 - **Provisioner**: Updated `gitops-provisioner` to `v0.1.5`, removing the deprecated `--default-image` argument from `entrypoint.py`.
@@ -286,7 +318,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **kpack Integration**: Migrated build pipeline to use kpack (Kubernetes Native Buildpacks).
-- **kpack Workflow**: Added `ci-kpack-workflow-template.yaml` and related manifests (`kpack-stack.yaml`, `kpack-builder.yaml`).
+- **kpack Workflow**: Added the kpack workflow template and related manifests (now located under `manifests/workflows/` and `manifests/kpack/`).
 - **kp CLI**: Integrated `kp` CLI for image resource management in Argo Workflows.
 - **Makefile**: Added `pipeline-run-kpack` target (default) and `pipeline-logs`.
 

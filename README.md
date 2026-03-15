@@ -24,6 +24,13 @@ Luban CI is a GitOps-based Continuous Integration system running on Kubernetes, 
 - [**Developer Workflow**](docs/guides/developer-workflow.md): How to trigger pipelines, check logs, and manage permissions.
 - [**Admin Guide**](docs/guides/admin-guide.md): Configuration, security, resource management, and troubleshooting.
 
+### Architecture
+- [**Multi-Cluster v2**](docs/architecture/multi-cluster-v2.md): Admin cluster vs worker clusters, centralized infra repos, and `cluster_map` routing.
+
+### Project Docs
+- [Roadmap](docs/ROADMAP.md)
+- [Requirements](docs/requirements.md)
+
 ## Directory Structure
 
 - `buildpacks/`: Custom Buildpacks source code (e.g., `python-uv`).

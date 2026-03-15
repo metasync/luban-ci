@@ -4,15 +4,9 @@
 include Makefile.env
 export
 
-# Load all .env files in secrets directory
-ENV_FILES := $(wildcard secrets/*.env)
-ifneq (,$(ENV_FILES))
-    include $(ENV_FILES)
-    export
-endif
-
 .PHONY: all help \
         secrets \
+        secrets-dry-run \
         stack-build stack-push \
         builder-build builder-push \
         pipeline-deploy pipeline-clean pipeline-logs \
@@ -38,83 +32,10 @@ all: secrets \
 # --- Secrets Management ---
 
 secrets: ## Create/Update Kubernetes secrets from env files
-	@echo "Creating namespace $(K8S_NAMESPACE)..."
-	@kubectl create ns $(K8S_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
-	@echo "Creating Quay secrets..."
-	@kubectl delete secret quay-creds -n $(K8S_NAMESPACE) --ignore-not-found
-	@kubectl create secret docker-registry quay-creds \
-		-n $(K8S_NAMESPACE) \
-		--docker-server=$(REGISTRY_SERVER) \
-		--docker-username="$(QUAY_USERNAME)" \
-		--docker-password="$(QUAY_PASSWORD)" \
-		--docker-email="$(REGISTRY_EMAIL)"
-	@echo "Creating Harbor secrets..."
-	@kubectl delete secret harbor-creds -n $(K8S_NAMESPACE) --ignore-not-found
-	@kubectl create secret docker-registry harbor-creds \
-		-n $(K8S_NAMESPACE) \
-		--docker-server=$(HARBOR_SERVER) \
-		--docker-username='$(HARBOR_USERNAME)' \
-		--docker-password='$(HARBOR_PASSWORD)' \
-		--docker-email="$(REGISTRY_EMAIL)"
-	@echo "Creating Harbor Read-Only secrets..."
-	@kubectl delete secret harbor-ro-creds -n $(K8S_NAMESPACE) --ignore-not-found
-	@kubectl create secret docker-registry harbor-ro-creds \
-		-n $(K8S_NAMESPACE) \
-		--docker-server=$(HARBOR_SERVER) \
-		--docker-username='$(HARBOR_RO_USERNAME)' \
-		--docker-password='$(HARBOR_RO_PASSWORD)' \
-		--docker-email="$(REGISTRY_EMAIL)"
-	@echo "Creating Harbor API secrets..."
-	@kubectl delete secret harbor-api-creds -n $(K8S_NAMESPACE) --ignore-not-found
-	@kubectl create secret generic harbor-api-creds \
-		-n $(K8S_NAMESPACE) \
-		--from-literal=HARBOR_SERVER=$(HARBOR_SERVER) \
-		--from-literal=HARBOR_USERNAME='$(HARBOR_USERNAME)' \
-		--from-literal=HARBOR_PASSWORD='$(HARBOR_PASSWORD)'
-	@echo "Creating GitHub secrets..."
-	@kubectl delete secret github-creds -n $(K8S_NAMESPACE) --ignore-not-found
-	@kubectl create secret generic github-creds \
-		-n $(K8S_NAMESPACE) \
-		--from-literal=username="$(GITHUB_USERNAME)" \
-		--from-literal=token="$(GITHUB_TOKEN)"
-	@echo "Creating Azure DevOps secrets..."
-	@kubectl delete secret azure-creds -n $(K8S_NAMESPACE) --ignore-not-found
-	@kubectl create secret generic azure-creds \
-		-n $(K8S_NAMESPACE) \
-		--from-literal=token='$(AZURE_DEVOPS_TOKEN)' \
-		--from-literal=username='git'
-	@echo "Creating Azure SSH secrets..."
-	@kubectl delete secret azure-ssh-creds -n $(K8S_NAMESPACE) --ignore-not-found
-	@kubectl create secret generic azure-ssh-creds \
-		-n $(K8S_NAMESPACE) \
-		--from-file=ssh-privatekey=secrets/azure_id_rsa \
-		--from-file=known_hosts=secrets/known_hosts \
-		--type=kubernetes.io/ssh-auth
-	@kubectl annotate secret azure-ssh-creds -n $(K8S_NAMESPACE) "kpack.io/git=git@ssh.dev.azure.com" --overwrite
-	@echo "Creating Cloudflare API secrets..."
-	@kubectl create secret generic cloudflare-api-token \
-		-n cert-manager \
-		--from-literal=api-token='$(CLOUDFLARE_API_TOKEN)' \
-		--dry-run=client -o yaml | kubectl apply -f -
-	@echo "Creating ArgoCD Repository Secrets..."
-	@kubectl create ns $(ARGOCD_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
-	@kubectl delete secret argocd-repo-creds-azure -n $(ARGOCD_NAMESPACE) --ignore-not-found
-	@kubectl create secret generic argocd-repo-creds-azure \
-		-n $(ARGOCD_NAMESPACE) \
-		--from-literal=type=git \
-		--from-literal=url='https://dev.azure.com/$(AZURE_ORGANIZATION)' \
-		--from-literal=password='$(AZURE_DEVOPS_TOKEN)' \
-		--from-literal=username="git"
-	@kubectl label secret argocd-repo-creds-azure -n $(ARGOCD_NAMESPACE) "argocd.argoproj.io/secret-type=repo-creds" --overwrite
-	@kubectl delete secret argocd-repo-creds-github -n $(ARGOCD_NAMESPACE) --ignore-not-found
-	@kubectl create secret generic argocd-repo-creds-github \
-		-n $(ARGOCD_NAMESPACE) \
-		--from-literal=type=git \
-		--from-literal=url='https://github.com/$(GITHUB_ORGANIZATION)' \
-		--from-literal=password='$(GITHUB_TOKEN)' \
-		--from-literal=username=luban-ci
-	@kubectl label secret argocd-repo-creds-github -n $(ARGOCD_NAMESPACE) "argocd.argoproj.io/secret-type=repo-creds" --overwrite
-	@echo "Secrets setup complete."
+	@$(MAKE) -C manifests secrets
+
+secrets-dry-run: ## Validate secret templates render (does not write to cluster)
+	@$(MAKE) -C manifests secrets-dry-run
 
 # --- Buildpack Management ---
 

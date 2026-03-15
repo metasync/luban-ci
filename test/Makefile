@@ -7,13 +7,14 @@ export
 
 test-ci-pipeline: ## Trigger the kpack CI Workflow using Argo CLI
 	@echo "Triggering kpack CI Workflow via Argo CLI..."
-	@argo submit -n $(K8S_NAMESPACE) \
-		--from wftmpl/luban-ci-kpack-template \
+	@argo submit -n ci-$(PROJECT_NAME) \
+		--from clusterworkflowtemplate/luban-ci-kpack-template \
+		--serviceaccount workflow-runner \
 		-p repo_url=$(REPO_URL) \
+		-p registry_namespace=$(PROJECT_NAME) \
 		-p app_name=$(APP_NAME) \
 		-p revision=$(REVISION) \
 		-p tag=$(TAG) \
-		-p project_name=$(PROJECT_NAME) \
 		--watch
 
 test-webhook-py: ## Send signed push payload via gateway to trigger Workflow (Python)

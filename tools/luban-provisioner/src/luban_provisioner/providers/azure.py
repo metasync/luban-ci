@@ -18,6 +18,34 @@ class AzureProvider(GitProvider):
         elif resp.status_code == 404:
             click.echo(f"Project '{self.project}' not found (404) at {url}", err=True)
             return None
+
+    def _is_git_dataspace_not_ready(self, resp):
+        if resp.status_code != 500:
+            return False
+        body = resp.text or ""
+        return "Could not find dataspace with category Git" in body
+
+    def _wait_for_git_ready(self, timeout_seconds=120, poll_seconds=2):
+        url = f"{self.base_url}/{self.project}/_apis/git/repositories?api-version=7.1"
+        start = time.time()
+        while True:
+            resp = requests.get(url, auth=self.auth)
+            if resp.status_code == 200:
+                return True
+            if self._is_git_dataspace_not_ready(resp):
+                if (time.time() - start) >= timeout_seconds:
+                    click.echo(
+                        f"Timeout waiting for Azure DevOps Git service to be ready for project '{self.project}'. Status: {resp.status_code}, Body: {resp.text}",
+                        err=True,
+                    )
+                    return False
+                time.sleep(poll_seconds)
+                continue
+            click.echo(
+                f"Failed while waiting for Azure DevOps Git service readiness. Status: {resp.status_code}, Body: {resp.text}",
+                err=True,
+            )
+            return False
         else:
             click.echo(f"Failed to check project existence. Status: {resp.status_code}, URL: {url}, Body: {resp.text}", err=True)
             return None
@@ -70,13 +98,22 @@ class AzureProvider(GitProvider):
         }
         
         click.echo(f"Creating repo '{name}' in project '{self.project}'...")
-        resp = requests.post(url, json=payload, auth=self.auth)
-        
-        if resp.status_code == 201:
-            repo_data = resp.json()
-            return repo_data
-        
-        click.echo(f"Failed to create repo. Status: {resp.status_code}, Body: {resp.text}", err=True)
+        for attempt in range(1, 11):
+            resp = requests.post(url, json=payload, auth=self.auth)
+            if resp.status_code == 201:
+                return resp.json()
+
+            if self._is_git_dataspace_not_ready(resp):
+                wait_ok = self._wait_for_git_ready(timeout_seconds=120, poll_seconds=2)
+                if not wait_ok:
+                    return None
+                time.sleep(min(2 * attempt, 10))
+                continue
+
+            click.echo(f"Failed to create repo. Status: {resp.status_code}, Body: {resp.text}", err=True)
+            return None
+
+        click.echo("Failed to create repo after multiple retries.", err=True)
         return None
 
     def create_webhook(self, repo_identifier, webhook_url, secret=None):
@@ -202,6 +239,7 @@ class AzureProvider(GitProvider):
         
         if check_resp.status_code == 200:
             click.echo(f"Project '{project_name}' already exists.")
+            self._wait_for_git_ready(timeout_seconds=120, poll_seconds=2)
             return check_resp.json()
             
         # Create Project
@@ -244,10 +282,11 @@ class AzureProvider(GitProvider):
                 time.sleep(2)
                 if self._get_project_id():
                     click.echo(f"Project '{project_name}' created successfully.")
+                    self._wait_for_git_ready(timeout_seconds=120, poll_seconds=2)
                     return operation_ref
                 
             click.echo(f"Timeout waiting for project '{project_name}' to be ready.", err=True)
-            return operation_ref
+            return None
             
         click.echo(f"Failed to create project. Status: {resp.status_code}, Body: {resp.text}", err=True)
         return None

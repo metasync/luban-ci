@@ -1,0 +1,8 @@
+{
+  "project_name": "",
+  "env": "snd",
+  "namespace": "{{cookiecutter.env}}-{{cookiecutter.project_name}}",
+  "image_pull_secret": "harbor-ro-creds",
+  "git_organization": "",
+  "git_provider": ""
+}

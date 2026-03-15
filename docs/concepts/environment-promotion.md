@@ -6,7 +6,8 @@ Luban CI enforces a strict separation between environments and uses a "Build Onc
 
 - **Sandbox (`snd`)**:
   - The default build and deployment environment.
-  - **All** CI pipelines (from `main` branch, feature branches, or tags) run in the `snd-<project>` namespace.
+  - CI workflows run in the tenant CI namespace (`ci-<project>`), and update the Sandbox overlay (`app/overlays/snd`).
+  - ArgoCD deploys Sandbox workloads into `snd-<project>`.
   - Automatically deploys to the `snd` environment overlay.
   - Used for integration testing and validation.
 
@@ -24,7 +25,7 @@ To promote an application from `snd` to `prd`, use the `luban-promotion-template
   - `project_name`: (Required) Name of the project.
   - `app_name`: (Required) Name of the application.
   - `git_organization`: (Optional) Auto-detected if not provided.
-  - `git_provider`: (Optional) `github` (default) or `gitlab`.
+  - `git_provider`: (Optional) `github` (default) or `azure`.
 
 This workflow:
 1.  Extracts the currently deployed image tag from the **Sandbox** overlay.

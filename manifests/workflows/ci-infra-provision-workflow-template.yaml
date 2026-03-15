@@ -1,0 +1,171 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ci-infra-provision-template
+  namespace: luban-ci
+spec:
+  entrypoint: provision-ci-infra
+  serviceAccountName: luban-ci-sa
+  arguments:
+    parameters:
+      - name: project_name
+      - name: git_organization
+      - name: git_provider
+      - name: admin_group
+        value: ""
+      - name: developer_group
+        value: ""
+      - name: gitops_utils_image
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: gitops_utils_image
+
+  templates:
+  - name: provision-ci-infra
+    inputs:
+      parameters:
+      - name: project_name
+      - name: git_organization
+      - name: git_provider
+      - name: admin_group
+      - name: developer_group
+    steps:
+    - - name: update-repo
+        templateRef:
+          name: infra-repo-update-template
+          template: update-infra-ci-repo
+        arguments:
+          parameters:
+          - name: repo_name
+            value: "luban-infra-ci"
+          - name: project_name
+            value: "{{inputs.parameters.project_name}}"
+          - name: git_organization
+            value: "{{inputs.parameters.git_organization}}"
+          - name: git_provider
+            value: "{{inputs.parameters.git_provider}}"
+          - name: admin_group
+            value: "{{inputs.parameters.admin_group}}"
+          - name: developer_group
+            value: "{{inputs.parameters.developer_group}}"
+
+    - - name: create-argo-app
+        template: create-ci-app
+        arguments:
+          parameters:
+          - name: project_name
+            value: "{{inputs.parameters.project_name}}"
+          - name: git_organization
+            value: "{{inputs.parameters.git_organization}}"
+          - name: git_provider
+            value: "{{inputs.parameters.git_provider}}"
+
+  - name: create-ci-app
+    inputs:
+      parameters:
+      - name: project_name
+      - name: git_organization
+      - name: git_provider
+    container:
+      image: "{{workflow.parameters.gitops_utils_image}}"
+      env:
+        - name: GIT_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: "{{inputs.parameters.git_provider}}_server"
+      command: [sh, -c]
+      args:
+      - |
+        # Calculate Repo URL for luban-infra-ci
+        REPO_NAME="luban-infra-ci"
+        # Assuming luban-infra project for Azure
+        INFRA_PROJECT="luban-infra"
+        
+        if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
+            REPO_URL="https://${GIT_SERVER}/{{inputs.parameters.git_organization}}/${INFRA_PROJECT}/_git/${REPO_NAME}"
+        else
+            REPO_URL="https://${GIT_SERVER}/{{inputs.parameters.git_organization}}/${REPO_NAME}.git"
+        fi
+        
+        APP_NAME="ci-{{inputs.parameters.project_name}}-infra"
+        DEST_SERVER="https://kubernetes.default.svc" # CI always local
+        NAMESPACE="ci-{{inputs.parameters.project_name}}"
+        
+        echo "Creating CI Infra App $APP_NAME..."
+        
+        cat <<EOF | kubectl apply -f -
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: $APP_NAME
+          namespace: argocd
+        spec:
+          project: default 
+          source:
+            repoURL: ${REPO_URL}
+            targetRevision: main
+            path: overlays/ci-{{inputs.parameters.project_name}}
+          destination:
+            server: ${DEST_SERVER}
+            namespace: ${NAMESPACE}
+          ignoreDifferences:
+            - group: ""
+              kind: Secret
+              name: azure-ssh-creds
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+                - /stringData
+            - group: ""
+              kind: Secret
+              name: github-creds
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+                - /stringData
+            - group: ""
+              kind: Secret
+              name: azure-creds
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+                - /stringData
+            - group: ""
+              kind: Secret
+              name: quay-creds
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+                - /stringData
+            - group: ""
+              kind: Secret
+              name: harbor-creds
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+                - /stringData
+            - group: ""
+              kind: ConfigMap
+              name: luban-config
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+            syncOptions:
+              - CreateNamespace=true
+              - ServerSideApply=true
+        EOF
+
+  volumeClaimTemplates:
+  - metadata:
+      name: workdir
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 100Mi

@@ -11,13 +11,13 @@ spec:
     - name: project_name
       description: "Name of the project/team (e.g., 'payment')"
     - name: environments
-      description: "List of target environments (e.g., [\"snd\", \"prd\"])"
-      value: "[\"snd\", \"prd\"]"
+      description: "Target environments (e.g., ['snd', 'prd'])"
+      value: '["snd", "prd"]'
     - name: git_organization
       description: "Git Organization/User (defaults to project_name if empty)"
       value: ""
     - name: git_provider
-      description: "Git Provider (e.g., 'github', 'gitlab')"
+      description: "Git Provider (e.g., 'github', 'azure')"
       value: "azure"
       enum:
         - "github"
@@ -30,7 +30,7 @@ spec:
       value: ""
     - name: registry_visibility
       description: "Project visibility (public or private)"
-      value: "public"
+      value: "private"
       enum:
       - "public"
       - "private"
@@ -61,8 +61,60 @@ spec:
             value: "{{workflow.parameters.git_organization}}"
           - name: git_provider
             value: "{{workflow.parameters.git_provider}}"
+          - name: admin_group
+            value: "{{workflow.parameters.admin_group}}"
+          - name: developer_group
+            value: "{{workflow.parameters.developer_group}}"
 
-      - name: namespace-provision
+      - name: harbor-project-setup
+        templateRef:
+          name: harbor-project-setup-template
+          template: create-project
+        arguments:
+          parameters:
+          - name: project_name
+            value: "{{workflow.parameters.project_name}}"
+          - name: registry_visibility
+            value: "{{workflow.parameters.registry_visibility}}"
+
+    - - name: ci-infra-provision
+        templateRef:
+          name: ci-infra-provision-template
+          template: provision-ci-infra
+        arguments:
+          parameters:
+          - name: project_name
+            value: "{{workflow.parameters.project_name}}"
+          - name: git_organization
+            value: "{{workflow.parameters.git_organization}}"
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: admin_group
+            value: "{{workflow.parameters.admin_group}}"
+          - name: developer_group
+            value: "{{workflow.parameters.developer_group}}"
+
+    - - name: argocd-project
+        templateRef:
+          name: argocd-project-setup-template
+          template: create-projects
+        arguments:
+          parameters:
+          - name: environment
+            value: "{{item}}"
+          - name: project_name
+            value: "{{workflow.parameters.project_name}}"
+          - name: git_organization
+            value: "{{workflow.parameters.git_organization}}"
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: admin_group
+            value: "{{workflow.parameters.admin_group}}"
+          - name: developer_group
+            value: "{{workflow.parameters.developer_group}}"
+        withParam: "{{workflow.parameters.environments}}"
+
+    - - name: namespace-provision
         templateRef:
           name: namespace-provision-template
           template: bootstrap-namespace
@@ -76,31 +128,6 @@ spec:
             value: "{{workflow.parameters.git_organization}}"
           - name: git_provider
             value: "{{workflow.parameters.git_provider}}"
-          - name: admin_group
-            value: "{{workflow.parameters.admin_group}}"
-          - name: developer_group
-            value: "{{workflow.parameters.developer_group}}"
-        withParam: "{{workflow.parameters.environments}}"
-
-      - name: harbor-project
-        templateRef:
-          name: harbor-project-setup-template
-          template: create-project
-        arguments:
-           parameters:
-           - name: project_name
-             value: "{{workflow.parameters.project_name}}"
-           - name: registry_visibility
-             value: "{{workflow.parameters.registry_visibility}}"
-
-      - name: argocd-project
-        templateRef:
-          name: argocd-project-setup-template
-          template: create-projects
-        arguments:
-          parameters:
-          - name: environment
-            value: "{{item}}"
         withParam: "{{workflow.parameters.environments}}"
 
   - name: git-project-setup
@@ -109,11 +136,12 @@ spec:
         - name: project_name
         - name: git_organization
         - name: git_provider
+        - name: admin_group
+        - name: developer_group
 
     container:
       image: "{{workflow.parameters.luban_provisioner_image}}"
       imagePullPolicy: Always
-      command: ["luban-provisioner"]
       args:
         - project
         - --project-name
@@ -126,7 +154,18 @@ spec:
         - "$(GIT_SERVER)"
         - --git-token
         - "$(GIT_TOKEN)"
+        - --admin-group
+        - "{{inputs.parameters.admin_group}}"
+        - --developer-group
+        - "{{inputs.parameters.developer_group}}"
+        - --image-pull-secret
+        - "$(IMAGE_PULL_SECRET)"
       env:
+        - name: IMAGE_PULL_SECRET
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: image_pull_secret
         - name: GIT_TOKEN
           valueFrom:
             secretKeyRef:
@@ -137,3 +176,12 @@ spec:
             configMapKeyRef:
               name: luban-config
               key: "{{inputs.parameters.git_provider}}_server"
+
+  volumeClaimTemplates:
+  - metadata:
+      name: workdir
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 100Mi

@@ -5,7 +5,7 @@ metadata:
   # Cluster resources do not have a namespace
 spec:
   entrypoint: ci-pipeline
-  serviceAccountName: luban-ci-sa
+  serviceAccountName: workflow-runner
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
@@ -81,19 +81,23 @@ spec:
   - name: ci-pipeline
     steps:
     - - name: build-push-by-commit
-        template: build-push-by-commit
+        template: build-push
         when: "'{{workflow.parameters.git_ref}}' !~ '^refs/tags/'"
         arguments:
           parameters:
             - name: namespace
               value: "{{workflow.parameters.registry_namespace}}"
+            - name: mode
+              value: commit
       - name: build-push-by-tag
-        template: build-push-by-tag
+        template: build-push
         when: "'{{workflow.parameters.git_ref}}' =~ '^refs/tags/'"
         arguments:
           parameters:
             - name: namespace
               value: "{{workflow.parameters.registry_namespace}}"
+            - name: mode
+              value: tag
     
     - - name: update-gitops
         template: git-update
@@ -102,10 +106,11 @@ spec:
             - name: namespace
               value: "{{workflow.parameters.registry_namespace}}"
 
-  - name: build-push-by-commit
+  - name: build-push
     inputs:
       parameters:
         - name: namespace
+        - name: mode
     outputs:
       parameters:
       - name: image_tag
@@ -123,59 +128,114 @@ spec:
       command: [sh, -c]
       args:
       - |
-        set -e
-        set -o pipefail
-        
-        # Setup Kubeconfig for kp CLI
+        set -euo pipefail
+
+        die() { echo "$1"; exit 1; }
+        has_cntrl() { printf '%s' "$1" | LC_ALL=C grep -q '[[:cntrl:]]'; }
+        require_no_cntrl() { if has_cntrl "$2"; then die "Error: $1 contains control characters"; fi; }
+        require_dns_label() { printf '%s' "$2" | grep -Eq '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$' || die "Error: $1 is not a valid DNS label: $2"; }
+        require_hex_rev() { printf '%s' "$2" | grep -Eq '^[0-9a-f]{7,40}$' || die "Error: $1 is not a valid git revision: $2"; }
+        require_image_tag() { printf '%s' "$2" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$' || die "Error: $1 is not a valid image tag: $2"; }
+
+        mkdir -p /tmp
+        : > /tmp/image_tag
+
         mkdir -p ~/.kube
         kubectl config set-cluster local --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         kubectl config set-credentials luban --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-        NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
-        kubectl config set-context local --cluster=local --user=luban --namespace="$NAMESPACE"
+        SA_NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+        kubectl config set-context local --cluster=local --user=luban --namespace="$SA_NAMESPACE"
         kubectl config use-context local
-        
-        # Calculate derived parameters in shell for robustness
-        # REGISTRY_NAMESPACE is passed as env var to prevent shell injection vulnerabilities
-        # and ensure robust handling of special characters.
-        
-        # Convert Azure DevOps HTTPS URL to SSH if needed
-        # HTTPS: https://dev.azure.com/{org}/{project}/_git/{repo}
-        # SSH:   git@ssh.dev.azure.com:v3/{org}/{project}/{repo}
-        if echo "$REPO_URL" | grep -q "dev.azure.com"; then
-           echo "Detected Azure DevOps URL. Converting to SSH format..."
-           # Remove https:// and dev.azure.com/
-           PATH_PART=$(echo "$REPO_URL" | sed -E 's|https://dev.azure.com/||')
-           # Replace /_git/ with /
-           PATH_PART=$(echo "$PATH_PART" | sed -E 's|/_git/|/|')
-           REPO_URL="git@ssh.dev.azure.com:v3/$PATH_PART"
-           echo "Converted URL: $REPO_URL"
+
+        KUBECTL="kubectl --request-timeout=5s"
+
+        MODE="{{inputs.parameters.mode}}"
+        TARGET_NAMESPACE="ci-${REGISTRY_NAMESPACE}"
+
+        require_dns_label target_namespace "$TARGET_NAMESPACE"
+
+        require_hex_rev revision "$REVISION"
+
+        if printf "%s" "$APP_NAME" | grep -q '[^a-z0-9-]'; then
+          die "Error: APP_NAME must contain only lowercase letters, digits, and '-': $APP_NAME"
         fi
 
-        # Build for Regular Commit
-        echo "Processing regular commit build for {{workflow.parameters.app_name}}..."
-        
-        # Use explicit tag if provided, otherwise use revision
-        IMAGE_TAG="${TAG:-$REVISION}"
+        require_no_cntrl repo_url "$REPO_URL"
+
+        if printf "%s" "$REPO_URL" | grep -q '"'; then
+          die "Error: repo_url contains an unsupported character: \""
+        fi
+
+        if [ "$MODE" = "tag" ]; then
+          if ! printf "%s" "$GIT_REF" | grep -q '^refs/tags/'; then
+            die "Error: mode=tag but git_ref is not a tag: $GIT_REF"
+          fi
+          IMAGE_TAG="${GIT_REF#refs/tags/}"
+          IMAGE_TAG="${IMAGE_TAG#v}"
+        else
+          IMAGE_TAG="${TAG:-$REVISION}"
+        fi
+
+        require_image_tag image_tag "$IMAGE_TAG"
         echo -n "$IMAGE_TAG" > /tmp/image_tag
-        
+
+        if echo "$REPO_URL" | grep -q "dev.azure.com"; then
+          echo "Detected Azure DevOps URL. Converting to SSH format..."
+          PATH_PART=$(echo "$REPO_URL" | sed -E 's|https://dev.azure.com/||; s|/_git/|/|')
+          REPO_URL="git@ssh.dev.azure.com:v3/$PATH_PART"
+          echo "Converted URL: $REPO_URL"
+        fi
+
+        if echo "$REPO_URL" | grep -q "ssh.dev.azure.com"; then
+          KEY_B64=""
+          for _ in $(seq 1 60); do
+            KEY_B64=$($KUBECTL -n "$TARGET_NAMESPACE" get secret azure-ssh-creds -o jsonpath='{.data.ssh-privatekey}' 2>/dev/null || true)
+            if [ -n "$KEY_B64" ] && [ "$KEY_B64" != "cGxhY2Vob2xkZXI=" ]; then
+              break
+            fi
+            sleep 2
+          done
+          if [ -z "$KEY_B64" ]; then
+            echo "Error: Secret azure-ssh-creds is missing or does not contain ssh-privatekey."
+            exit 1
+          fi
+          if [ "$KEY_B64" = "cGxhY2Vob2xkZXI=" ]; then
+            echo "Error: Secret azure-ssh-creds still contains placeholder data after waiting."
+            exit 1
+          fi
+        fi
+
+        echo "Processing $MODE build for {{workflow.parameters.app_name}}..."
         echo "Source Revision:  $REVISION"
         echo "Target Image Tag: $IMAGE_TAG"
 
         BASE_IMAGE_NAME="${registry_server}/${REGISTRY_NAMESPACE}/${APP_NAME}"
-        
-        # Prepare optional sub-path
-        SUB_PATH_FLAG_VALUE="{{workflow.parameters.sub_path}}"
+        SUB_PATH_VALUE="{{workflow.parameters.sub_path}}"
 
-        # Execute the save command using kubectl apply (to avoid kp CLI in-cluster config issues)
-        cat <<EOF | kubectl apply -f -
+        require_no_cntrl sub_path "$SUB_PATH_VALUE"
+
+        if printf "%s" "$SUB_PATH_VALUE" | grep -q '"'; then
+          die "Error: sub_path contains an unsupported character: \""
+        fi
+
+        IMAGE_SPEC_FILE=/tmp/kpack-image.yaml
+        cat >"$IMAGE_SPEC_FILE" <<EOF
         apiVersion: kpack.io/v1alpha2
         kind: Image
         metadata:
           name: $APP_NAME
+          namespace: $TARGET_NAMESPACE
         spec:
           tag: ${BASE_IMAGE_NAME}:latest
           additionalTags:
-          - ${BASE_IMAGE_NAME}:${IMAGE_TAG}
+        EOF
+
+        if [ "$MODE" = "tag" ]; then
+          echo "  - \"${BASE_IMAGE_NAME}:${REVISION}\"" >> "$IMAGE_SPEC_FILE"
+        fi
+        echo "  - \"${BASE_IMAGE_NAME}:${IMAGE_TAG}\"" >> "$IMAGE_SPEC_FILE"
+
+        cat >>"$IMAGE_SPEC_FILE" <<EOF
           builder:
             kind: ClusterBuilder
             name: luban-builder
@@ -183,16 +243,86 @@ spec:
             git:
               url: "$REPO_URL"
               revision: "$REVISION"
-            subPath: "$SUB_PATH_FLAG_VALUE"
+            subPath: "$SUB_PATH_VALUE"
           serviceAccountName: workflow-runner
         EOF
-        
-        echo "Image resource updated. Waiting for propagation..."
-        sleep 5
 
-        echo "Following build logs..."
-        # Tail logs of the latest build
-        kp build logs "$APP_NAME"
+        if [ "$MODE" = "tag" ]; then
+          cat >>"$IMAGE_SPEC_FILE" <<EOF
+          build:
+            env:
+            - name: CI_TAG_UPDATE
+              value: "${IMAGE_TAG}"
+        EOF
+        fi
+
+        kubectl apply -f "$IMAGE_SPEC_FILE"
+
+        echo "Image resource updated. Waiting for kpack build to be created..."
+        BUILD_REF=""
+        LAST_LOG_TS=0
+        START_TS=$(date +%s)
+        TIMEOUT_SECONDS=600
+        while true; do
+          BUILD_REF=$($KUBECTL -n "$TARGET_NAMESPACE" get image "$APP_NAME" -o jsonpath='{.status.latestBuildRef.name}' 2>/dev/null || true)
+          if [ -z "$BUILD_REF" ]; then
+            BUILD_REF=$($KUBECTL -n "$TARGET_NAMESPACE" get image "$APP_NAME" -o jsonpath='{.status.latestBuildRef}' 2>/dev/null || true)
+          fi
+          if [ -n "$BUILD_REF" ]; then
+            break
+          fi
+
+          NOW_TS=$(date +%s)
+          ELAPSED=$((NOW_TS - START_TS))
+          if [ $((NOW_TS - LAST_LOG_TS)) -ge 60 ]; then
+            echo "Waiting for kpack BuildRef... (${ELAPSED}s, target namespace: ${TARGET_NAMESPACE})"
+            LAST_LOG_TS=$NOW_TS
+          fi
+          if [ "$ELAPSED" -ge "$TIMEOUT_SECONDS" ]; then
+            break
+          fi
+          sleep 2
+        done
+
+        if [ -z "$BUILD_REF" ]; then
+          echo "Error: kpack did not create a build for Image/$APP_NAME within timeout (${TIMEOUT_SECONDS}s)."
+          kubectl -n "$TARGET_NAMESPACE" get image "$APP_NAME" -o yaml || true
+          exit 1
+        fi
+
+        echo "Build created: $BUILD_REF"
+
+        kp build logs "$APP_NAME" -n "$TARGET_NAMESPACE" &
+        KP_LOGS_PID=$!
+
+        echo "Waiting for kpack build to complete..."
+        START_TS=$(date +%s)
+        TIMEOUT_SECONDS=3600
+        while true; do
+          BUILD_STATUS=$($KUBECTL -n "$TARGET_NAMESPACE" get build "$BUILD_REF" -o jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}' 2>/dev/null || true)
+          BUILD_REASON=$($KUBECTL -n "$TARGET_NAMESPACE" get build "$BUILD_REF" -o jsonpath='{.status.conditions[?(@.type=="Succeeded")].reason}' 2>/dev/null || true)
+
+          if [ "$BUILD_STATUS" = "True" ]; then
+            echo "Build succeeded."
+            break
+          fi
+          if [ "$BUILD_STATUS" = "False" ]; then
+            echo "Build failed (${BUILD_REASON:-unknown})."
+            kubectl -n "$TARGET_NAMESPACE" get build "$BUILD_REF" -o yaml || true
+            exit 1
+          fi
+
+          NOW_TS=$(date +%s)
+          ELAPSED=$((NOW_TS - START_TS))
+          if [ "$ELAPSED" -ge "$TIMEOUT_SECONDS" ]; then
+            echo "Error: kpack build did not complete within timeout (${TIMEOUT_SECONDS}s): $BUILD_REF"
+            kubectl -n "$TARGET_NAMESPACE" get build "$BUILD_REF" -o yaml || true
+            exit 1
+          fi
+          sleep 2
+        done
+
+        kill "$KP_LOGS_PID" 2>/dev/null || true
 
       env:
       - name: REGISTRY_NAMESPACE
@@ -205,121 +335,6 @@ spec:
         value: "{{workflow.parameters.app_name}}"
       - name: TAG
         value: "{{workflow.parameters.tag}}"
-      - name: registry_server
-        value: "{{workflow.parameters.registry_server}}"
-      volumeMounts:
-      - name: workdir
-        mountPath: /workdir
-
-  - name: build-push-by-tag
-    inputs:
-      parameters:
-        - name: namespace
-    outputs:
-      parameters:
-      - name: image_tag
-        valueFrom:
-          path: /tmp/image_tag
-    container:
-      image: "{{workflow.parameters.gitops_utils_image}}"
-      resources:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "512Mi"
-          cpu: "500m"
-      command: [sh, -c]
-      args:
-      - |
-        set -e
-        set -o pipefail
-
-        # Setup Kubeconfig for kp CLI
-        mkdir -p ~/.kube
-        kubectl config set-cluster local --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        kubectl config set-credentials luban --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-        NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
-        kubectl config set-context local --cluster=local --user=luban --namespace="$NAMESPACE"
-        kubectl config use-context local
-
-        # Calculate derived parameters in shell for robustness
-        # REGISTRY_NAMESPACE is passed as env var to prevent shell injection vulnerabilities
-        # and ensure robust handling of special characters.
-
-        # Convert Azure DevOps HTTPS URL to SSH if needed
-        # HTTPS: https://dev.azure.com/{org}/{project}/_git/{repo}
-        # SSH:   git@ssh.dev.azure.com:v3/{org}/{project}/{repo}
-        if echo "$REPO_URL" | grep -q "dev.azure.com"; then
-           echo "Detected Azure DevOps URL. Converting to SSH format..."
-           # Remove https:// and dev.azure.com/
-           PATH_PART=$(echo "$REPO_URL" | sed -E 's|https://dev.azure.com/||')
-           # Replace /_git/ with /
-           PATH_PART=$(echo "$PATH_PART" | sed -E 's|/_git/|/|')
-           REPO_URL="git@ssh.dev.azure.com:v3/$PATH_PART"
-           echo "Converted URL: $REPO_URL"
-        fi
-
-        # Tag Push Workflow
-        echo "Processing tag push for {{workflow.parameters.app_name}}..."
-        
-        # Extract tag name and strip 'v' prefix (e.g. refs/tags/v1.0.0 -> 1.0.0)
-        IMAGE_TAG="${GIT_REF#refs/tags/}"
-        IMAGE_TAG="${IMAGE_TAG#v}"
-        echo -n "$IMAGE_TAG" > /tmp/image_tag
-        
-        echo "Source Revision:  $REVISION"
-        echo "Target Image Tag: $IMAGE_TAG"
-
-        BASE_IMAGE_NAME="${registry_server}/${REGISTRY_NAMESPACE}/${APP_NAME}"
-        
-        # Prepare optional sub-path
-        SUB_PATH_FLAG_VALUE="{{workflow.parameters.sub_path}}"
-
-        echo "Detected Git Tag Push ($GIT_REF). Updating tags..."
-        
-        # Execute the save command using kubectl apply
-        cat <<EOF | kubectl apply -f -
-        apiVersion: kpack.io/v1alpha2
-        kind: Image
-        metadata:
-          name: $APP_NAME
-        spec:
-          tag: ${BASE_IMAGE_NAME}:latest
-          additionalTags:
-          - ${BASE_IMAGE_NAME}:${REVISION}
-          - ${BASE_IMAGE_NAME}:${IMAGE_TAG}
-          builder:
-            kind: ClusterBuilder
-            name: luban-builder
-          source:
-            git:
-              url: "$REPO_URL"
-              revision: "$REVISION"
-            subPath: "$SUB_PATH_FLAG_VALUE"
-          serviceAccountName: workflow-runner
-          build:
-            env:
-            - name: CI_TAG_UPDATE
-              value: "${IMAGE_TAG}"
-        EOF
-        
-        echo "Image resource updated. Waiting for propagation..."
-        sleep 5
-        
-        echo "Following build logs..."
-        # Tail logs of the latest build (which should be the one triggered by the update)
-        kp build logs "$APP_NAME"
-
-      env:
-      - name: REGISTRY_NAMESPACE
-        value: "{{inputs.parameters.namespace}}"
-      - name: REPO_URL
-        value: "{{workflow.parameters.repo_url}}"
-      - name: REVISION
-        value: "{{workflow.parameters.revision}}"
-      - name: APP_NAME
-        value: "{{workflow.parameters.app_name}}"
       - name: GIT_REF
         value: "{{workflow.parameters.git_ref}}"
       - name: registry_server
@@ -344,12 +359,25 @@ spec:
       command: [sh, -c]
       args:
       - |
-        # Configure safe directory to avoid "fatal: detected dubious ownership"
-        git config --global --add safe.directory "*"
-        
-        # Calculate derived parameters in shell for robustness
-        # REGISTRY_NAMESPACE is passed as env var to prevent shell injection vulnerabilities
-        # and ensure robust handling of special characters.
+        set -euo pipefail
+
+        die() { echo "$1"; exit 1; }
+
+        case "${DEPLOY_ENV}" in
+          snd|prd) ;;
+          *) die "Error: DEPLOY_ENV must be 'snd' or 'prd': ${DEPLOY_ENV}" ;;
+        esac
+
+        case "${GITOPS_BRANCH}" in
+          ""|*" "*|*".."*|*"~"*|*"^"*|*":"*|*"\\"*|*"?"*|*"*"*|*"["*|*"{"*|*"}"*)
+            die "Error: invalid GITOPS_BRANCH: ${GITOPS_BRANCH}"
+            ;;
+        esac
+        if ! printf '%s' "$GITOPS_BRANCH" | grep -Eq '^[A-Za-z0-9._/-]+$'; then
+          die "Error: invalid GITOPS_BRANCH: ${GITOPS_BRANCH}"
+        fi
+
+        # Calculate derived parameters in shell for robustness.
         # Determine GitOps Repo URL
         if [ "$GIT_PROVIDER" = "azure" ]; then
            # Extract org/project from REPO_URL (SSH or HTTPS)
@@ -383,20 +411,27 @@ spec:
         git config --global user.name "Luban CI"
 
         echo "Cloning ${GITOPS_REPO_URL}..."
-        git clone ${GITOPS_REPO_URL} /workdir/gitops
+        git clone "$GITOPS_REPO_URL" /workdir/gitops
         cd /workdir/gitops
+
+        # Configure safe directory to avoid "fatal: detected dubious ownership"
+        git config --global --add safe.directory /workdir/gitops
+
         if git show-ref --verify --quiet "refs/heads/${GITOPS_BRANCH}"; then \
-          git checkout ${GITOPS_BRANCH}; \
+          git checkout -- "${GITOPS_BRANCH}"; \
         else \
-          if git ls-remote --exit-code --heads origin ${GITOPS_BRANCH} >/dev/null 2>&1; then \
-            git checkout -b ${GITOPS_BRANCH} origin/${GITOPS_BRANCH}; \
+          if git ls-remote --exit-code --heads origin "${GITOPS_BRANCH}" >/dev/null 2>&1; then \
+            git checkout -b "${GITOPS_BRANCH}" "origin/${GITOPS_BRANCH}"; \
           else \
-            git checkout -b ${GITOPS_BRANCH}; \
-            git push -u origin ${GITOPS_BRANCH}; \
+            git checkout -b "${GITOPS_BRANCH}"; \
+            git push -u origin "${GITOPS_BRANCH}"; \
           fi; \
         fi
         
         KUST_PATH="app/overlays/${DEPLOY_ENV}/kustomization.yaml"
+        if [ ! -f "$KUST_PATH" ]; then
+          die "Error: missing kustomization file: ${KUST_PATH}"
+        fi
         BASE_DIR="app/base"
         APP_IMAGE_NAME="${registry_server}/${REGISTRY_NAMESPACE}/${APP_NAME}"
         export APP_IMAGE_NAME

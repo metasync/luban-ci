@@ -7,10 +7,10 @@ Luban CI follows a **Trunk-Based Development** model with **Promotion-Based Rele
 ### 1. Development (Continuous Integration)
 - **Trigger**: Commit to any branch (e.g., `main`, `feat/login`).
 - **Action**:
-  1.  **Dispatch**: The `luban-ci` dispatcher triggers a pipeline in the project's Sandbox namespace (`snd-<project>`).
-  2.  **Build**: kpack builds the container image in Sandbox.
-  3.  **Deploy**: The pipeline updates the **Sandbox** overlay (`app/overlays/snd`) in the `develop` branch of the GitOps repository.
-  4.  **Verify**: The application is deployed to the Sandbox cluster for verification.
+  1.  **Dispatch**: The dispatcher submits a CI workflow into the tenant CI namespace (`ci-<project>`).
+  2.  **Build**: kpack builds the container image in the CI namespace (admin cluster).
+  3.  **Deploy**: The workflow updates the **Sandbox** overlay (`app/overlays/snd`) in the `develop` branch of the GitOps repository.
+  4.  **Verify**: ArgoCD deploys the updated Sandbox overlay to the runtime namespace (`snd-<project>`) on the cluster resolved via `cluster_map["snd"]`.
 
 ### 2. Release (Continuous Delivery)
 - **Trigger**: Git Tag (e.g., `v1.0.0`) OR Manual Promotion.
@@ -24,5 +24,5 @@ Luban CI follows a **Trunk-Based Development** model with **Promotion-Based Rele
 
 ## Why this model?
 - **Build Once, Deploy Many**: The exact image tested in Sandbox is promoted to Production. We do not rebuild for Production.
-- **Isolation**: Heavy build workloads run only in Sandbox/CI namespaces, keeping Production clusters stable and clean.
+- **Isolation**: Heavy build workloads run only in CI namespaces (`ci-*`), keeping runtime clusters stable and clean.
 - **Safety**: Production deployments are explicit promotion actions, not side-effects of a merge.

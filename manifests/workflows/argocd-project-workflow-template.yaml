@@ -128,10 +128,50 @@ spec:
       command: [sh, -c]
       args:
       - |
-        # Calculate derived parameters in shell for robustness
+        die() { echo "$1" >&2; exit 1; }
+        has_cntrl() { printf '%s' "$1" | LC_ALL=C grep -q '[[:cntrl:]]'; }
+        require_no_cntrl() { if has_cntrl "$2"; then die "Error: $1 contains control characters"; fi; }
+        require_dns_label() { printf '%s' "$2" | grep -Eq '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$' || die "Error: $1 is not a valid DNS label: $2"; }
+        require_group_name() {
+          if [ -z "$2" ]; then
+            return 0
+          fi
+          printf '%s' "$2" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9:._/@+-]{0,127}$' || die "Error: $1 is not a valid group name: $2"
+        }
+
+        ENV="{{inputs.parameters.environment}}"
+        case "$ENV" in snd|prd) ;; *) die "Error: invalid environment: $ENV" ;; esac
+
+        PROJECT_NAME_RAW="{{inputs.parameters.project_name}}"
+        require_no_cntrl project_name "$PROJECT_NAME_RAW"
+        require_dns_label project_name "$PROJECT_NAME_RAW"
+
+        PROJECT_NAME="${ENV}-${PROJECT_NAME_RAW}"
+
         ORG="{{inputs.parameters.git_organization}}"
         if [ -z "$ORG" ]; then
-          ORG="{{inputs.parameters.project_name}}"
+          ORG="$PROJECT_NAME_RAW"
+        fi
+
+        require_no_cntrl git_organization "$ORG"
+        if ! printf '%s' "$ORG" | grep -Eq '^[A-Za-z0-9._-]+$'; then
+          die "Error: invalid git_organization: $ORG"
+        fi
+
+        ADMIN_GROUP="{{workflow.parameters.admin_group}}"
+        DEVELOPER_GROUP="{{workflow.parameters.developer_group}}"
+        require_no_cntrl admin_group "$ADMIN_GROUP"
+        require_no_cntrl developer_group "$DEVELOPER_GROUP"
+        require_group_name admin_group "$ADMIN_GROUP"
+        require_group_name developer_group "$DEVELOPER_GROUP"
+
+        ADMIN_GROUPS_BLOCK=""
+        DEVELOPER_GROUPS_BLOCK=""
+        if [ -n "$ADMIN_GROUP" ]; then
+          ADMIN_GROUPS_BLOCK="groups: [\"${ADMIN_GROUP}\"]"
+        fi
+        if [ -n "$DEVELOPER_GROUP" ]; then
+          DEVELOPER_GROUPS_BLOCK="groups: [\"${DEVELOPER_GROUP}\"]"
         fi
         
         # Resolve Git Server Domain from Environment Variables
@@ -140,51 +180,53 @@ spec:
            GIT_SERVER="${AZURE_SERVER:-dev.azure.com}"
         elif [ "{{inputs.parameters.git_provider}}" = "github" ]; then
            GIT_SERVER="${GITHUB_SERVER:-github.com}"
+        else
+           die "Error: invalid git_provider: {{inputs.parameters.git_provider}}"
         fi
 
         # Repo Whitelist Construction
         if [ "{{inputs.parameters.git_provider}}" = "azure" ] && [ -n "{{inputs.parameters.git_organization}}" ]; then
             # Azure DevOps with Organization
             # URL: https://dev.azure.com/{ORG}/{PROJECT}/_git/*
-            GITOPS_REPOS_WHITELIST="https://${GIT_SERVER}/{{inputs.parameters.git_organization}}/{{inputs.parameters.project_name}}/_git/*"
+            GITOPS_REPOS_WHITELIST="https://${GIT_SERVER}/${ORG}/${PROJECT_NAME_RAW}/_git/*"
         else
             # Standard GitHub or Azure without Org (Org=Project)
             GITOPS_REPOS_WHITELIST="https://${GIT_SERVER}/${ORG}/*"
         fi
         
-        echo "Creating AppProject {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}..."
+        echo "Creating AppProject ${PROJECT_NAME}..."
         
         cat <<EOF | kubectl apply -f -
         apiVersion: argoproj.io/v1alpha1
         kind: AppProject
         metadata:
-          name: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}
+          name: ${PROJECT_NAME}
           namespace: argocd
         spec:
-          description: {{inputs.parameters.project_name}} team project for {{inputs.parameters.environment}} environment
+          description: "${PROJECT_NAME_RAW} team project for ${ENV} environment"
           sourceRepos: 
           - "${GITOPS_REPOS_WHITELIST}"
           destinations:
-          - namespace: {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}
-            server: https://kubernetes.default.svc
+          - namespace: ${PROJECT_NAME}
+            server: "https://kubernetes.default.svc"
           - namespace: gateway
-            server: https://kubernetes.default.svc
+            server: "https://kubernetes.default.svc"
           clusterResourceWhitelist:
-          - group: '*'
-            kind: '*'
+          - group: ''
+            kind: Namespace
           namespaceResourceWhitelist:
           - group: '*'
             kind: '*'
           roles:
           - name: project-developer
             description: Developer role with read and sync access
-            groups: ["{{workflow.parameters.developer_group}}"]
+            ${DEVELOPER_GROUPS_BLOCK}
             policies:
-            - "p, proj:{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}:project-developer, applications, get, {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}/*, allow"
-            - "p, proj:{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}:project-developer, applications, sync, {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}/*, allow"
+            - "p, proj:${PROJECT_NAME}:project-developer, applications, get, ${PROJECT_NAME}/*, allow"
+            - "p, proj:${PROJECT_NAME}:project-developer, applications, sync, ${PROJECT_NAME}/*, allow"
           - name: project-admin
             description: Admin role with full access
-            groups: ["{{workflow.parameters.admin_group}}"]
+            ${ADMIN_GROUPS_BLOCK}
             policies:
-            - "p, proj:{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}:project-admin, applications, *, {{inputs.parameters.environment}}-{{inputs.parameters.project_name}}/*, allow"
+            - "p, proj:${PROJECT_NAME}:project-admin, applications, *, ${PROJECT_NAME}/*, allow"
         EOF

@@ -16,6 +16,10 @@ push: ## Push luban-provisioner tooling image (build if missing)
 	else \
 		echo "Tooling image $$IMAGE not found. Building and pushing..."; \
 		$(MAKE) build || exit 1; \
-		echo "$(QUAY_PASSWORD)" | docker login -u "$(QUAY_USERNAME)" --password-stdin $(REGISTRY_SERVER); \
-		docker push $$IMAGE; \
+		if [ -n "$(QUAY_USERNAME)" ] && [ -n "$(QUAY_PASSWORD)" ]; then \
+			echo "$(QUAY_PASSWORD)" | docker login -u "$(QUAY_USERNAME)" --password-stdin $(REGISTRY_SERVER) || exit 1; \
+		else \
+			echo "QUAY_USERNAME/QUAY_PASSWORD not set; relying on existing docker credentials"; \
+		fi; \
+		docker push $$IMAGE || exit 1; \
 	fi

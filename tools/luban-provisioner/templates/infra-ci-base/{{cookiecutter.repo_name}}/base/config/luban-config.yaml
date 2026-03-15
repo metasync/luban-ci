@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: luban-config
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  annotations:
+    replicator.v1.mittwald.de/replicate-from: luban-ci/luban-config
+data: {}
+

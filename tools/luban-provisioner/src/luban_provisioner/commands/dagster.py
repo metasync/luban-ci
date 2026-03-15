@@ -5,7 +5,7 @@ import shutil
 import tempfile
 from ruamel.yaml import YAML
 from luban_provisioner.provider_factory import get_git_provider, get_remote_url
-from luban_provisioner.utils import initialize_git_repo, create_and_push_branch
+from luban_provisioner.utils import configure_git_https_auth, configure_git_identity
 
 @click.group()
 def dagster():
@@ -29,14 +29,8 @@ def register_location(platform_project, platform_app, environment, location_name
     """
     click.echo(f"Registering code location '{location_name}' in platform '{platform_app}' ({environment})...")
 
-    # 1. Setup Git Credentials
-    subprocess.run(["git", "config", "--global", "credential.helper", "store"], check=True)
-    with open(os.path.expanduser("~/.git-credentials"), "w") as f:
-        f.write(f"https://git:{git_token}@{git_server}\n")
-    
-    subprocess.run(["git", "config", "--global", "user.email", "ci@luban.com"], check=True)
-    subprocess.run(["git", "config", "--global", "user.name", "Luban CI"], check=True)
-    subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], check=True)
+    configure_git_https_auth(git_token, git_server)
+    configure_git_identity()
 
     # 2. Clone Platform GitOps Repo
     platform_repo_name = f"{platform_app}-gitops"

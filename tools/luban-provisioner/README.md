@@ -76,19 +76,19 @@ Ensure the Git organization or project exists on the provider (GitHub/Azure).
 ```bash
 uv run luban-provisioner project \
     --project-name my-project \
-    --git-org my-org \
+    --git-organization my-org \
     --git-provider github
 ```
 
-### 2. Kubernetes Provisioning
+### 2. CI Infra Repo (Init)
 
-Bootstrap a Kubernetes namespace with RBAC, resource quotas, and copied secrets.
+Initialize a CI infrastructure repository (base manifests).
 
 ```bash
-uv run luban-provisioner k8s \
-    --project-name my-project \
-    --environment snd \
-    --git-org my-org \
+uv run luban-provisioner infra ci init \
+    --repo-name my-infra-ci-repo \
+    --git-organization my-org \
+    --git-provider github \
     --image-pull-secret harbor-creds
 ```
 

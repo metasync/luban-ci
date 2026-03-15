@@ -1,0 +1,4 @@
+{
+  "image_pull_secret": "harbor-creds",
+  "repo_name": "luban-infra-cd"
+}

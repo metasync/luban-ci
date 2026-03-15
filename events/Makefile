@@ -28,5 +28,6 @@ webhook-secret-rotate: ## Force generate and rotate webhook secret
 	@SECRET=$$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32); \
 	kubectl delete secret webhook-secret -n $(K8S_NAMESPACE) --ignore-not-found; \
 	kubectl create secret generic webhook-secret -n $(K8S_NAMESPACE) --from-literal=secret="$$SECRET"; \
-	echo "Webhook secret created in K8s. Use this exact value in GitHub/Azure webhook settings:"; \
-	echo "$$SECRET"
+	echo "Webhook secret created in K8s."; \
+	echo "Retrieve it (do not paste into chat/logs):"; \
+	echo "kubectl get secret webhook-secret -n $(K8S_NAMESPACE) -o jsonpath='{.data.secret}' | base64 -d && echo"

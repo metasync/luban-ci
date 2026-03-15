@@ -77,16 +77,19 @@ spec:
           ORG=$(echo "$URL_STRIPPED" | cut -d'/' -f2)
           NAMESPACE_SCOPE="$ORG"
         fi
+
+        NAMESPACE_SCOPE=$(printf '%s' "$NAMESPACE_SCOPE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')
+        if [ -z "$NAMESPACE_SCOPE" ]; then
+          echo "Error: Failed to derive a valid namespace scope from repo_url" >&2
+          exit 1
+        fi
         
         # 2. Determine Environment and Namespace
-        # In our Promotion-Based workflow:
-        # - ALL builds (branches, tags) run in Sandbox (snd) namespace.
-        # - ALL builds deploy to Sandbox (snd) environment first.
-        # - Production releases happen via a separate Promotion Workflow (snd -> prd).
+        # CI runs in the tenant CI namespace. Deployments are handled via GitOps updates.
         DEPLOY_ENV="snd"
-        TARGET_NS="snd-${NAMESPACE_SCOPE}"
+        TARGET_NS="ci-${NAMESPACE_SCOPE}"
         
-        echo "Dispatching pipeline for {{inputs.parameters.app_name}} to $TARGET_NS (Deploy Target: $DEPLOY_ENV)..."
+        echo "Dispatching CI pipeline for {{inputs.parameters.app_name}} to $TARGET_NS (GitOps Env: $DEPLOY_ENV)..."
         
         # 3. Submit the CI Workflow
         # We assume the ServiceAccount 'workflow-runner' exists in the target namespace

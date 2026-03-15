@@ -1,0 +1,119 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: luban-infra-setup-template
+  namespace: luban-ci
+spec:
+  entrypoint: setup-infra
+  serviceAccountName: luban-ci-sa
+  arguments:
+    parameters:
+      - name: git_organization
+        description: "Git Organization (e.g. metasync)"
+        value: ""
+      - name: git_provider
+        description: "Git Provider"
+        value: "azure"
+        enum: ["github", "azure"]
+      - name: project_name
+        description: "Project Name (Azure DevOps Only)"
+        value: "luban-infra"
+      - name: luban_provisioner_image
+        description: "Image for Luban provisioner tool"
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: luban_provisioner_image
+
+  templates:
+  - name: setup-infra
+    steps:
+    - - name: init-ci-repo
+        template: init-repo
+        arguments:
+          parameters:
+          - name: repo_name
+            value: "luban-infra-ci"
+          - name: template_type
+            value: "ci"
+          - name: git_organization
+            value: "{{workflow.parameters.git_organization}}"
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: project_name
+            value: "{{workflow.parameters.project_name}}"
+
+    - - name: init-cd-repo
+        template: init-repo
+        arguments:
+          parameters:
+          - name: repo_name
+            value: "luban-infra-cd"
+          - name: template_type
+            value: "cd"
+          - name: git_organization
+            value: "{{workflow.parameters.git_organization}}"
+          - name: git_provider
+            value: "{{workflow.parameters.git_provider}}"
+          - name: project_name
+            value: "{{workflow.parameters.project_name}}"
+
+  - name: init-repo
+    inputs:
+      parameters:
+      - name: repo_name
+      - name: template_type
+      - name: git_organization
+      - name: git_provider
+      - name: project_name
+    container:
+      image: "{{workflow.parameters.luban_provisioner_image}}"
+      imagePullPolicy: Always
+      args:
+      - infra
+      - "{{inputs.parameters.template_type}}"
+      - init
+      - --repo-name
+      - "{{inputs.parameters.repo_name}}"
+      - --git-organization
+      - "{{inputs.parameters.git_organization}}"
+      - --git-provider
+      - "{{inputs.parameters.git_provider}}"
+      - --git-server
+      - "$(GIT_SERVER)"
+      - --git-token
+      - "$(GIT_TOKEN)"
+      - --output-dir
+      - "/workdir"
+      - --project-name
+      - "{{inputs.parameters.project_name}}"
+      - --image-pull-secret
+      - "$(IMAGE_PULL_SECRET)"
+      env:
+      - name: IMAGE_PULL_SECRET
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: image_pull_secret
+      - name: GIT_SERVER
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: "{{inputs.parameters.git_provider}}_server"
+      - name: GIT_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: "{{inputs.parameters.git_provider}}-creds"
+            key: token
+      volumeMounts:
+      - name: workdir
+        mountPath: /workdir
+  
+  volumeClaimTemplates:
+  - metadata:
+      name: workdir
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 100Mi

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: workflow-runner
+imagePullSecrets:
+- name: quay-creds
+secrets:
+- name: harbor-creds
+- name: azure-ssh-creds

@@ -5,6 +5,9 @@ metadata:
   namespace: luban-ci
   labels:
     workflows.argoproj.io/configmap-type: Parameter
+  annotations:
+    replicator.v1.mittwald.de/replication-allowed: "true"
+    replicator.v1.mittwald.de/replication-allowed-namespaces: "^ci-.*"
 data:
   # Domain suffix
   domain_suffix: "apps.metasync.cc"
@@ -17,15 +20,22 @@ data:
   webhook_url: "https://webhook-luban.metasync.cc"
   # webhook_url: "https://webhook.luban.metasync.cc"
 
+  # Cluster Map (JSON) - Maps environments to Cluster URLs
+  # For single-cluster setup, both map to the local cluster (https://kubernetes.default.svc)
+  cluster_map: |
+    {
+      "snd": "https://kubernetes.default.svc",
+      "prd": "https://kubernetes.default.svc"
+    }
+
   # Git providers
   github_server: "github.com"
   azure_server: "dev.azure.com"
 
   # Tooling Images
-  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.1.230"
+  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.2.0"
   gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.3.7"
 
   # Python Package Index (Optional)
   # python_index_url: "https://devpi.luban-ci.io/root/pypi"
   # python_index_name: "devpi"
-  

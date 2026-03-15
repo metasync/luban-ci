@@ -5,7 +5,7 @@ This guide covers the administration and configuration of the Luban CI platform.
 ## Configuration Management
 
 - **`luban-config` ConfigMap**: Central configuration for all workflows.
-  - Located in `manifests/luban-config.yaml`.
+  - Located in `manifests/config/luban-config.yaml`.
   - Keys:
     - `registry_server`: Domain of the registry (e.g., `harbor.luban.metasync.cc`).
     - `image_pull_secret`: Name of the secret for pulling images (e.g., `harbor-ro-creds`).
@@ -27,7 +27,7 @@ If you are using Azure DevOps instead of GitHub:
 1.  **Organization & Project**: Ensure your Azure DevOps Organization exists. The `luban-project-workflow` will create the Project for you.
 2.  **Personal Access Token (PAT)**:
     - Scopes required: `Code (Read & Write)`, `Project and Team (Read & Write)`, `Work Items (Read & Write)`.
-    - Configure in `secrets/azure-creds.env` (mapped to `azure-creds` secret).
+    - Configure in `secrets/*.env` (exporting `AZURE_DEVOPS_TOKEN` and `AZURE_ORGANIZATION`, mapped to the `azure-creds` secret).
 3.  **Environment Variables**:
     - Ensure `AZURE_SERVER` is available in the environment if using a self-hosted Azure DevOps Server.
     - Default is `dev.azure.com`.
@@ -61,22 +61,19 @@ If you are using Azure DevOps instead of GitHub:
   - `runAsNonRoot: true`
   - `runAsUser: 1000`
   - `fsGroup: 1000`
-- **Resource Management**:
-  - `activeDeadlineSeconds`: 3600 (1 hour timeout per workflow)
-  - `podGC`: `OnPodCompletion`
+- **Resource Management**: Prefer setting timeouts/GC per template (some workflows intentionally keep pods longer for log access).
 
 ## Concurrency Control
 
 - **Recommended**: Argo Workflows Semaphores
-  - A ConfigMap (`workflow-semaphores`) defines a named semaphore and its limit in each project namespace.
-  - The CI WorkflowTemplate references this semaphore via `spec.synchronization.semaphore.configMapKeyRef`.
-  - Increase or decrease `kpack-builds` in the project's ConfigMap to control how many workflows (and thus kpack builds) run concurrently.
+  - A ConfigMap (`workflow-semaphores`) defines a named semaphore and its limit in each tenant CI namespace (`ci-*`).
+  - The CI kpack ClusterWorkflowTemplate references this semaphore via `spec.synchronization.semaphore.configMapKeyRef`.
+  - Increase or decrease `kpack-builds` in the tenant namespace ConfigMap to control how many kpack builds run concurrently.
 - **Optional**: Workflow spec.parallelism
   - Limits concurrent nodes within a single workflow. Our pipeline is sequential, so this is less impactful.
   - For parallel DAG/steps, set `spec.parallelism` in the Workflow/WorkflowTemplate.
 
 ## Workflow Cleanup
-- **Global TTL Strategy**: All workflows are automatically cleaned up by the Argo Controller.
-  - Successful workflows: Deleted after 30 minutes.
-  - Failed/Completed workflows: Deleted after 24 hours.
-- **Pod GC**: Pods are deleted immediately upon completion (`OnPodCompletion`) to free up cluster resources.
+- **Template TTL Strategy**: Most workflows set `spec.ttlStrategy` explicitly.
+  - For `luban-ci-kpack-template`, pods are retained until workflow deletion (`podGC: OnWorkflowDeletion`) and workflows are deleted after a delay (success cleans up faster than failures).
+  - If you change retention/TTL, prefer updating the specific WorkflowTemplate/ClusterWorkflowTemplate rather than relying on controller defaults.

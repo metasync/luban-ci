@@ -1,9 +1,25 @@
 import subprocess
 import click
 import os
+import traceback
+import random
 from ruamel.yaml import YAML
 import json
 from cookiecutter.main import cookiecutter
+
+
+def configure_git_https_auth(git_token, git_server):
+    subprocess.run(["git", "config", "--global", "credential.helper", "store"], check=True)
+    credentials_path = os.path.expanduser("~/.git-credentials")
+    with open(credentials_path, "w", encoding="utf-8") as f:
+        f.write(f"https://git:{git_token}@{git_server}\n")
+
+
+def configure_git_identity(user_name="Luban CI", user_email="ci@luban.com"):
+    subprocess.run(["git", "config", "--global", "user.email", user_email], check=True)
+    subprocess.run(["git", "config", "--global", "user.name", user_name], check=True)
+    subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], check=True)
+
 
 def load_config(config_file):
     """
@@ -47,75 +63,6 @@ def load_config_from_dir(config_dir):
                 click.echo(f"Warning: Failed to read config file {file_path}: {e}", err=True)
     return config
 
-def _copy_k8s_resource(resource_type, resource_name, target_ns, source_ns):
-    """
-    Helper to copy a K8s resource from source_ns to target_ns.
-    """
-    click.echo(f"Copying {resource_type} {resource_name} from {source_ns} to {target_ns}...")
-    
-    # Check if exists in source
-    try:
-        subprocess.run(
-            ['kubectl', 'get', resource_type, resource_name, '-n', source_ns], 
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
-        )
-    except subprocess.CalledProcessError:
-        click.echo(f"Warning: {resource_type} {resource_name} not found in {source_ns}, skipping.")
-        return
-
-    # Get resource as JSON
-    try:
-        proc = subprocess.run(
-            ['kubectl', 'get', resource_type, resource_name, '-n', source_ns, '-o', 'json'],
-            capture_output=True, text=True, check=True
-        )
-        resource_data = json.loads(proc.stdout)
-        
-        # Clean metadata
-        if 'metadata' in resource_data:
-            meta = resource_data['metadata']
-            for field in ['namespace', 'resourceVersion', 'uid', 'creationTimestamp', 'ownerReferences', 'managedFields']:
-                if field in meta:
-                    del meta[field]
-        
-        # Apply to target namespace
-        proc_apply = subprocess.Popen(
-            ['kubectl', 'apply', '-n', target_ns, '-f', '-'],
-            stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
-        )
-        stdout, stderr = proc_apply.communicate(input=json.dumps(resource_data))
-        
-        if proc_apply.returncode != 0:
-             click.echo(f"Failed to copy {resource_type} {resource_name}: {stderr}", err=True)
-
-    except subprocess.CalledProcessError as e:
-        click.echo(f"Failed to get {resource_type} {resource_name}: {e}", err=True)
-    except json.JSONDecodeError as e:
-        click.echo(f"Failed to parse {resource_type} {resource_name} JSON: {e}", err=True)
-
-def copy_secrets(target_ns, source_ns, image_pull_secret):
-    """
-    Copies secrets from source namespace to target namespace.
-    Specifically handles image pull secrets and harbor credentials.
-    """
-    secrets = {"github-creds", "harbor-creds", "azure-ssh-creds", "azure-creds"}
-    
-    if image_pull_secret:
-        secrets.add(image_pull_secret)
-        
-    for secret in secrets:
-        _copy_k8s_resource('secret', secret, target_ns, source_ns)
-
-def copy_configmaps(target_ns, source_ns):
-    """
-    Copies relevant ConfigMaps from source namespace to target namespace.
-    Specifically handles luban-config.
-    """
-    configmaps = ["luban-config"]
-    
-    for cm in configmaps:
-        _copy_k8s_resource('configmap', cm, target_ns, source_ns)
-
 def render_template(template_path, output_dir, context, overwrite=False):
     """
     Renders a cookiecutter template.
@@ -132,7 +79,79 @@ def render_template(template_path, output_dir, context, overwrite=False):
         click.echo(f"Successfully generated template in {output_dir}")
     except Exception as e:
         click.echo(f"Error generating template: {e}", err=True)
+        traceback.print_exc()
         raise e
+
+def clone_git_repo(repo_url, target_dir, user_name="Luban CI", user_email="ci@luban.com"):
+    """Clone a git repository to a target directory."""
+    try:
+        click.echo(f"Cloning {repo_url} into {target_dir}...")
+        subprocess.run(["git", "clone", repo_url, target_dir], check=True)
+
+        # Configure local git user
+        cwd = os.getcwd()
+        os.chdir(target_dir)
+        try:
+            subprocess.run(["git", "config", "user.name", user_name], check=True)
+            subprocess.run(["git", "config", "user.email", user_email], check=True)
+        finally:
+            os.chdir(cwd)
+
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Git clone failed: {e}", err=True)
+        raise e
+
+def commit_and_push(repo_dir, message, branch="main", retries=5):
+    """Commit all changes in the repo and push to remote with retry logic."""
+    cwd = os.getcwd()
+    import time
+
+    try:
+        os.chdir(repo_dir)
+        click.echo(f"Committing changes in {repo_dir}...")
+
+        # Add all files
+        subprocess.run(["git", "add", "."], check=True)
+
+        # Check if there are changes
+        status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+        if not status.stdout.strip():
+            click.echo("No changes to commit.")
+        else:
+            # Commit
+            subprocess.run(["git", "commit", "-m", message], check=True)
+
+        # Ensure we are on the target branch
+        current_branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True).stdout.strip()
+        if current_branch != branch:
+            click.echo(f"Renaming branch {current_branch} to {branch}...")
+            subprocess.run(["git", "branch", "-M", branch], check=True)
+
+        # Push with retry
+        for i in range(retries):
+            try:
+                click.echo(f"Pushing to {branch} (Attempt {i+1}/{retries})...")
+                subprocess.run(["git", "push", "origin", branch], check=True)
+                click.echo("Push successful.")
+                break
+            except subprocess.CalledProcessError:
+                if i < retries - 1:
+                    click.echo(f"Push failed. Pulling rebase and retrying...")
+                    time.sleep(random.uniform(1, 3)) # Random jitter
+                    try:
+                        subprocess.run(["git", "pull", "--rebase", "origin", branch], check=True)
+                    except subprocess.CalledProcessError as e:
+                        click.echo(f"Pull rebase failed: {e}. Aborting retry.", err=True)
+                        raise e
+                else:
+                    click.echo("Max retries reached. Push failed.")
+                    raise
+
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Git commit/push failed: {e}", err=True)
+        raise e
+    finally:
+        os.chdir(cwd)
 
 def initialize_git_repo(repo_dir, remote_url, user_name="Luban CI", user_email="luban-ci@metasync.io", initial_branch="main"):
     """Initialize a git repository, commit all files, and push to remote."""
@@ -169,19 +188,11 @@ def initialize_git_repo(repo_dir, remote_url, user_name="Luban CI", user_email="
         os.chdir(cwd)
 
 def patch_default_service_account(target_ns, image_pull_secret):
-    """Patch the default service account to use the image pull secret."""
-    if not image_pull_secret:
-        return
-        
-    click.echo(f"Patching default service account in {target_ns} with {image_pull_secret}...")
-    patch_json = f'{{"imagePullSecrets": [{{"name": "{image_pull_secret}"}}]}}'
-    cmd = ['kubectl', 'patch', 'serviceaccount', 'default', '-n', target_ns, '-p', patch_json]
-    
-    try:
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
-        click.echo("Default service account patched.")
-    except subprocess.CalledProcessError as e:
-        click.echo(f"Failed to patch default service account: {e}", err=True)
+    """
+    Deprecated: Patch logic moved to GitOps manifests.
+    Keeping function signature for compatibility if needed, but doing nothing.
+    """
+    pass
 
 def create_and_push_branch(repo_dir, branch_name):
     """Create a new branch and push it."""

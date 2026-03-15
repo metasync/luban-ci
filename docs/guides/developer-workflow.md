@@ -20,7 +20,7 @@ Luban CI automatically configures RBAC for your project namespaces to enable OID
 
 ### Service Accounts
 
-The system provisions two permanent ServiceAccounts in each environment namespace (e.g., `snd-payment`) which are used by Argo Workflows to execute actions on behalf of the user:
+The system provisions two permanent ServiceAccounts in each runtime environment namespace (e.g., `snd-payment`) which are used by Argo Workflows to execute actions on behalf of the user:
 1.  `project-admin`: Used by users in the `admin_group`.
 2.  `project-developer`: Used by users in the `developer_group`.
 
@@ -43,8 +43,12 @@ Manually trigger the kpack CI workflow (via Argo CLI) with custom parameters.
 make test-ci-pipeline
 
 # Override parameters
-make test-ci-pipeline APP_NAME=my-app REPO_URL=https://github.com/myorg/my-app.git TAG=v2.0.0
+make test-ci-pipeline APP_NAME=my-app REPO_URL=https://github.com/myorg/my-app.git TAG=2.0.0
 ```
+
+Notes:
+- CI workflows run in `ci-<project>` namespaces (not `snd-<project>`). The test target submits into `ci-<project>`.
+- The workflow updates GitOps (`develop` for `snd`), and ArgoCD deploys into `snd-<project>`.
 
 ## Simulating Webhook Events
 

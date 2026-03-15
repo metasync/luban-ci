@@ -24,7 +24,7 @@ spec:
         description: "Git Organization/User"
         value: "metasync"
       - name: git_provider
-        description: "Git Provider (github, gitlab, etc.)"
+        description: "Git Provider (github, azure)"
         value: "azure"
         enum:
           - "github"
@@ -77,7 +77,6 @@ spec:
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
         imagePullPolicy: Always
-        command: ["luban-provisioner"]
         args:
           - source
           - --project-name

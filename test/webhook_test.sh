@@ -4,11 +4,12 @@ set -e
 # Default values if env vars are not set
 GATEWAY_URL=${GATEWAY_URL:-"https://webhook-luban.metasync.cc/push"}
 REPO_URL=${REPO_URL:-"https://github.com/metasync/luban-hello-world-py.git"}
-REVISION=${REVISION:-"main"}
+REVISION=${REVISION:-""}
 TAG=${TAG:-""}
 APP_NAME=${APP_NAME:-"luban-hello-world-py"}
 PROJECT_NAME=${PROJECT_NAME:-"metasync"}
 K8S_NAMESPACE=${K8S_NAMESPACE:-"luban-ci"}
+BRANCH=${BRANCH:-"main"}
 
 echo "------------------------------------------------"
 echo "Webhook Test Configuration:"
@@ -39,7 +40,16 @@ fi
 if [ -n "$TAG" ]; then
     REF="refs/tags/$TAG"
 else
-    REF="refs/heads/$REVISION"
+    REF="refs/heads/$BRANCH"
+fi
+
+if [ -z "$REVISION" ]; then
+    REVISION=$(git ls-remote "$REPO_URL" HEAD 2>/dev/null | awk '{print $1}' | head -n 1)
+fi
+
+if [ -z "$REVISION" ]; then
+    echo "Error: REVISION is empty (expected a git commit SHA)." >&2
+    exit 1
 fi
 
 # Construct JSON payload using jq if available, otherwise raw string manipulation

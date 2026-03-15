@@ -1,6 +1,6 @@
 [project]
 name = "luban-provisioner"
-version = "0.1.230"
+version = "0.2.0"
 description = "Tooling for provisioning Luban CI/CD resources and project scaffolding"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -18,4 +18,3 @@ luban-provisioner = "luban_provisioner.main:cli"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-

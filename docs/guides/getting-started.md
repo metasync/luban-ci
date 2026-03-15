@@ -8,6 +8,7 @@
   - `kubectl`
   - `pack` CLI
   - `make`
+  - `perl` (used to render Secret templates during `make secrets`)
 - **Accounts**:
   - GitHub Account (for source code)
   - Quay.io Account (for container registry)
@@ -16,7 +17,7 @@
 ## Installation & Setup
 
 ### 1. Credentials Setup
-Create a `secrets/` directory and add the following files (these are ignored by git). The `make secrets` command will read these files and create the necessary Kubernetes secrets.
+Create a `secrets/` directory and add the following files (these are ignored by git). The `make secrets` command reads `secrets/*.env` and applies the Kubernetes Secrets.
 
 #### Git Provider Credentials (Required)
 
@@ -30,7 +31,7 @@ GITHUB_ORGANIZATION=your_org
 ```
 
 **Option B: Azure DevOps**
-Create `secrets/azure-creds.env`:
+Create `secrets/azure.env`:
 ```bash
 # Personal Access Token (PAT) with Code (Read & Write) scope
 AZURE_DEVOPS_TOKEN=xxxxxxxxxxxx
@@ -63,7 +64,7 @@ HARBOR_SERVER=harbor.luban.metasync.cc
 
 # Admin/RW User (for pushing images)
 HARBOR_USERNAME=admin
-HARBOR_PASSWORD=Harbor12345
+HARBOR_PASSWORD=xxxxxxxxxxxx
 
 # Read-Only Robot Account (for pulling images in clusters)
 HARBOR_RO_USERNAME=robot$luban-ro
