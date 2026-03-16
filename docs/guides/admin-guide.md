@@ -7,16 +7,32 @@ This guide covers the administration and configuration of the Luban CI platform.
 - **`luban-config` ConfigMap**: Central configuration for all workflows.
   - Located in `manifests/config/luban-config.yaml`.
   - Keys:
+    - `domain_suffix`: Suffix for app ingress hostnames (e.g., `apps.metasync.cc`).
     - `registry_server`: Domain of the registry (e.g., `harbor.luban.metasync.cc`).
     - `image_pull_secret`: Name of the secret for pulling images (e.g., `harbor-ro-creds`).
-    - `default_image_name`: Placeholder image name (e.g., `quay.io/luban-ci/luban-hello-world-py`).
-    - `default_image_tag`: Placeholder image tag (e.g., `latest`).
-    - `default_container_port`: Default app port (e.g., `8000`).
-    - `default_service_port`: Default service port (e.g., `80`).
-    - `domain_suffix`: Suffix for app ingress (e.g., `apps.metasync.cc`).
-    - `azure_server`: (Optional) Azure DevOps server hostname (e.g., `dev.azure.com`). Required for Azure DevOps.
-    - `python_index_url`: (Optional) Custom Python Package Index URL (e.g., `https://devpi.luban-ci.io/root/pypi`). If set, it will be injected into the `pyproject.toml` of new Python/Dagster projects.
-    - `python_index_name`: (Optional) Name for the custom index (default: `custom`).
+    - `webhook_url`: Public webhook endpoint for the event gateway.
+    - `cluster_map`: JSON map of `deploy_env` -> Kubernetes cluster URL (e.g., `snd`/`prd`).
+    - `github_server`: GitHub server hostname (default: `github.com`).
+    - `azure_server`: Azure DevOps server hostname (default: `dev.azure.com`).
+    - `luban_provisioner_image`: Container image for `luban-provisioner`.
+    - `gitops_utils_image`: Container image for GitOps utility tools.
+    - `python_index_url`: (Optional) Custom Python Package Index URL for project scaffolding.
+    - `python_index_name`: (Optional) Name/alias for the custom index.
+    - `uv_release_base_url`: (Optional) Base URL for `uv` release assets + `.sha256`.
+    - `uv_python_install_mirror`: (Optional) Base URL for `uv` managed Python downloads.
+
+- **`luban-python-config` ConfigMap**: Defaults used when provisioning Python projects.
+  - Located in `manifests/config/luban-python-config.yaml`.
+  - Keys:
+    - `container_port`, `service_port`
+    - `default_image_name`, `default_image_tag`
+    - `template_type`
+
+- **`luban-dagster-config` ConfigMap**: Defaults used when provisioning Dagster projects.
+  - Located in `manifests/config/luban-dagster-config.yaml`.
+  - Keys:
+    - `platform_port`, `code_location_port`
+    - `dagster_version`, `postgres_version`
 
 ### Registry Configuration
 - Default `registry_server` and `image_pull_secret` are managed in the `luban-config` ConfigMap.
