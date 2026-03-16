@@ -1,0 +1,6 @@
+apiVersion: kpack.io/v1alpha2
+kind: ClusterLifecycle
+metadata:
+  name: default-lifecycle
+spec:
+  image: ghcr.io/buildpacks-community/kpack/lifecycle@sha256:85b41ff7170c517a464279a5ba9fc4ce7e4ffc42abf99b149175808b5fe753ab

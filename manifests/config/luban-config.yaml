@@ -39,3 +39,7 @@ data:
   # Python Package Index (Optional)
   # python_index_url: "https://devpi.luban-ci.io/root/pypi"
   # python_index_name: "devpi"
+
+  # Air-Gapped Mirrors (Optional)
+  # uv_release_base_url: "https://mirror.example.com/uv/releases/download"
+  # uv_python_install_mirror: "https://mirror.example.com/python"

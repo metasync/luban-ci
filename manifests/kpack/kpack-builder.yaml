@@ -4,14 +4,14 @@ metadata:
   name: luban-store
 spec:
   sources:
-  - image: quay.io/luban-ci/python-uv:0.0.32
+  - image: quay.io/luban-ci/python-uv:0.0.33
 ---
 apiVersion: kpack.io/v1alpha2
 kind: ClusterBuilder
 metadata:
   name: luban-builder
 spec:
-  tag: quay.io/luban-ci/luban-kpack-builder:al2023
+  tag: quay.io/luban-ci/luban-kpack-builder:al2023-d13d379ba225
   stack:
     name: luban-stack
     kind: ClusterStack

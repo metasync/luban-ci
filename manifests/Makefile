@@ -12,6 +12,7 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f rbac/argo-controller-role.yaml
 	@kubectl apply -f rbac/luban-view-templates-clusterrole.yaml
 	@echo "Deploying kpack Stack and Builder..."
+	@kubectl apply -f kpack/kpack-lifecycle.yaml
 	@kubectl apply -f kpack/kpack-stack.yaml
 	@kubectl apply -f kpack/kpack-builder.yaml
 	@echo "Applying Global Workflow Restrictions (argo namespace)..."

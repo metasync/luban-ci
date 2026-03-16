@@ -245,12 +245,24 @@ spec:
               revision: "$REVISION"
             subPath: "$SUB_PATH_VALUE"
           serviceAccountName: workflow-runner
+          build:
+            env:
+            - name: BP_UV_RELEASE_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: luban-config
+                  key: uv_release_base_url
+                  optional: true
+            - name: BP_UV_PYTHON_INSTALL_MIRROR
+              valueFrom:
+                configMapKeyRef:
+                  name: luban-config
+                  key: uv_python_install_mirror
+                  optional: true
         EOF
 
         if [ "$MODE" = "tag" ]; then
           cat >>"$IMAGE_SPEC_FILE" <<EOF
-          build:
-            env:
             - name: CI_TAG_UPDATE
               value: "${IMAGE_TAG}"
         EOF
@@ -418,7 +430,7 @@ spec:
         git config --global --add safe.directory /workdir/gitops
 
         if git show-ref --verify --quiet "refs/heads/${GITOPS_BRANCH}"; then \
-          git checkout -- "${GITOPS_BRANCH}"; \
+          git checkout "${GITOPS_BRANCH}"; \
         else \
           if git ls-remote --exit-code --heads origin "${GITOPS_BRANCH}" >/dev/null 2>&1; then \
             git checkout -b "${GITOPS_BRANCH}" "origin/${GITOPS_BRANCH}"; \

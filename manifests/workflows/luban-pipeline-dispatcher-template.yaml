@@ -59,22 +59,46 @@ spec:
         # Handle Azure DevOps legacy URLs: https://<org>.visualstudio.com/<project>/_git/<repo>
         # Handle Azure DevOps modern URLs: https://dev.azure.com/<org>/<project>/_git/<repo>
         URL_STRIPPED=$(echo "{{inputs.parameters.repo_url}}" | sed -e 's|^[^/]*//||')
-        
-        if echo "$URL_STRIPPED" | grep -q "\.visualstudio\.com"; then
-          # Format: <org>.visualstudio.com/<project>/_git/<repo>
-          ORG=$(echo "$URL_STRIPPED" | cut -d'.' -f1)
-          PROJECT=$(echo "$URL_STRIPPED" | cut -d'/' -f2)
-          # In Azure DevOps, the namespace is tied to the Project, not the Organization (if they differ)
-          # But for consistency, if Project exists, we use it as the logical "Org/Scope" for the namespace.
+        HOST=$(printf '%s' "$URL_STRIPPED" | cut -d'/' -f1)
+        PATH_PART=$(printf '%s' "$URL_STRIPPED" | cut -d'/' -f2-)
+        SEG1=$(printf '%s' "$PATH_PART" | cut -d'/' -f1)
+        SEG2=$(printf '%s' "$PATH_PART" | cut -d'/' -f2)
+        SEG3=$(printf '%s' "$PATH_PART" | cut -d'/' -f3)
+        SEG4=$(printf '%s' "$PATH_PART" | cut -d'/' -f4)
+
+        if echo "$HOST" | grep -q "\.visualstudio\.com$"; then
+          ORG=$(printf '%s' "$HOST" | cut -d'.' -f1)
+          PROJECT="$SEG1"
+          if printf '%s' "$SEG1" | tr '[:upper:]' '[:lower:]' | grep -qx "defaultcollection"; then
+            if [ "$SEG2" = "_git" ] && [ -n "$SEG3" ]; then
+              PROJECT="$SEG3"
+            elif [ -n "$SEG2" ] && [ "$SEG3" = "_git" ]; then
+              PROJECT="$SEG2"
+            fi
+          elif [ -n "$SEG2" ] && [ "$SEG3" = "_git" ]; then
+            PROJECT="$SEG1"
+          elif [ -n "$SEG3" ] && [ "$SEG4" = "_git" ]; then
+            PROJECT="$SEG2"
+          fi
           NAMESPACE_SCOPE="$PROJECT"
-        elif echo "$URL_STRIPPED" | grep -q "dev\.azure\.com"; then
-          # Format: dev.azure.com/<org>/<project>/_git/<repo>
-          ORG=$(echo "$URL_STRIPPED" | cut -d'/' -f2)
-          PROJECT=$(echo "$URL_STRIPPED" | cut -d'/' -f3)
+        elif [ "$HOST" = "dev.azure.com" ]; then
+          ORG="$SEG1"
+          PROJECT="$SEG2"
+          if [ "$PROJECT" = "_git" ] || [ -z "$PROJECT" ]; then
+            PROJECT="$ORG"
+          fi
           NAMESPACE_SCOPE="$PROJECT"
+        elif [ "$HOST" = "ssh.dev.azure.com" ]; then
+          if [ "$SEG1" = "v3" ]; then
+            ORG="$SEG2"
+            PROJECT="$SEG3"
+            NAMESPACE_SCOPE="$PROJECT"
+          else
+            ORG="$SEG1"
+            NAMESPACE_SCOPE="$ORG"
+          fi
         else
-          # Fallback for GitHub and others (host/org/repo)
-          ORG=$(echo "$URL_STRIPPED" | cut -d'/' -f2)
+          ORG="$SEG1"
           NAMESPACE_SCOPE="$ORG"
         fi
 
@@ -88,6 +112,11 @@ spec:
         # CI runs in the tenant CI namespace. Deployments are handled via GitOps updates.
         DEPLOY_ENV="snd"
         TARGET_NS="ci-${NAMESPACE_SCOPE}"
+
+        if ! kubectl get namespace "$TARGET_NS" >/dev/null 2>&1; then
+          echo "Error: Target namespace '$TARGET_NS' not found. Provision the tenant CI namespace first." >&2
+          exit 1
+        fi
         
         echo "Dispatching CI pipeline for {{inputs.parameters.app_name}} to $TARGET_NS (GitOps Env: $DEPLOY_ENV)..."
         

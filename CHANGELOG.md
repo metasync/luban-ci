@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.0.1] - 2026-03-16
+
+### Added
+- **Buildpack**: Added optional air-gapped mirror support for `uv` and managed Python downloads.
+- **kpack**: Added `ClusterLifecycle` manifest and pinned lifecycle image by digest for reproducible builds.
+
+### Changed
+- **Buildpack**: Bumped `python-uv` buildpack to `v0.0.33`.
+- **kpack**: Standardized builder image naming to `luban-kpack-builder` and updated `ClusterBuilder`/config references.
+- **CI Workflow**: Injected mirror configuration into kpack `Image.spec.build.env` from `luban-config`.
+
+### Fixed
+- **GitOps Update**: Fixed branch checkout to use `git checkout <branch>` instead of path checkout.
+- **Dispatcher**: Fixed Azure DevOps URL parsing for legacy `DefaultCollection` URL shapes.
+
+### Docs
+- Documented air-gapped mirror URL layouts, lifecycle pinning rationale, CoreDNS patching for local clusters, and GitOps branch behavior.
+
 ## [v1.0.0] - 2026-03-15
 
 ### Architecture

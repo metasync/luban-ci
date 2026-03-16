@@ -99,6 +99,10 @@ make builder-build
 make builder-push
 ```
 
+Notes:
+- The kpack `ClusterBuilder` references `quay.io/luban-ci/luban-kpack-builder:<tag>`. Ensure you publish that builder image name (this repo uses `luban-kpack-builder`).
+- For local clusters (e.g., OrbStack), if `harbor.luban.metasync.cc` / `argocd.luban.metasync.cc` are not resolvable inside the cluster, run `make patch-coredns`.
+
 ### 5. Deploy Pipeline Infrastructure
 Set up ServiceAccounts and RBAC for Argo Workflows:
 ```bash

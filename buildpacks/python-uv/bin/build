@@ -41,10 +41,14 @@ fi
 if [[ "$CACHED_VERSION" != "$UV_VERSION" ]] || [[ ! -f "$uv_layer/bin/uv" ]]; then
     echo "Installing uv $UV_VERSION..."
     ARCH=$(uname -m)
+
+    UV_RELEASE_BASE_URL=${BP_UV_RELEASE_BASE_URL:-"https://github.com/astral-sh/uv/releases/download"}
+    UV_RELEASE_BASE_URL=${UV_RELEASE_BASE_URL%/}
+
     if [[ "$ARCH" == "x86_64" ]]; then
-        UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-musl.tar.gz"
+        UV_URL="${UV_RELEASE_BASE_URL}/${UV_VERSION}/uv-x86_64-unknown-linux-musl.tar.gz"
     elif [[ "$ARCH" == "aarch64" ]]; then
-        UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-aarch64-unknown-linux-musl.tar.gz"
+        UV_URL="${UV_RELEASE_BASE_URL}/${UV_VERSION}/uv-aarch64-unknown-linux-musl.tar.gz"
     else
         echo "Unsupported architecture: $ARCH"
         exit 1
@@ -127,6 +131,10 @@ EOF
 
 # 4. Install Python and Dependencies
 echo "Installing dependencies with uv..."
+
+if [[ -n "${BP_UV_PYTHON_INSTALL_MIRROR:-}" ]]; then
+    export UV_PYTHON_INSTALL_MIRROR="$BP_UV_PYTHON_INSTALL_MIRROR"
+fi
 
 if [[ -f "uv.lock" ]]; then
     uv sync --frozen --no-dev

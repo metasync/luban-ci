@@ -22,6 +22,63 @@ This guide covers the administration and configuration of the Luban CI platform.
 - Default `registry_server` and `image_pull_secret` are managed in the `luban-config` ConfigMap.
 - Override per run by passing parameters to the workflow or environment variables used by the Makefile.
 
+### Air-Gapped Mirrors (uv + Python)
+If your cluster cannot access the public internet, configure mirrors in the `luban-config` ConfigMap:
+- `uv_release_base_url`: Base URL for `uv` release assets and their `.sha256` checksum files.
+- `uv_python_install_mirror`: Mirror base URL for `uv` managed Python downloads (exported as `UV_PYTHON_INSTALL_MIRROR` during builds).
+
+These values are passed into kpack builds as build-time environment variables. If unset, the buildpack defaults remain unchanged (official upstream downloads).
+
+#### `uv_release_base_url` layout
+The buildpack constructs the download URL like:
+- `${uv_release_base_url}/${UV_VERSION}/${ASSET}`
+- `${uv_release_base_url}/${UV_VERSION}/${ASSET}.sha256`
+
+Where `${ASSET}` is architecture-specific:
+- `uv-x86_64-unknown-linux-musl.tar.gz`
+- `uv-aarch64-unknown-linux-musl.tar.gz`
+
+Example (x86_64, `UV_VERSION=0.10.4`):
+- Tarball: `https://mirror.example.com/uv/releases/download/0.10.4/uv-x86_64-unknown-linux-musl.tar.gz`
+- Checksum: `https://mirror.example.com/uv/releases/download/0.10.4/uv-x86_64-unknown-linux-musl.tar.gz.sha256`
+
+Your mirror must host both files at the same paths for checksum verification to pass.
+
+#### `uv_python_install_mirror` layout
+`UV_PYTHON_INSTALL_MIRROR` replaces the base URL used for downloading Python distributions. The remainder of the download path is preserved.
+
+Example from uv docs/issues (managed Python uses `python-build-standalone` releases):
+- Upstream:
+  - `https://github.com/indygreg/python-build-standalone/releases/download/20240713/cpython-3.12.4%2B20240713-aarch64-apple-darwin-install_only.tar.gz`
+- With mirror:
+  - `${UV_PYTHON_INSTALL_MIRROR}/20240713/cpython-3.12.4%2B20240713-aarch64-apple-darwin-install_only.tar.gz`
+
+So your mirror needs to serve artifacts under:
+- `${uv_python_install_mirror}/<release_id>/<artifact_filename>`
+
+Reference: https://docs.astral.sh/uv/reference/environment/#uv_python_install_mirror
+
+### kpack Lifecycle Image
+Luban CI uses kpack to run Cloud Native Buildpacks (CNB). kpack relies on a `ClusterLifecycle` object (default: `default-lifecycle`) to determine which CNB lifecycle image to run.
+
+For stability and reproducibility, the lifecycle image is pinned by digest in `manifests/kpack/kpack-lifecycle.yaml`. Avoid using an unpinned tag (e.g., `:latest`) because it can introduce unexpected drift.
+
+If your cluster has slow access to `ghcr.io`, mirror the lifecycle image into your own registry and keep it pinned by digest.
+
+### Local DNS (OrbStack / local clusters)
+If you run Luban CI locally (e.g., OrbStack) and need in-cluster components (kpack, Argo, etc.) to resolve ingress-style domains such as `harbor.luban.metasync.cc`, use:
+
+```bash
+make patch-coredns
+```
+
+This patches CoreDNS `NodeHosts` to map the ingress domains to the Gateway LoadBalancer IP.
+
+### GitOps Branch Behavior
+The `luban-ci-kpack` pipeline updates the application GitOps repo on `gitops_branch` (default: `develop`).
+- If the branch exists remotely, it checks it out.
+- If it does not exist, it creates the branch and pushes it (requires write access).
+
 ### Git Provider Configuration (Azure DevOps)
 If you are using Azure DevOps instead of GitHub:
 1.  **Organization & Project**: Ensure your Azure DevOps Organization exists. The `luban-project-workflow` will create the Project for you.
