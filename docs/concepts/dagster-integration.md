@@ -38,3 +38,9 @@ This Workflow bootstraps a new Code Location for user code.
   - `project_name`: (Required) The team/domain name.
   - `app_name`: (Required) The name of the code location (e.g., `etl-jobs`).
   - `setup_source_repo`: (Optional) Whether to scaffold source code. Default: `yes`.
+
+## Dagster + dbt (StarRocks) Code Location
+
+For teams using dbt as the transformation engine on StarRocks, Luban CI provides a standardized Dagster code location skeleton that wires Dagster orchestration to dbt execution.
+
+- **Concept**: [dagster-dbt-code-location-template.md](dagster-dbt-code-location-template.md)

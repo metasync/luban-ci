@@ -272,6 +272,7 @@ spec:
 
         echo "Image resource updated. Waiting for kpack build to be created..."
         BUILD_REF=""
+        BUILD_REV=""
         LAST_LOG_TS=0
         START_TS=$(date +%s)
         TIMEOUT_SECONDS=600
@@ -281,13 +282,20 @@ spec:
             BUILD_REF=$($KUBECTL -n "$TARGET_NAMESPACE" get image "$APP_NAME" -o jsonpath='{.status.latestBuildRef}' 2>/dev/null || true)
           fi
           if [ -n "$BUILD_REF" ]; then
-            break
+            BUILD_REV=$($KUBECTL -n "$TARGET_NAMESPACE" get build "$BUILD_REF" -o jsonpath='{.spec.source.git.revision}' 2>/dev/null || true)
+            if [ "$BUILD_REV" = "$REVISION" ]; then
+              break
+            fi
           fi
 
           NOW_TS=$(date +%s)
           ELAPSED=$((NOW_TS - START_TS))
           if [ $((NOW_TS - LAST_LOG_TS)) -ge 60 ]; then
-            echo "Waiting for kpack BuildRef... (${ELAPSED}s, target namespace: ${TARGET_NAMESPACE})"
+            if [ -n "$BUILD_REF" ] && [ -n "$BUILD_REV" ] && [ "$BUILD_REV" != "$REVISION" ]; then
+              echo "Waiting for kpack build for revision ${REVISION}... current latestBuildRef=${BUILD_REF} (rev=${BUILD_REV})"
+            else
+              echo "Waiting for kpack BuildRef... (${ELAPSED}s, target namespace: ${TARGET_NAMESPACE})"
+            fi
             LAST_LOG_TS=$NOW_TS
           fi
           if [ "$ELAPSED" -ge "$TIMEOUT_SECONDS" ]; then

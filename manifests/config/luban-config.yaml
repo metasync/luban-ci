@@ -18,7 +18,6 @@ data:
 
   # Web Hook URL
   webhook_url: "https://webhook-luban.metasync.cc"
-  # webhook_url: "https://webhook.luban.metasync.cc"
 
   # Cluster Map (JSON) - Maps environments to Cluster URLs
   # For single-cluster setup, both map to the local cluster (https://kubernetes.default.svc)
@@ -33,7 +32,7 @@ data:
   azure_server: "dev.azure.com"
 
   # Tooling Images
-  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.2.0"
+  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.2.10"
   gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.3.7"
 
   # Python Package Index (Optional)

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+
+# Local Environment Variables
+.env
+.env.*
+!.env.example
+

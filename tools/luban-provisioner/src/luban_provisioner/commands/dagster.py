@@ -18,7 +18,7 @@ def dagster():
 @click.option('--environment', required=True, help='Target Environment (snd, prd)')
 @click.option('--location-name', required=True, help='Name of the Code Location (usually the app name)')
 @click.option('--location-host', required=True, help='Host/DNS of the Code Location Service')
-@click.option('--location-port', required=True, default=4000, help='Port of the Code Location Service')
+@click.option('--location-port', required=True, default=3000, help='Port of the Code Location Service')
 @click.option('--git-organization', required=True, help='Git Organization')
 @click.option('--git-provider', required=True, help='Git Provider')
 @click.option('--git-token', envvar='GIT_TOKEN', required=True, help='Git Token')

@@ -1,0 +1,22 @@
+{
+  "project_name": "",
+  "app_name": "",
+  "package_name": "",
+  "dagster_version": "1.12.19",
+  "default_env": "sandbox",
+  "code_location_port": "3000",
+  "author_name": "",
+  "author_email": "",
+  "python_index_url": "",
+  "python_index_name": "custom",
+  "_copy_without_render": [
+    "dbt_project/models/**/*.sql",
+    "dbt_project/models/**/*.yml",
+    "dbt_project/models/**/*.yaml",
+    "dbt_project/analyses/*.sql",
+    "dbt_project/snapshots/*.sql",
+    "dbt_project/tests/*.sql",
+    "dbt_project/macros/*.sql",
+    "dbt_project/seeds/*.csv"
+  ]
+}

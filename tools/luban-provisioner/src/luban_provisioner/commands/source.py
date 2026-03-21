@@ -14,7 +14,7 @@ from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 @click.option('--git-token', envvar='GIT_TOKEN', required=True, help='Git Token (env: GIT_TOKEN)')
 @click.option('--webhook-secret', envvar='WEBHOOK_SECRET', help='Webhook Secret')
 @click.option('--git-server', envvar='GIT_SERVER', required=True, help='Git Server Domain (env: GIT_SERVER)')
-@click.option('--template-type', default='python', help='Template type: python, dagster-code-location')
+@click.option('--template-type', default='python', help='Template type: python, dagster-platform, dagster-code-location, dagster-dbt-starrocks-code-location')
 @click.option('--config-file', required=False, help='Path to configuration file (YAML/JSON)')
 @click.option('--set', multiple=True, help='Set extra context values (key=value)')
 def source(project_name, application_name, output_dir, git_organization, git_provider, webhook_url, git_token, webhook_secret, git_server, template_type, config_file, set):
@@ -52,6 +52,9 @@ def source(project_name, application_name, output_dir, git_organization, git_pro
         case 'dagster-code-location':
             template_path = "/app/templates/source/luban-dagster-code-location-source-template"
             description = f"Dagster Code Location for {application_name}"
+        case 'dagster-dbt-starrocks-code-location':
+            template_path = "/app/templates/source/luban-dagster-dbt-starrocks-code-location-source-template"
+            description = f"Dagster + dbt (StarRocks) Code Location for {application_name}"
         case 'python':
             template_path = "/app/templates/source/luban-python-template"
             description = f"A sample Python app for {application_name}. Replace this with your own description."

@@ -5,6 +5,6 @@ metadata:
   namespace: luban-ci
 data:
   platform_port: "3000"
-  code_location_port: "4000"
-  dagster_version: "1.12.14"
+  code_location_port: "3000"
+  dagster_version: "1.12.19"
   postgres_version: "18.2"

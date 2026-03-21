@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Provisioner**: Added `luban-dagster-dbt-starrocks-code-location` source template for data transformation teams using dbt + StarRocks + Dagster.
+- **Provisioner**: Added corresponding GitOps and workflow templates (`luban-dagster-dbt-starrocks-code-location-setup-template`).
+- **Buildpack**: Added `dbt manifest.json` pre-generation during the build phase for Dagster + dbt code locations. The buildpack now runs `dbt deps` (if packages detected) and `dbt parse` to produce a pre-baked manifest, eliminating `DagsterDbtManifestNotFoundError` at startup.
+- **Docs**: Added `dagster-dbt-code-location-template.md` documenting the dbt/Dagster boundary, runtime contract, and conventions.
+
+### Changed
+
+- **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.2.10`.
+- **Provisioner**: Updated GitOps template routing to use explicit `elif` chain for `dagster-platform` / `dagster-code-location` variants, replacing legacy fallback heuristics.
+- **Provisioner**: Updated `profiles.yml` to use `{{cookiecutter.package_name}}` instead of `{{cookiecutter.app_name}}` for dbt project name and profile, ensuring Python-identifier-safe names.
+- **Provisioner**: Updated `profiles.yml` to use `env_var('STARROCKS_*', '<default>')` defaults, making the buildpack adapter-agnostic — no `STARROCKS_*` env vars need to be set during build.
+- **Workflows**: Improved `luban-ci-kpack-workflow-template` to wait for the correct `BUILD_REV` match before proceeding, fixing a race condition on fast-rebuilding images.
+
+### Fixed
+
+- **Buildpack**: Added `|| exit 1` error handling on both `uv run dbt deps` and `uv run dbt parse` calls, and added manifest file existence verification after `dbt parse`.
+- **Buildpack**: Added error handling on `wget` downloads for uv and its SHA256 checksum.
+- **Provisioner**: Improved error message in `gitops.py` `except Exception` handler to include the output directory path.
+- **Provisioner**: Fixed `row_count_greater_than` generic test definitions in `dwd/schema.yml` and `dws/schema.yml` to use dbt v1.11 `arguments:` nesting (was deprecated at top level).
+- **Provisioner**: Fixed `relationships` generic test in `sources.yml` to use dbt v1.11 `arguments:` nesting.
+- **Docs**: Removed stale `source_template_type` parameter reference from `dagster-integration.md`.
+- **Config**: Removed duplicate commented `webhook_url` entry in `luban-config.yaml`.
+
+### Docs
+
+- Documented dbt/Dagster boundary, repository layout, runtime contract, local development workflow, layer conventions, and extension patterns in `dagster-dbt-code-location-template.md`.
+
 ## [v1.0.1] - 2026-03-16
 
 ### Added

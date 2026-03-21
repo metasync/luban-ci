@@ -208,7 +208,7 @@ spec:
             
             DOMAIN_SUFFIX="svc.cluster.local"
             LOCATION_HOST="${APP}.${ENV}-${PROJECT_NAME}.${DOMAIN_SUFFIX}"
-            LOCATION_PORT="4000"
+            LOCATION_PORT="3000"
             
             echo "Registering Code Location:"
             echo "  Name: $APP"

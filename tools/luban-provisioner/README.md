@@ -67,6 +67,15 @@ docker run --rm -it \
     project --help
 ```
 
+## Template Types
+
+### Source templates
+
+- `python`: Minimal Python application skeleton.
+- `dagster-platform`: Dagster platform dependency skeleton (Dagster components are deployed via GitOps templates).
+- `dagster-code-location`: Dagster code location skeleton exporting `defs`.
+- `dagster-dbt-starrocks-code-location`: Dagster code location skeleton wired to a StarRocks dbt project.
+
 ## Examples (Local)
 
 ### 1. Project Setup (Git Provider)

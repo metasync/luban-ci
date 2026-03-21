@@ -56,12 +56,12 @@ if [[ "$CACHED_VERSION" != "$UV_VERSION" ]] || [[ ! -f "$uv_layer/bin/uv" ]]; th
     
     # Download
     echo "Downloading uv from $UV_URL..."
-    wget -q -O uv.tar.gz "$UV_URL"
-    
+    wget -q -O uv.tar.gz "$UV_URL" || { echo "Error: Failed to download uv from $UV_URL"; exit 1; }
+
     # Verify Checksum
     echo "Verifying checksum..."
     CHECKSUM_URL="${UV_URL}.sha256"
-    wget -q -O uv.tar.gz.sha256 "$CHECKSUM_URL"
+    wget -q -O uv.tar.gz.sha256 "$CHECKSUM_URL" || { echo "Error: Failed to download checksum from $CHECKSUM_URL"; exit 1; }
     
     EXPECTED_SHA256=$(cat uv.tar.gz.sha256 | cut -d' ' -f1)
     ACTUAL_SHA256=$(sha256sum uv.tar.gz | cut -d' ' -f1)
@@ -145,7 +145,30 @@ fi
 echo "Pruning uv cache..."
 uv cache prune
 
-# 5. Set launch configuration
+# 5. Generate dbt manifest.json (if dbt project exists)
+BP_DBT_PROJECT_DIR="${BP_DBT_PROJECT_DIR:-dbt_project}"
+if [[ -d "$BP_DBT_PROJECT_DIR" ]] && [[ -f "$BP_DBT_PROJECT_DIR/dbt_project.yml" ]]; then
+    echo "Detected dbt project at $BP_DBT_PROJECT_DIR, generating manifest.json..."
+    BP_DBT_PROFILES_DIR="${BP_DBT_PROFILES_DIR:-$BP_DBT_PROJECT_DIR}"
+    BP_DBT_TARGET="${BP_DBT_TARGET:-sandbox}"
+    export DBT_PROFILES_DIR="$BP_DBT_PROFILES_DIR"
+    export DBT_TARGET="$BP_DBT_TARGET"
+    if [[ -f "$BP_DBT_PROJECT_DIR/packages.yml" ]] || grep -q "packages:" "$BP_DBT_PROJECT_DIR/dbt_project.yml"; then
+        echo "Running dbt deps..."
+        uv run dbt deps --project-dir "$BP_DBT_PROJECT_DIR" || { echo "Error: dbt deps failed"; exit 1; }
+    fi
+    echo "Running dbt parse..."
+    uv run dbt parse --project-dir "$BP_DBT_PROJECT_DIR" || { echo "Error: dbt parse failed"; exit 1; }
+    if [[ ! -f "$BP_DBT_PROJECT_DIR/target/manifest.json" ]]; then
+        echo "Error: manifest.json was not created at $BP_DBT_PROJECT_DIR/target/manifest.json"
+        exit 1
+    fi
+    echo "dbt manifest.json generated."
+else
+    echo "No dbt project detected at $BP_DBT_PROJECT_DIR, skipping dbt manifest generation."
+fi
+
+# 6. Set launch configuration
 echo "Configuring launch..."
 
 # Use extracted python script to parse pyproject.toml

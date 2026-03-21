@@ -1,0 +1,42 @@
+[project]
+name = "{{cookiecutter.app_name}}"
+version = "0.1.0"
+description = "Dagster + dbt (StarRocks) Code Location for {{cookiecutter.app_name}}"
+readme = "README.md"
+authors = [
+    { name = "{{cookiecutter.author_name}}", email = "{{cookiecutter.author_email}}" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "dagster=={{cookiecutter.dagster_version}}",
+    "dagster-dbt",
+    "dagster-postgres",
+    "dagster-k8s",
+    "dbt-core>=1.9,<2",
+    "dbt-starrocks>=1.9,<2",
+    "pymysql>=1.1.0"
+]
+
+[dependency-groups]
+dev = [
+    "dagster-webserver=={{cookiecutter.dagster_version}}",
+    "pytest>=9.0.2",
+    "ruff>=0.15.2",
+]
+
+{% if cookiecutter.python_index_url %}
+[[tool.uv.index]]
+name = "{{ cookiecutter.python_index_name }}"
+url = "{{ cookiecutter.python_index_url }}"
+default = true
+{% endif %}
+
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
+
+[tool.dagster]
+module_name = "{{cookiecutter.package_name}}"
+
+[tool.luban]
+bp-execution-mode = "direct"

@@ -71,22 +71,12 @@ def gitops(project_name, application_name, output_dir, container_port, service_p
         sys.exit(0)
 
     # Template Selection
-    match template_type:
-        case 'dagster-platform':
-            template_path = "/app/templates/gitops/luban-dagster-platform-gitops-template"
-        case 'dagster-code-location':
-            template_path = "/app/templates/gitops/luban-dagster-code-location-gitops-template"
-        case 'standard':
-            template_path = "/app/templates/gitops/luban-gitops-template"
-        case _:
-            # Fallback heuristic (Legacy support)
-            if "dagster" in application_name:
-                if "code-location" in application_name: 
-                    template_path = "/app/templates/gitops/luban-dagster-code-location-gitops-template"
-                else:
-                    template_path = "/app/templates/gitops/luban-dagster-platform-gitops-template"
-            else:
-                 template_path = "/app/templates/gitops/luban-gitops-template"
+    if template_type == "dagster-platform":
+        template_path = "/app/templates/gitops/luban-dagster-platform-gitops-template"
+    elif template_type.startswith("dagster") and "code-location" in template_type:
+        template_path = "/app/templates/gitops/luban-dagster-code-location-gitops-template"
+    else:
+        template_path = "/app/templates/gitops/luban-gitops-template"
     
     package_name = application_name.replace('-', '_')
 
@@ -115,7 +105,8 @@ def gitops(project_name, application_name, output_dir, container_port, service_p
     
     try:
         render_template(template_path, output_dir, extra_context)
-    except Exception as e:
+    except Exception:
+        click.echo(f"Error: Failed to render template to {output_dir}", err=True)
         sys.exit(1)
 
     # Inflate Helm Chart if necessary (for Dagster Platform)

@@ -37,6 +37,7 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f workflows/luban-project-workflow-template.yaml
 	@kubectl apply -f workflows/luban-python-app-workflow-template.yaml
 	@kubectl apply -f workflows/luban-dagster-code-location-workflow-template.yaml
+	@kubectl apply -f workflows/luban-dagster-dbt-starrocks-code-location-workflow-template.yaml
 	@kubectl apply -f workflows/luban-dagster-platform-setup-template.yaml
 	@kubectl apply -f workflows/luban-promotion-workflow-template.yaml
 	@kubectl apply -f workflows/luban-pipeline-dispatcher-template.yaml

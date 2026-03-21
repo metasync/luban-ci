@@ -1,0 +1,44 @@
+{{cookiecutter.package_name}}:
+  target: "{% raw %}{{ env_var('DBT_TARGET', 'development') }}{% endraw %}"
+  outputs:
+    development:
+      type: starrocks
+      host: "{% raw %}{{ env_var('STARROCKS_HOST', 'localhost') }}{% endraw %}"
+      port: "{% raw %}{{ env_var('STARROCKS_PORT', '9030') | as_number }}{% endraw %}"
+      user: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
+      username: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
+      password: "{% raw %}{{ env_var('STARROCKS_PASSWORD', '') }}{% endraw %}"
+      dbname: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
+      schema: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
+      threads: 4
+      init_connect:
+        - "SET new_planner_optimize_timeout = {% raw %}{{ env_var('STARROCKS_PLANNER_OPTIMIZE_TIMEOUT_MS', '300000') }}{% endraw %}"
+        - "SET query_timeout = {% raw %}{{ env_var('STARROCKS_QUERY_TIMEOUT_SECONDS', '3600') }}{% endraw %}"
+
+    sandbox:
+      type: starrocks
+      host: "{% raw %}{{ env_var('STARROCKS_HOST', 'localhost') }}{% endraw %}"
+      port: "{% raw %}{{ env_var('STARROCKS_PORT', '9030') | as_number }}{% endraw %}"
+      user: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
+      username: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
+      password: "{% raw %}{{ env_var('STARROCKS_PASSWORD', '') }}{% endraw %}"
+      dbname: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
+      schema: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
+      threads: 4
+      init_connect:
+        - "SET new_planner_optimize_timeout = {% raw %}{{ env_var('STARROCKS_PLANNER_OPTIMIZE_TIMEOUT_MS', '300000') }}{% endraw %}"
+        - "SET query_timeout = {% raw %}{{ env_var('STARROCKS_QUERY_TIMEOUT_SECONDS', '3600') }}{% endraw %}"
+
+    production:
+      type: starrocks
+      host: "{% raw %}{{ env_var('STARROCKS_HOST', 'localhost') }}{% endraw %}"
+      port: "{% raw %}{{ env_var('STARROCKS_PORT', '9030') | as_number }}{% endraw %}"
+      user: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
+      username: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
+      password: "{% raw %}{{ env_var('STARROCKS_PASSWORD', '') }}{% endraw %}"
+      dbname: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
+      schema: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
+      threads: 8
+      init_connect:
+        - "SET new_planner_optimize_timeout = {% raw %}{{ env_var('STARROCKS_PLANNER_OPTIMIZE_TIMEOUT_MS', '300000') }}{% endraw %}"
+        - "SET query_timeout = {% raw %}{{ env_var('STARROCKS_QUERY_TIMEOUT_SECONDS', '3600') }}{% endraw %}"
