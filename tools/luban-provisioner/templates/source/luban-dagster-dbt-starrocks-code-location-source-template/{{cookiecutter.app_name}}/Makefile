@@ -52,7 +52,7 @@ check-db: ## Test connectivity to the StarRocks database
 	uv run dbt debug --project-dir $(DBT_PROJECT_DIR)
 
 
-demo-ods: ## Generate demo ODS tables (customers/orders)
+demo-ods: dbt-deps ## Generate demo ODS tables (customers/orders)
 	uv run dbt run --project-dir $(DBT_PROJECT_DIR) --select tag:demo_ods --vars '$(DEMO_ODS_VARS)'
 
 
