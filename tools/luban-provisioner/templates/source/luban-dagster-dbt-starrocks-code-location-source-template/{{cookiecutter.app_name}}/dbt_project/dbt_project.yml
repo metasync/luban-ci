@@ -8,6 +8,11 @@ vars:
   ods_schema: "{% raw %}{{ env_var('STARROCKS_ODS_DB', 'ods') }}{% endraw %}"
   dwd_schema: "{% raw %}{{ env_var('STARROCKS_DWD_DB', 'dwd') }}{% endraw %}"
   dws_schema: "{% raw %}{{ env_var('STARROCKS_DWS_DB', 'dws') }}{% endraw %}"
+  enable_demo_ods: false
+  demo_ods_customers_count: 50
+  demo_ods_orders_per_customer: 3
+  demo_ods_days: 7
+  demo_ods_base_ts: ""
 
 model-paths: ["models"]
 analysis-paths: ["analyses"]

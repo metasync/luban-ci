@@ -1,5 +1,5 @@
 
-.PHONY: help setup install dev test check-db dbt-deps dbt-build dbt-run clean
+.PHONY: help setup install dev test check-db demo-ods dbt-deps dbt-build dbt-run clean
 
 
 # Load local environment variables (if present) for dbt/Dagster commands.
@@ -8,6 +8,7 @@
 export
 
 DBT_VARS ?=
+DEMO_ODS_VARS ?= {"enable_demo_ods": true}
 
 help: ## Show available targets
 	@echo "Available targets:"
@@ -49,6 +50,10 @@ test: ## Run unit tests and dbt tests
 check-db: ## Test connectivity to the StarRocks database
 	@echo "Testing StarRocks connectivity using dbt debug..."
 	uv run dbt debug --project-dir $(DBT_PROJECT_DIR)
+
+
+demo-ods: ## Generate demo ODS tables (customers/orders)
+	uv run dbt run --project-dir $(DBT_PROJECT_DIR) --select tag:demo_ods --vars '$(DEMO_ODS_VARS)'
 
 
 dbt-deps: ## Install dbt dependencies

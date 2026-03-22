@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: ods_customers
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+  - name: ods_orders
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('ods_customers')
+                field: customer_id

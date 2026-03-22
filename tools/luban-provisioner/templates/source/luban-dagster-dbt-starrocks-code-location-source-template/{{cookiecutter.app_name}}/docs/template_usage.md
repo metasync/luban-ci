@@ -213,6 +213,24 @@ To enable hourly partitioned jobs, set `DAGSTER_HOURLY_PARTITIONS_START_DATE` (d
 
 If you see `DagsterDbtManifestNotFoundError` during local development, set `LUBAN_DBT_PREPARE_IF_DEV=true` (default in `.env.example`) so the code location prepares `dbt_project/target/manifest.json` automatically.
 
+### Demo ODS data (optional)
+
+This template includes optional demo ODS models that can generate `ods.customers` and `ods.orders` on demand using dbt models (no seeds required).
+
+They are disabled by default and must be explicitly enabled:
+
+```bash
+uv run dbt run --project-dir dbt_project --select tag:demo_ods --vars '{"enable_demo_ods": true}'
+```
+
+Default demo ODS knobs (override via `--vars`):
+
+- `enable_demo_ods` (default `false`)
+- `demo_ods_customers_count` (default `50`)
+- `demo_ods_orders_per_customer` (default `3`)
+- `demo_ods_days` (default `7`)
+- `demo_ods_base_ts` (default empty; uses `current_timestamp()`)
+
 Schedules:
 
 - `daily_facts_schedule` targets `dbt_daily_customer_facts_job` by default.
