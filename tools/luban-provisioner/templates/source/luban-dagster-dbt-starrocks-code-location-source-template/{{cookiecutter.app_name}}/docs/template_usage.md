@@ -223,6 +223,12 @@ They are disabled by default and must be explicitly enabled:
 uv run dbt run --project-dir dbt_project --select tag:demo_ods --vars '{"enable_demo_ods": true}'
 ```
 
+Or use the repository Makefile:
+
+```bash
+make populate-ods
+```
+
 Default demo ODS knobs (override via `--vars`):
 
 - `enable_demo_ods` (default `false`)

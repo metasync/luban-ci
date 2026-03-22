@@ -1,5 +1,5 @@
 
-.PHONY: help setup install dev test check-db demo-ods dbt-deps dbt-build dbt-run clean
+.PHONY: help setup install dev test check-db demo-ods populate-ods dbt-deps dbt-build dbt-run clean
 
 
 # Load local environment variables (if present) for dbt/Dagster commands.
@@ -54,6 +54,9 @@ check-db: ## Test connectivity to the StarRocks database
 
 demo-ods: ## Generate demo ODS tables (customers/orders)
 	uv run dbt run --project-dir $(DBT_PROJECT_DIR) --select tag:demo_ods --vars '$(DEMO_ODS_VARS)'
+
+
+populate-ods: demo-ods ## Populate ODS source tables (alias for demo-ods)
 
 
 dbt-deps: ## Install dbt dependencies
