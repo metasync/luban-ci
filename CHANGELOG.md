@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.2.11`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.2.12`.
+- **Provisioner**: Fixed local template startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_IF_DEV`).
 - **Provisioner**: Updated GitOps template routing to use explicit `elif` chain for `dagster-platform` / `dagster-code-location` variants, replacing legacy fallback heuristics.
 - **Provisioner**: Updated `profiles.yml` to use `{{cookiecutter.package_name}}` instead of `{{cookiecutter.app_name}}` for dbt project name and profile, ensuring Python-identifier-safe names.
 - **Provisioner**: Updated `profiles.yml` to use `env_var('STARROCKS_*', '<default>')` defaults, making the buildpack adapter-agnostic — no `STARROCKS_*` env vars need to be set during build.

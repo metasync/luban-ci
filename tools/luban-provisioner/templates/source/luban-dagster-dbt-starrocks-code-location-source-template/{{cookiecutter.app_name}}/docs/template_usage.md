@@ -211,6 +211,8 @@ For hourly schedules, use `hourly_at(..., lookback_hours=N)` to run the current 
 
 To enable hourly partitioned jobs, set `DAGSTER_HOURLY_PARTITIONS_START_DATE` (default: `2026-01-01-00:00`).
 
+If you see `DagsterDbtManifestNotFoundError` during local development, set `LUBAN_DBT_PREPARE_IF_DEV=true` (default in `.env.example`) so the code location prepares `dbt_project/target/manifest.json` automatically.
+
 Schedules:
 
 - `daily_facts_schedule` targets `dbt_daily_customer_facts_job` by default.

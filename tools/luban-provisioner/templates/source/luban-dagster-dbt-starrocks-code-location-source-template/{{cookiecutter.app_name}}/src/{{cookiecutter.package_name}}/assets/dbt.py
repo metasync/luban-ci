@@ -18,9 +18,8 @@ dbt_project = DbtProject(
     packaged_project_dir=dbt_project_dir,
 )
 
-parse_on_load = os.getenv("DAGSTER_DBT_PARSE_PROJECT_ON_LOAD", "1").strip().lower() not in {"0", "false", "no"}
-prepare_if_dev = os.getenv("LUBAN_DBT_PREPARE_IF_DEV", "0").strip().lower() in {"1", "true", "yes"}
-if prepare_if_dev and parse_on_load:
+prepare_if_dev = os.getenv("LUBAN_DBT_PREPARE_IF_DEV", "1").strip().lower() in {"1", "true", "yes"}
+if prepare_if_dev and (not dbt_project.manifest_path.exists()):
     dbt_project.prepare_if_dev()
 
 
