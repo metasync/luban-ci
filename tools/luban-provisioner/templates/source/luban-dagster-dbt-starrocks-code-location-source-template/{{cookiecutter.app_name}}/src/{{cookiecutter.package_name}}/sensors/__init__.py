@@ -9,4 +9,3 @@ automation_condition_sensor = dg.AutomationConditionSensorDefinition(
 
 
 sensors = [automation_condition_sensor]
-

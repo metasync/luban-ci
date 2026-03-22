@@ -14,16 +14,14 @@ DBT_JOB_SPECS = [
         include_upstream=True,
     ),
     dbt_cli_build_job(
-        name="dbt_intraday_orders_daily_job",
+        name="dbt_orders_daily_job",
         models=["fact_orders_daily"],
         include_upstream=True,
-        vars={"daily_fact_lookback": 0},
     ),
     dbt_cli_build_job(
-        name="dbt_finalize_orders_daily_job",
-        models=["fact_orders_daily"],
+        name="dbt_orders_hourly_job",
+        models=["fact_orders_hourly"],
         include_upstream=True,
-        vars={"daily_fact_lookback": 1},
+        partitions="hourly",
     ),
 ]
-

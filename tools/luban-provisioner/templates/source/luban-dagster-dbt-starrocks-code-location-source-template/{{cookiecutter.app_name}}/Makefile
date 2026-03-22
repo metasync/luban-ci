@@ -7,6 +7,8 @@
 -include .env
 export
 
+DBT_VARS ?=
+
 help: ## Show available targets
 	@echo "Available targets:"
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -36,7 +38,12 @@ test: ## Run unit tests and dbt tests
 	@echo "Running python unit tests..."
 	uv run pytest tests/
 	@echo "Running dbt tests..."
-	uv run dbt test --project-dir $(DBT_PROJECT_DIR)
+	@if [ -z "$(DBT_VARS)" ]; then \
+		echo "DBT_VARS is required for dbt execution (partition window vars). Example:"; \
+		echo "  export DBT_VARS='{\"min_date\":\"2026-01-02\",\"max_date\":\"2026-01-03\",\"min_datetime\":\"2026-01-02 00:00:00\",\"max_datetime\":\"2026-01-03 00:00:00\"}'"; \
+		exit 1; \
+	fi
+	uv run dbt test --project-dir $(DBT_PROJECT_DIR) --vars '$(DBT_VARS)'
 
 
 check-db: ## Test connectivity to the StarRocks database
@@ -49,11 +56,21 @@ dbt-deps: ## Install dbt dependencies
 
 
 dbt-build: ## Build the dbt project (run + test)
-	uv run dbt build --project-dir $(DBT_PROJECT_DIR)
+	@if [ -z "$(DBT_VARS)" ]; then \
+		echo "DBT_VARS is required for dbt execution (partition window vars). Example:"; \
+		echo "  export DBT_VARS='{\"min_date\":\"2026-01-02\",\"max_date\":\"2026-01-03\",\"min_datetime\":\"2026-01-02 00:00:00\",\"max_datetime\":\"2026-01-03 00:00:00\"}'"; \
+		exit 1; \
+	fi
+	uv run dbt build --project-dir $(DBT_PROJECT_DIR) --vars '$(DBT_VARS)'
 
 
 dbt-run: ## Run the dbt project (without testing)
-	uv run dbt run --project-dir $(DBT_PROJECT_DIR)
+	@if [ -z "$(DBT_VARS)" ]; then \
+		echo "DBT_VARS is required for dbt execution (partition window vars). Example:"; \
+		echo "  export DBT_VARS='{\"min_date\":\"2026-01-02\",\"max_date\":\"2026-01-03\",\"min_datetime\":\"2026-01-02 00:00:00\",\"max_datetime\":\"2026-01-03 00:00:00\"}'"; \
+		exit 1; \
+	fi
+	uv run dbt run --project-dir $(DBT_PROJECT_DIR) --vars '$(DBT_VARS)'
 
 
 clean: ## Clean up temporary generated files and virtual environment

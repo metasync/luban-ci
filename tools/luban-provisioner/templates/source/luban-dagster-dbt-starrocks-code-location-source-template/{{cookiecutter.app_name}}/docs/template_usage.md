@@ -43,6 +43,7 @@ Then validate connectivity and build dbt:
 ```bash
 make check-db
 make dbt-deps
+export DBT_VARS='{"min_date":"2026-01-02","max_date":"2026-01-03","min_datetime":"2026-01-02 00:00:00","max_datetime":"2026-01-03 00:00:00"}'
 make dbt-build
 ```
 
@@ -54,8 +55,10 @@ make dev
 
 Notes:
 
-- On startup, the dbt assets module may run dbt to prepare `manifest.json`. You can disable this by setting `LUBAN_DBT_PREPARE_IF_DEV=false`.
+- On startup, Dagster may run dbt to prepare `manifest.json`. This is disabled by default. You can enable it by setting `LUBAN_DBT_PREPARE_IF_DEV=true`.
 - The default daily partitions start date is controlled by `DAGSTER_DAILY_PARTITIONS_START_DATE`.
+- The dbt models in this template expect to run in Dagster partitioned mode and will fail fast at execution time if required dbt vars are missing.
+- For partitioned runs, Dagster passes dbt variables `min_date`/`max_date` and `min_datetime`/`max_datetime` based on the partition time window.
 
 ## How automation works
 
@@ -172,7 +175,7 @@ Environment variables:
 - `dbt_daily_facts_job`: materializes the daily facts + upstream dependencies
 - `daily_facts_schedule`: runs `dbt_daily_customer_facts_job` at `0 1 * * *`
 - `observe_sources_job`: observes only configured source assets
-- `observe_sources_schedule`: runs `observe_sources_job` every minute (`* * * * *`)
+- `observe_sources_schedule`: runs `observe_sources_job` on a configurable cron (default `*/5 * * * *`, configured via `LUBAN_OBSERVE_SOURCES_CRON`)
 
 You can change schedule cadences in `src/{{cookiecutter.package_name}}/schedules/`.
 
@@ -190,43 +193,38 @@ To keep the bar low for non-platform users, these config files use small helper 
 - `src/{{cookiecutter.package_name}}/jobs/lib/dbt_job_presets.py`
 - `src/{{cookiecutter.package_name}}/schedules/lib/dbt_schedule_presets.py`
 
-### Parameterized daily fact lookback (intraday vs finalize)
+### Orchestration-level daily lookback (intraday vs finalize)
 
-The template includes two examples:
+This template standardizes on orchestration-level lookback for late-arriving updates.
 
-- A daily fact that is scheduled once per day and uses a fixed microbatch lookback (example: `fact_customer_orders_daily`).
-- A daily fact that supports intraday refresh and end-of-day finalize by parameterizing microbatch lookback (example: `fact_orders_daily`).
+Instead of widening the date range inside a single dbt run, the schedule emits multiple partitioned runs (one per day). This keeps each run bounded to a single daily partition and makes dbt models simpler.
 
-The parameterized daily fact uses a dbt var for microbatch lookback:
+In dbt, models should use the Dagster-provided partition window vars (`min_date`/`max_date`) via the provided macro:
 
 ```jinja
-lookback=var("daily_fact_lookback", 1)
+{% raw %}{% set w = luban_partition_window_date() %}{% endraw %}
 ```
 
-Behavior:
+In Dagster, schedules can emit multiple partition runs in one schedule tick using `daily_at(..., lookback_days=N)`.
 
-- Intraday runs set `daily_fact_lookback=0` to avoid reprocessing older days.
-- Finalize runs set `daily_fact_lookback=1` (or higher) to catch late-arriving updates.
+For hourly schedules, use `hourly_at(..., lookback_hours=N)` to run the current hour and prior hours.
 
-In Dagster, the template provides two jobs:
-
-- `dbt_intraday_orders_daily_job`: runs `dbt build` with `--vars '{"daily_fact_lookback": 0}'`
-- `dbt_finalize_orders_daily_job`: runs `dbt build` with `--vars '{"daily_fact_lookback": 1}'`
+To enable hourly partitioned jobs, set `DAGSTER_HOURLY_PARTITIONS_START_DATE` (default: `2026-01-01-00:00`).
 
 Schedules:
 
 - `daily_facts_schedule` targets `dbt_daily_customer_facts_job` by default.
-- `finalize_orders_daily_schedule` targets `dbt_finalize_orders_daily_job` by default.
-- `intraday_orders_daily_schedule` targets `dbt_intraday_orders_daily_job` and is disabled by default.
+- `finalize_orders_daily_schedule` targets `dbt_orders_daily_job` by default and runs with `lookback_days=1`.
+- `orders_hourly_schedule` targets `dbt_orders_hourly_job` (hourly partitions) and is disabled by default.
 
-Enable intraday refresh by setting `enabled=True` for `intraday_orders_daily_schedule` in `src/{{cookiecutter.package_name}}/schedules/dbt_config.py`.
+Enable intraday refresh by setting `enabled=True` for `orders_hourly_schedule` in `src/{{cookiecutter.package_name}}/schedules/dbt_config.py`.
 
 #### Example: add a new dbt job
 
 Edit `src/{{cookiecutter.package_name}}/jobs/dbt_config.py`:
 
 ```python
-from .lib.dbt_job_presets import key_prefix_job, models_job
+from .lib.dbt_job_presets import dbt_cli_build_job, key_prefix_job, models_job
 
 
 DBT_JOB_SPECS = [
@@ -236,10 +234,11 @@ DBT_JOB_SPECS = [
         models=["fact_orders_daily", "fact_customer_orders_daily"],
         include_upstream=True,
     ),
-    models_job(
-        name="dbt_hourly_orders_job",
-        models=["fact_orders_daily"],
+    dbt_cli_build_job(
+        name="dbt_orders_hourly_job",
+        models=["fact_orders_hourly"],
         include_upstream=True,
+        partitions="hourly",
     ),
 ]
 ```
@@ -258,13 +257,15 @@ DBT_SCHEDULE_SPECS = [
     daily_at(
         name="daily_facts_schedule",
         job_name="dbt_daily_facts_job",
+        lookback_days=0,
         hour=1,
         minute=0,
         enabled=True,
     ),
     hourly_at(
         name="hourly_orders_schedule",
-        job_name="dbt_hourly_orders_job",
+        job_name="dbt_orders_hourly_job",
+        lookback_hours=0,
         minute=0,
         enabled=True,
     ),

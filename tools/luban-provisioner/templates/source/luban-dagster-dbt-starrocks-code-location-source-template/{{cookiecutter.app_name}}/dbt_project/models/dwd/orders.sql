@@ -17,8 +17,6 @@ select
   updated_at
 from {{ source('ods', 'orders') }}
 
-{% if is_incremental() %}
-    -- Dagster partition variables
-    where order_datetime >= '{{ var("min_datetime") }}'
-      and order_datetime < '{{ var("max_datetime") }}'
-{% endif %}
+{% set w = luban_partition_window_datetime() %}
+where order_datetime >= '{{ w["min_datetime"] }}'
+  and order_datetime < '{{ w["max_datetime"] }}'

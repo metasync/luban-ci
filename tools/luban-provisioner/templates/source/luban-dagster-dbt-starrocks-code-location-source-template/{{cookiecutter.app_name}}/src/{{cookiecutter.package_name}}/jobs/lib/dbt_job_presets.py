@@ -29,7 +29,14 @@ def models_job(*, name: str, models: list[str], key_prefix: str = "dbt", include
     }
 
 
-def dbt_cli_build_job(*, name: str, models: list[str], vars: dict | None = None, include_upstream: bool = True):
+def dbt_cli_build_job(
+    *,
+    name: str,
+    models: list[str],
+    vars: dict | None = None,
+    include_upstream: bool = True,
+    partitions: str = "daily",
+):
     if not name:
         raise ValueError("Job name must be non-empty")
     if not models:
@@ -44,5 +51,5 @@ def dbt_cli_build_job(*, name: str, models: list[str], vars: dict | None = None,
         "command": "build",
         "select": select_str,
         "vars": vars or {},
+        "partitions": partitions,
     }
-

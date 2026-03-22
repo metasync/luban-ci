@@ -13,10 +13,8 @@ select
   sum(o.order_amount) as total_amount
 from {{ ref('orders') }} o
 
-{% if is_incremental() %}
-    -- Dagster partition variables
-    where o.order_date >= '{{ var("min_date") }}'
-      and o.order_date < '{{ var("max_date") }}'
-{% endif %}
+{% set w = luban_partition_window_date() %}
+where o.order_date >= '{{ w["min_date"] }}'
+  and o.order_date < '{{ w["max_date"] }}'
 
 group by 1, 2
