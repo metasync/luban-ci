@@ -11,7 +11,7 @@ DBT_SCHEDULE_SPECS = [
         enabled=True,
     ),
     daily_at(
-        name="finalize_orders_daily_schedule",
+        name="orders_daily_schedule",
         job_name="dbt_orders_daily_job",
         lookback_days=1,
         hour=1,

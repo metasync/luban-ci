@@ -17,8 +17,14 @@ def _build_daily_partitioned_schedule(
     partition_offset_days: int,
     partition_lookback_days: int,
     dedupe_across_ticks: bool,
+    default_status: dg.DefaultScheduleStatus,
 ):
-    @dg.schedule(name=name, cron_schedule=cron_schedule, job=job)
+    @dg.schedule(
+        name=name,
+        cron_schedule=cron_schedule,
+        job=job,
+        default_status=default_status,
+    )
     def _schedule(context):
         scheduled_time = context.scheduled_execution_time or dg.get_current_datetime()
 
@@ -50,8 +56,14 @@ def _build_hourly_partitioned_schedule(
     partition_offset_hours: int,
     partition_lookback_hours: int,
     dedupe_across_ticks: bool,
+    default_status: dg.DefaultScheduleStatus,
 ):
-    @dg.schedule(name=name, cron_schedule=cron_schedule, job=job)
+    @dg.schedule(
+        name=name,
+        cron_schedule=cron_schedule,
+        job=job,
+        default_status=default_status,
+    )
     def _schedule(context):
         scheduled_time = context.scheduled_execution_time or dg.get_current_datetime()
 
@@ -97,8 +109,10 @@ def build_dbt_schedules(schedule_specs, jobs_by_name):
 
     schedules_by_name = {}
     for spec in schedule_specs:
-        if not spec.get("enabled", True):
-            continue
+        enabled = bool(spec.get("enabled", True))
+        default_status = (
+            dg.DefaultScheduleStatus.RUNNING if enabled else dg.DefaultScheduleStatus.STOPPED
+        )
 
         job = jobs_by_name[spec["job_name"]]
         partition_type = spec.get("partition_type", "daily")
@@ -121,6 +135,7 @@ def build_dbt_schedules(schedule_specs, jobs_by_name):
                 partition_offset_days=partition_offset_days,
                 partition_lookback_days=partition_lookback_days,
                 dedupe_across_ticks=dedupe_across_ticks,
+                default_status=default_status,
             )
             continue
 
@@ -141,6 +156,7 @@ def build_dbt_schedules(schedule_specs, jobs_by_name):
                 partition_offset_hours=partition_offset_hours,
                 partition_lookback_hours=partition_lookback_hours,
                 dedupe_across_ticks=dedupe_across_ticks,
+                default_status=default_status,
             )
             continue
 
