@@ -1,5 +1,5 @@
 
-.PHONY: help setup install dev test check-db demo-ods populate-ods dbt-deps dbt-build dbt-run clean
+.PHONY: help setup install dev test check-db demo-ods populate-ods dbt-deps dbt-parse dbt-build dbt-run clean
 
 
 # Load local environment variables (if present) for dbt/Dagster commands.
@@ -7,6 +7,8 @@
 -include .env
 export
 
+DBT_PROJECT_DIR ?= ./dbt_project
+DBT_PROFILES_DIR ?= ./dbt_project
 DBT_VARS ?=
 DEMO_ODS_VARS ?= {"enable_demo_ods": true}
 
@@ -44,41 +46,45 @@ test: ## Run unit tests and dbt tests
 		echo "  export DBT_VARS='{\"min_date\":\"2026-01-02\",\"max_date\":\"2026-01-03\",\"min_datetime\":\"2026-01-02 00:00:00\",\"max_datetime\":\"2026-01-03 00:00:00\"}'"; \
 		exit 1; \
 	fi
-	uv run dbt test --project-dir $(DBT_PROJECT_DIR) --vars '$(DBT_VARS)'
+	uv run dbt test --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR) --vars '$(DBT_VARS)'
 
 
 check-db: ## Test connectivity to the StarRocks database
 	@echo "Testing StarRocks connectivity using dbt debug..."
-	uv run dbt debug --project-dir $(DBT_PROJECT_DIR)
+	uv run dbt debug --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR)
 
 
 demo-ods: dbt-deps ## Generate demo ODS tables (customers/orders)
-	uv run dbt run --project-dir $(DBT_PROJECT_DIR) --select tag:demo_ods --vars '$(DEMO_ODS_VARS)'
+	uv run dbt run --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR) --select tag:demo_ods --vars '$(DEMO_ODS_VARS)'
 
 
 populate-ods: demo-ods ## Populate ODS source tables (alias for demo-ods)
 
 
 dbt-deps: ## Install dbt dependencies
-	uv run dbt deps --project-dir $(DBT_PROJECT_DIR)
+	uv run dbt deps --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR)
 
 
-dbt-build: ## Build the dbt project (run + test)
+dbt-parse: dbt-deps ## Parse the dbt project (generates manifest.json)
+	uv run dbt parse --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR)
+
+
+dbt-build: dbt-deps ## Build the dbt project (run + test)
 	@if [ -z "$(DBT_VARS)" ]; then \
 		echo "DBT_VARS is required for dbt execution (partition window vars). Example:"; \
 		echo "  export DBT_VARS='{\"min_date\":\"2026-01-02\",\"max_date\":\"2026-01-03\",\"min_datetime\":\"2026-01-02 00:00:00\",\"max_datetime\":\"2026-01-03 00:00:00\"}'"; \
 		exit 1; \
 	fi
-	uv run dbt build --project-dir $(DBT_PROJECT_DIR) --vars '$(DBT_VARS)'
+	uv run dbt build --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR) --vars '$(DBT_VARS)'
 
 
-dbt-run: ## Run the dbt project (without testing)
+dbt-run: dbt-deps ## Run the dbt project (without testing)
 	@if [ -z "$(DBT_VARS)" ]; then \
 		echo "DBT_VARS is required for dbt execution (partition window vars). Example:"; \
 		echo "  export DBT_VARS='{\"min_date\":\"2026-01-02\",\"max_date\":\"2026-01-03\",\"min_datetime\":\"2026-01-02 00:00:00\",\"max_datetime\":\"2026-01-03 00:00:00\"}'"; \
 		exit 1; \
 	fi
-	uv run dbt run --project-dir $(DBT_PROJECT_DIR) --vars '$(DBT_VARS)'
+	uv run dbt run --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR) --vars '$(DBT_VARS)'
 
 
 clean: ## Clean up temporary generated files and virtual environment

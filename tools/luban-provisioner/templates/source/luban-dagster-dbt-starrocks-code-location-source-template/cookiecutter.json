@@ -3,7 +3,7 @@
   "app_name": "",
   "package_name": "",
   "dagster_version": "1.12.19",
-  "default_env": "sandbox",
+  "default_env": "development",
   "code_location_port": "3000",
   "author_name": "",
   "author_email": "",
