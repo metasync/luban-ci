@@ -21,23 +21,22 @@
 
 {% set anchor_expr = "date_trunc('hour', " ~ base_expr ~ ")" %}
 {% set total_hours = days * 24 %}
+{% set total_orders = customers * per_customer %}
 
 select *
 from (
-  {% set order_seq = 0 %}
-  {% for c in range(1, customers + 1) %}
-    {% for k in range(1, per_customer + 1) %}
-      {% set order_seq = order_seq + 1 %}
-      {% set hour_offset = (order_seq - 1) % total_hours %}
-      select
-        ({{ c }} * 1000000 + {{ k }}) as order_id,
-        {{ c }} as customer_id,
-        ({{ k }} * 10 + ({{ c }} % 10)) as order_amount,
-        hours_sub({{ anchor_expr }}, {{ hour_offset }}) as order_datetime,
-        {{ base_expr }} as updated_at,
-        {{ base_expr }} as ods_created_at,
-        {{ base_expr }} as ods_updated_at
-      {% if not (loop.last and loop.parent.last) %} union all {% endif %}
-    {% endfor %}
+  {% for seq in range(0, total_orders) %}
+    {% set c = (seq // per_customer) + 1 %}
+    {% set k = (seq % per_customer) + 1 %}
+    {% set hour_offset = seq % total_hours %}
+    select
+      ({{ c }} * 1000000 + {{ k }}) as order_id,
+      {{ c }} as customer_id,
+      ({{ k }} * 10 + ({{ c }} % 10)) as order_amount,
+      hours_sub({{ anchor_expr }}, {{ hour_offset }}) as order_datetime,
+      {{ base_expr }} as updated_at,
+      {{ base_expr }} as ods_created_at,
+      {{ base_expr }} as ods_updated_at
+    {% if not loop.last %} union all {% endif %}
   {% endfor %}
 ) t

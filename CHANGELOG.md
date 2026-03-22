@@ -17,11 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.2.15`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.2.16`.
 - **Provisioner**: Fixed local template startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_IF_DEV`).
 - **Provisioner**: Added optional demo ODS models to generate `ods.customers` and `ods.orders` on demand.
 - **Template**: Added `make populate-ods` as a friendly alias for demo ODS generation.
 - **Template**: Made `make populate-ods` run `dbt deps` automatically.
+- **Template**: Fixed demo ODS generation on dbt v1.11 (no nested-loop `loop.parent`).
 - **Provisioner**: Updated GitOps template routing to use explicit `elif` chain for `dagster-platform` / `dagster-code-location` variants, replacing legacy fallback heuristics.
 - **Provisioner**: Updated `profiles.yml` to use `{{cookiecutter.package_name}}` instead of `{{cookiecutter.app_name}}` for dbt project name and profile, ensuring Python-identifier-safe names.
 - **Provisioner**: Updated `profiles.yml` to use `env_var('STARROCKS_*', '<default>')` defaults, making the buildpack adapter-agnostic — no `STARROCKS_*` env vars need to be set during build.
