@@ -8,9 +8,10 @@
       user: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
       username: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
       password: "{% raw %}{{ env_var('STARROCKS_PASSWORD', '') }}{% endraw %}"
+      use_pure: "{% raw %}{{ env_var('STARROCKS_USE_PURE', 'true') }}{% endraw %}"
       dbname: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
       schema: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
-      threads: 4
+      threads: "{% raw %}{{ env_var('DBT_THREADS', '4') | as_number }}{% endraw %}"
       init_connect:
         - "SET new_planner_optimize_timeout = {% raw %}{{ env_var('STARROCKS_PLANNER_OPTIMIZE_TIMEOUT_MS', '300000') }}{% endraw %}"
         - "SET query_timeout = {% raw %}{{ env_var('STARROCKS_QUERY_TIMEOUT_SECONDS', '3600') }}{% endraw %}"
@@ -22,9 +23,10 @@
       user: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
       username: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
       password: "{% raw %}{{ env_var('STARROCKS_PASSWORD', '') }}{% endraw %}"
+      use_pure: "{% raw %}{{ env_var('STARROCKS_USE_PURE', 'true') }}{% endraw %}"
       dbname: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
       schema: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
-      threads: 4
+      threads: "{% raw %}{{ env_var('DBT_THREADS', '4') | as_number }}{% endraw %}"
       init_connect:
         - "SET new_planner_optimize_timeout = {% raw %}{{ env_var('STARROCKS_PLANNER_OPTIMIZE_TIMEOUT_MS', '300000') }}{% endraw %}"
         - "SET query_timeout = {% raw %}{{ env_var('STARROCKS_QUERY_TIMEOUT_SECONDS', '3600') }}{% endraw %}"
@@ -36,9 +38,10 @@
       user: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
       username: "{% raw %}{{ env_var('STARROCKS_USER', 'root') }}{% endraw %}"
       password: "{% raw %}{{ env_var('STARROCKS_PASSWORD', '') }}{% endraw %}"
+      use_pure: "{% raw %}{{ env_var('STARROCKS_USE_PURE', 'true') }}{% endraw %}"
       dbname: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
       schema: "{% raw %}{{ env_var('STARROCKS_DB', 'dbt') }}{% endraw %}"
-      threads: 8
+      threads: "{% raw %}{{ env_var('DBT_THREADS', '8') | as_number }}{% endraw %}"
       init_connect:
         - "SET new_planner_optimize_timeout = {% raw %}{{ env_var('STARROCKS_PLANNER_OPTIMIZE_TIMEOUT_MS', '300000') }}{% endraw %}"
         - "SET query_timeout = {% raw %}{{ env_var('STARROCKS_QUERY_TIMEOUT_SECONDS', '3600') }}{% endraw %}"
