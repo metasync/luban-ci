@@ -213,34 +213,42 @@ To enable hourly partitioned jobs, set `DAGSTER_HOURLY_PARTITIONS_START_DATE` (d
 
 If you see `DagsterDbtManifestNotFoundError` during local development, set `LUBAN_DBT_PREPARE_IF_DEV=true` (default in `.env.example`) so the code location prepares `dbt_project/target/manifest.json` automatically.
 
-### Demo ODS data (optional)
+### ODS test data (optional)
 
-This template includes optional demo ODS models that can generate `ods.customers` and `ods.orders` on demand using dbt models (no seeds required).
+This template includes optional ODS test models that can generate `ods.customers` and `ods.orders` on demand using dbt models (no seeds required).
 
 They are disabled by default and must be explicitly enabled:
 
 ```bash
-uv run dbt run --project-dir dbt_project --select tag:demo_ods --vars '{"enable_demo_ods": true}'
+uv run dbt run --full-refresh --project-dir dbt_project --select tag:ods_test --vars '{"enable_ods_test": true}'
 ```
 
 Or use the repository Makefile:
 
 ```bash
-make populate-ods
+make ods-test-bootstrap
 ```
 
-Default demo ODS knobs (override via `--vars`):
+Default ODS test knobs (override via `--vars`):
 
-- `enable_demo_ods` (default `false`)
-- `demo_ods_customers_count` (default `50`)
-- `demo_ods_orders_per_customer` (default `3`)
-- `demo_ods_days` (default `7`)
-- `demo_ods_base_ts` (default empty; uses `current_timestamp()`)
+- `enable_ods_test` (default `false`)
+- `ods_test_customers_count` (default `500`)
+- `ods_test_customers_append_count` (default `0`)
+- `ods_test_orders_per_customer` (default `20`)
+- `ods_test_orders_append_count` (default `1000`)
+- `ods_test_days` (default `30`)
+- `ods_test_base_ts` (default empty; uses `current_timestamp()`)
+
+Append mode (simulate new data arrival):
+
+```bash
+make ods-test-append
+```
 
 Schedules:
 
 - `daily_facts_schedule` targets `dbt_daily_customer_facts_job` by default.
-- `finalize_orders_daily_schedule` targets `dbt_orders_daily_job` by default and runs with `lookback_days=1`.
+- `orders_daily_schedule` targets `dbt_orders_daily_job` by default and runs with `lookback_days=1`.
 - `orders_hourly_schedule` targets `dbt_orders_hourly_job` (hourly partitions) and is disabled by default.
 
 Enable intraday refresh by setting `enabled=True` for `orders_hourly_schedule` in `src/{{cookiecutter.package_name}}/schedules/dbt_config.py`.

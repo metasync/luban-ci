@@ -5,14 +5,16 @@ config-version: 2
 profile: "{{cookiecutter.package_name}}"
 
 vars:
-  ods_schema: "{% raw %}{{ env_var('STARROCKS_ODS_DB', 'ods') }}{% endraw %}"
+  ods_schema: "{% raw %}{{ env_var('STARROCKS_ODS_DB', env_var('STARROCKS_DB', 'dbt') ~ '_ods') }}{% endraw %}"
   dwd_schema: "{% raw %}{{ env_var('STARROCKS_DWD_DB', 'dwd') }}{% endraw %}"
   dws_schema: "{% raw %}{{ env_var('STARROCKS_DWS_DB', 'dws') }}{% endraw %}"
-  enable_demo_ods: false
-  demo_ods_customers_count: 50
-  demo_ods_orders_per_customer: 3
-  demo_ods_days: 7
-  demo_ods_base_ts: ""
+  enable_ods_test: false
+  ods_test_customers_count: 500
+  ods_test_customers_append_count: 0
+  ods_test_orders_per_customer: 20
+  ods_test_orders_append_count: 1000
+  ods_test_days: 30
+  ods_test_base_ts: ""
 
 model-paths: ["models"]
 analysis-paths: ["analyses"]

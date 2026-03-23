@@ -1,13 +1,16 @@
 version: 2
 
 models:
-  - name: ods_customers
+  - name: ods_test_customers
+    description: "Synthetic ODS customers for local testing"
     columns:
       - name: customer_id
         tests:
           - not_null
           - unique
-  - name: ods_orders
+
+  - name: ods_test_orders
+    description: "Synthetic ODS orders for local testing"
     columns:
       - name: order_id
         tests:
@@ -18,5 +21,5 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('ods_customers')
+                to: ref('ods_test_customers')
                 field: customer_id
