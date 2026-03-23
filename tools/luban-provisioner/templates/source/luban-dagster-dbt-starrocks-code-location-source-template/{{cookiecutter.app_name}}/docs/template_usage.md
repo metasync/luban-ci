@@ -174,7 +174,7 @@ dbt schema behavior:
 
 dbt macros:
 
-- `luban_ods_db()`, `luban_dwd_db()`, `luban_dws_db()` resolve layer database names from env vars for use in SQL resources (models/snapshots).
+- `sr_ods_db()`, `sr_dwd_db()`, `sr_dws_db()` resolve layer database names from env vars for use in SQL resources (models/snapshots).
 
 ## Jobs and schedules included
 

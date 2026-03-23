@@ -2,7 +2,7 @@
   config(
     enabled=var('enable_ods_test', false),
     materialized='incremental',
-    schema="{{ luban_ods_db() }}",
+    schema="{{ sr_ods_db() }}",
     alias='orders',
     tags=['ods_test']
   )
