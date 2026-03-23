@@ -32,7 +32,7 @@ data:
   azure_server: "dev.azure.com"
 
   # Tooling Images
-  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.2.18"
+  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.2.19"
   gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.3.7"
 
   # Python Package Index (Optional)
