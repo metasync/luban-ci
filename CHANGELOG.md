@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.2.41`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.2.42`.
 - **Provisioner**: Fixed local template startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_IF_DEV`).
 - **Provisioner**: Added optional ODS test models to generate `ods.customers` and `ods.orders` on demand.
 - **Template**: Added `make ods-test-bootstrap` and `make ods-test-append` for bootstrap + incremental arrival simulation.
@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Template**: Removed the dbt stub manifest and generates `manifest.json` on load when missing.
 - **Template**: Refactored dbt manifest preparation into an `assets/lib` helper.
 - **Template**: Moved all manifest prepare-on-load logic into `assets/lib/dbt_prepare.py`.
+- **Template**: Removed redundant `DBT_TARGET` argument plumbing for prepare-on-load.
 - **Template**: Defaulted `default_env` to `development` for local-first workflows.
 - **Template**: Added `dbt-parse` target and made dbt targets run `dbt deps` automatically.
 - **Template**: Renamed `finalize_orders_daily_schedule` to `orders_daily_schedule` and set schedules default to running.

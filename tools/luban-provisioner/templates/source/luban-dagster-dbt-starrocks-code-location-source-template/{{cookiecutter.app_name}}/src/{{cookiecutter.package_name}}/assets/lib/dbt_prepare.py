@@ -8,14 +8,14 @@ from dagster_dbt import DbtCliResource
 from ...resources.dbt import get_dbt_profiles_dir, get_dbt_project_dir
 
 
-def prepare_manifest_if_missing(*, target: str | None = None) -> None:
+def prepare_manifest_if_missing() -> None:
     enabled = os.getenv("LUBAN_DBT_PREPARE_ON_LOAD", "1").strip().lower() in {"1", "true", "yes"}
     if not enabled:
         return
 
     project_dir = get_dbt_project_dir()
     profiles_dir = get_dbt_profiles_dir()
-    target = target or os.getenv("DBT_TARGET", "{{ cookiecutter.default_env }}")
+    target = os.getenv("DBT_TARGET", "{{ cookiecutter.default_env }}")
 
     manifest_path = project_dir / "target" / "manifest.json"
     if manifest_path.exists():

@@ -20,7 +20,7 @@ dbt_project = DbtProject(
     packaged_project_dir=dbt_project_dir,
 )
 
-prepare_manifest_if_missing(target=dbt_target)
+prepare_manifest_if_missing()
 
 
 @dbt_assets(
