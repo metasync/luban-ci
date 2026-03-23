@@ -1,8 +1,9 @@
 {{
     config(
         materialized='incremental',
-        incremental_strategy='dynamic_overwrite',
-        partition_by=['order_date']
+        incremental_strategy='default',
+        table_type='PRIMARY',
+        keys=['order_id']
     )
 }}
 
