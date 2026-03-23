@@ -165,10 +165,12 @@ Environment variables:
 
 ### StarRocks database mapping
 
-- `STARROCKS_DB`: the default database/schema used by dbt connection (see `dbt_project/profiles.yml`)
-- `STARROCKS_ODS_DB`: where dbt reads sources (and where observation queries run)
-- `STARROCKS_DWD_DB`: where `models/dwd/*` materialize
-- `STARROCKS_DWS_DB`: where `models/dws/*` materialize
+- `STARROCKS_ODS_DB`, `STARROCKS_DWD_DB`, `STARROCKS_DWS_DB` are full StarRocks database names.
+- `STARROCKS_DB` is the default working database for this code location (used as the default dbt target schema). By default it matches `STARROCKS_DWS_DB`.
+
+dbt schema behavior:
+
+- This template overrides dbt's default schema concatenation so a model's configured `schema` is used verbatim (StarRocks databases), instead of `target_schema_custom_schema`.
 
 ## Jobs and schedules included
 

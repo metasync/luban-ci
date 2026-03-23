@@ -84,16 +84,14 @@ export STARROCKS_HOST=127.0.0.1
 export STARROCKS_PORT=9030
 export STARROCKS_USER=root
 export STARROCKS_PASSWORD=""
-export STARROCKS_DB={{cookiecutter.app_name}}
+export STARROCKS_ODS_DB={{cookiecutter.app_name}}_ods_dev
+export STARROCKS_DWD_DB={{cookiecutter.app_name}}_dwd_dev
+export STARROCKS_DWS_DB={{cookiecutter.app_name}}_dws_dev
 
-# ODS is typically a separate database on the same cluster
-export STARROCKS_ODS_DB=ods
+# Working/default database for this code location. By default it matches DWS.
+export STARROCKS_DB={{cookiecutter.app_name}}_dws_dev
 
-# Optional: explicitly place DWD/DWS into separate databases
-export STARROCKS_DWD_DB={{cookiecutter.app_name}}_dwd
-export STARROCKS_DWS_DB={{cookiecutter.app_name}}_dws
-
-# If not set, DWD/DWS default to databases named `dwd` and `dws`.
+# ODS/DWD/DWS env vars are full StarRocks database names.
 
 # Select dbt target
 export DBT_TARGET={{ cookiecutter.default_env }}
