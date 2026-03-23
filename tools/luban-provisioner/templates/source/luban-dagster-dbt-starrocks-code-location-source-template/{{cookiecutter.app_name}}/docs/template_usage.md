@@ -168,6 +168,10 @@ dbt runtime stability/tuning:
 - `STARROCKS_USE_PURE` (default `true`): forces the pure-Python MySQL connector implementation. Useful to avoid potential crashes in the mysql-connector C extension.
 - `DBT_THREADS` (default `4`): overrides dbt thread concurrency.
 
+dbt manifest generation:
+
+- `LUBAN_DBT_PREPARE_ON_LOAD` (default `1`): if `target/manifest.json` is missing, the code location will run `dbt deps` and `dbt parse` on import to generate it.
+
 ### StarRocks database mapping
 
 - `STARROCKS_ODS_DB`, `STARROCKS_DWD_DB`, `STARROCKS_DWS_DB` are full StarRocks database names.
