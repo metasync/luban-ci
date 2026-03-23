@@ -5,9 +5,6 @@ config-version: 2
 profile: "{{cookiecutter.package_name}}"
 
 vars:
-  ods_schema: "{% raw %}{{ env_var('STARROCKS_ODS_DB', 'ods') }}{% endraw %}"
-  dwd_schema: "{% raw %}{{ env_var('STARROCKS_DWD_DB', 'dwd') }}{% endraw %}"
-  dws_schema: "{% raw %}{{ env_var('STARROCKS_DWS_DB', 'dws') }}{% endraw %}"
   enable_ods_test: false
   ods_test_customers_count: 500
   ods_test_customers_append_count: 0

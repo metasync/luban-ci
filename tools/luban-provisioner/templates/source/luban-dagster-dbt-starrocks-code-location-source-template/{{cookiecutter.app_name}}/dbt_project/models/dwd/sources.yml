@@ -2,7 +2,7 @@ version: 2
 
 sources:
   - name: ods
-    schema: "{{ var('ods_schema') }}"
+    schema: "{{ env_var('STARROCKS_ODS_DB', 'ods') }}"
     tables:
       - name: customers
         columns:

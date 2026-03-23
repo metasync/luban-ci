@@ -119,11 +119,10 @@ make dbt-run
 ### ODS source mapping
 
 The `dwd` layer reads raw tables from the `ods` source (see `dbt_project/models/dwd/sources.yml`).
-You can override the ODS schema and physical table identifiers using dbt vars:
+You can override the ODS database name used for dbt sources by setting `STARROCKS_ODS_DB`.
 
 ```bash
-uv run dbt build --project-dir ./dbt_project \
-  --vars '{"ods_schema": "ods"}'
+export STARROCKS_ODS_DB={{cookiecutter.app_name}}_ods_dev
 ```
 
 If vars are not provided, the template defaults are sourced from environment variables defined in `dbt_project.yml`.
