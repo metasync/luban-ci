@@ -30,7 +30,5 @@ models:
     +on_schema_change: "append_new_columns"
     dwd:
       +materialized: table
-      +schema: "{% raw %}{{ env_var('STARROCKS_DWD_DB', 'dwd') }}{% endraw %}"
     dws:
       +materialized: table
-      +schema: "{% raw %}{{ env_var('STARROCKS_DWS_DB', 'dws') }}{% endraw %}"
