@@ -1,10 +1,8 @@
 {{
     config(
         materialized='incremental',
-        unique_key='order_id',
-        incremental_strategy='merge',
-        merge_update_columns=['customer_id', 'order_amount', 'order_datetime', 'order_date', 'updated_at'],
-        event_time='order_datetime'
+        incremental_strategy='dynamic_overwrite',
+        partition_by=['order_date']
     )
 }}
 

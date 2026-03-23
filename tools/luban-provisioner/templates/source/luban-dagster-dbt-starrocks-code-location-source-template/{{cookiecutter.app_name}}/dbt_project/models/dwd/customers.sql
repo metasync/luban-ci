@@ -1,9 +1,9 @@
 {{
     config(
         materialized='incremental',
-        unique_key='customer_id',
-        incremental_strategy='merge',
-        merge_update_columns=['first_name', 'last_name', 'updated_at']
+        incremental_strategy='default',
+        table_type='PRIMARY',
+        keys=['customer_id']
     )
 }}
 
