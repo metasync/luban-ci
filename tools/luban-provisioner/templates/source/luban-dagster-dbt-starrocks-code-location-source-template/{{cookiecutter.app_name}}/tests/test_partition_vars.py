@@ -1,10 +1,9 @@
 from datetime import datetime
 
-import importlib
-
-partition_vars = importlib.import_module("{{cookiecutter.package_name}}.assets.lib.partition_vars")
-_dbt_partition_vars_from_time_window = partition_vars._dbt_partition_vars_from_time_window
-_get_dbt_vars_for_context = partition_vars._get_dbt_vars_for_context
+from {{cookiecutter.package_name}}.assets.lib.partition_vars import (
+    _dbt_partition_vars_from_time_window,
+    _get_dbt_vars_for_context,
+)
 
 
 class _FakeTimeWindow:

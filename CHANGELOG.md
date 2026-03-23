@@ -17,8 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.2.42`.
-- **Provisioner**: Fixed local template startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_IF_DEV`).
+- **Provisioner**: Bumped `luban-provisioner` to `0.2.43`.
+- **Template**: Fixed local startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_ON_LOAD`).
 - **Provisioner**: Added optional ODS test models to generate `ods.customers` and `ods.orders` on demand.
 - **Template**: Added `make ods-test-bootstrap` and `make ods-test-append` for bootstrap + incremental arrival simulation.
 - **Template**: Switched ODS test generation to StarRocks `generate_series()` for 10k+ row scalability.
@@ -31,12 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Template**: Avoided `dynamic_overwrite` partitioning in `orders` to prevent empty-partition inserts.
 - **Template**: Added StarRocks `use_pure` option and `DBT_THREADS` env override to avoid dbt runtime segfaults.
 - **Docs**: Updated StarRocks template docs to reflect current dbt configs and tuning env vars.
-- **Template**: Added a stub dbt manifest fallback when `DAGSTER_DBT_PARSE_PROJECT_ON_LOAD=0` to allow loading definitions without a real manifest.
-- **Template**: Lazily loaded `defs` from the package root to avoid import-time side effects for submodules.
-- **Template**: Removed the dbt stub manifest and generates `manifest.json` on load when missing.
-- **Template**: Refactored dbt manifest preparation into an `assets/lib` helper.
-- **Template**: Moved all manifest prepare-on-load logic into `assets/lib/dbt_prepare.py`.
-- **Template**: Removed redundant `DBT_TARGET` argument plumbing for prepare-on-load.
+- **Template**: Generates `manifest.json` on load when missing via `assets/lib/dbt_prepare.py` (controlled by `LUBAN_DBT_PREPARE_ON_LOAD`).
 - **Template**: Defaulted `default_env` to `development` for local-first workflows.
 - **Template**: Added `dbt-parse` target and made dbt targets run `dbt deps` automatically.
 - **Template**: Renamed `finalize_orders_daily_schedule` to `orders_daily_schedule` and set schedules default to running.

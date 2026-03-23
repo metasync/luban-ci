@@ -1,5 +1,5 @@
 
-.PHONY: help setup install dev test check-db ods-test-bootstrap ods-test-append dbt-deps dbt-parse dbt-build dbt-run clean
+.PHONY: help setup install dev test check-db reset-dwd-dws reset-ods reset-db reset-all ods-test-bootstrap ods-test-append dbt-deps dbt-parse dbt-build dbt-run clean
 
 
 # Load local environment variables (if present) for dbt/Dagster commands.
@@ -53,6 +53,30 @@ test: ## Run unit tests and dbt tests
 check-db: ## Test connectivity to the StarRocks database
 	@echo "Testing StarRocks connectivity using dbt debug..."
 	uv run dbt debug --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR)
+
+
+reset-dwd-dws: dbt-deps ## Drop and recreate DWD+DWS databases (requires RESET_CONFIRM=1)
+	@if [ "$(RESET_CONFIRM)" != "1" ]; then \
+		echo "Refusing to reset DWD/DWS without explicit confirmation."; \
+		echo "Run: make reset-dwd-dws RESET_CONFIRM=1"; \
+		exit 1; \
+	fi
+	uv run dbt run-operation reset_starrocks_databases --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR) --args '{"layers": ["dwd", "dws"]}'
+
+
+reset-ods: dbt-deps ## Drop and recreate ODS database (requires RESET_CONFIRM=1)
+	@if [ "$(RESET_CONFIRM)" != "1" ]; then \
+		echo "Refusing to reset ODS without explicit confirmation."; \
+		echo "Run: make reset-ods RESET_CONFIRM=1"; \
+		exit 1; \
+	fi
+	uv run dbt run-operation reset_starrocks_databases --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR) --args '{"layers": ["ods"]}'
+
+
+reset-db: reset-dwd-dws ## Alias for reset-dwd-dws
+
+
+reset-all: reset-ods reset-dwd-dws ## Reset ODS + DWD + DWS (requires RESET_CONFIRM=1)
 
 
 ods-test-bootstrap: dbt-deps ## Bootstrap ODS test tables (customers/orders)
