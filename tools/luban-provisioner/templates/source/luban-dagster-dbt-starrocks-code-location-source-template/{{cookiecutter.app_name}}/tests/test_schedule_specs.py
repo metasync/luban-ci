@@ -1,4 +1,9 @@
-from {{cookiecutter.package_name}}.schedules.dbt_config import DBT_SCHEDULE_SPECS
+import importlib
+
+
+DBT_SCHEDULE_SPECS = importlib.import_module(
+    "{{cookiecutter.package_name}}.schedules.dbt_config"
+).DBT_SCHEDULE_SPECS
 
 
 def test_schedule_specs_include_partition_type():
