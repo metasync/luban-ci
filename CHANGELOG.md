@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.2.33`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.2.34`.
 - **Provisioner**: Fixed local template startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_IF_DEV`).
 - **Provisioner**: Added optional ODS test models to generate `ods.customers` and `ods.orders` on demand.
 - **Template**: Added `make ods-test-bootstrap` and `make ods-test-append` for bootstrap + incremental arrival simulation.
@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Template**: Refactored StarRocks layer schema selection into a helper macro for readability.
 - **Template**: Avoided `dynamic_overwrite` partitioning in `orders` to prevent empty-partition inserts.
 - **Template**: Added StarRocks `use_pure` option and `DBT_THREADS` env override to avoid dbt runtime segfaults.
+- **Docs**: Updated StarRocks template docs to reflect current dbt configs and tuning env vars.
 - **Template**: Defaulted `default_env` to `development` for local-first workflows.
 - **Template**: Added `dbt-parse` target and made dbt targets run `dbt deps` automatically.
 - **Template**: Renamed `finalize_orders_daily_schedule` to `orders_daily_schedule` and set schedules default to running.

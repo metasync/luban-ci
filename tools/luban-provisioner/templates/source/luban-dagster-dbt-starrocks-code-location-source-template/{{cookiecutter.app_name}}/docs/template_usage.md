@@ -163,6 +163,11 @@ Environment variables:
 - `STARROCKS_HOST`, `STARROCKS_PORT`, `STARROCKS_USER`, `STARROCKS_PASSWORD`
 - `STARROCKS_ODS_DB` (schema/database name containing ODS tables)
 
+dbt runtime stability/tuning:
+
+- `STARROCKS_USE_PURE` (default `true`): forces the pure-Python MySQL connector implementation. Useful to avoid potential crashes in the mysql-connector C extension.
+- `DBT_THREADS` (default `4`): overrides dbt thread concurrency.
+
 ### StarRocks database mapping
 
 - `STARROCKS_ODS_DB`, `STARROCKS_DWD_DB`, `STARROCKS_DWS_DB` are full StarRocks database names.
@@ -171,6 +176,12 @@ Environment variables:
 dbt schema behavior:
 
 - This template overrides dbt's default schema concatenation so a model's configured `schema` is used verbatim (StarRocks databases), instead of `target_schema_custom_schema`.
+
+Folder conventions:
+
+- Models under `models/dwd/` are routed to `STARROCKS_DWD_DB`.
+- Models under `models/dws/` and all `snapshots/` are routed to `STARROCKS_DWS_DB`.
+- Anything else falls back to `target.schema`.
 
 ## Jobs and schedules included
 

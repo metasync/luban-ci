@@ -22,18 +22,18 @@ In your dbt model:
 {% raw %}{{
     config(
         materialized='incremental',
-        unique_key='order_id'
+        table_type='PRIMARY',
+        incremental_strategy='default',
+        keys=['order_id']
     )
 }}{% endraw %}
 
 select ...
 from {% raw %}{{ source('ods', 'orders') }}{% endraw %}
 
-{% raw %}{% if is_incremental() %}
-    -- Dagster automatically injects these variables for partitioned runs
-    where order_datetime >= '{{ var("min_datetime") }}'
-      and order_datetime < '{{ var("max_datetime") }}'
-{% endif %}{% endraw %}
+{% raw %}{% set w = luban_partition_window_datetime() %}{% endraw %}
+where order_datetime >= '{% raw %}{{ w["min_datetime"] }}{% endraw %}'
+  and order_datetime < '{% raw %}{{ w["max_datetime"] }}{% endraw %}'
 ```
 
 #### Non-Time-Based Partitions
@@ -70,6 +70,16 @@ make check-db
 
 When you run Dagster locally, it will automatically load the variables from this `.env` file. By default, `DBT_TARGET` is set to `{{ cookiecutter.default_env }}`, which triggers dbt to use the matching profile configuration.
 
+Optional stability/tuning:
+
+```bash
+export STARROCKS_USE_PURE=true
+export DBT_THREADS=4
+```
+
+- `STARROCKS_USE_PURE`: forces the pure-Python MySQL connector implementation to avoid potential crashes in the C extension.
+- `DBT_THREADS`: overrides dbt thread concurrency.
+
 ### Configure StarRocks connection (Manual)
 
 If you prefer not to use `.env` or are deploying to a server, you can set the environment variables manually.
@@ -95,6 +105,10 @@ export STARROCKS_DB={{cookiecutter.app_name}}_dws_dev
 
 # Select dbt target
 export DBT_TARGET={{ cookiecutter.default_env }}
+
+# Optional: stability/tuning
+export STARROCKS_USE_PURE=true
+export DBT_THREADS=4
 
 # Optional: tune timeouts (defaults shown)
 export STARROCKS_PLANNER_OPTIMIZE_TIMEOUT_MS=300000
