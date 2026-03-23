@@ -2,7 +2,7 @@
 
 {{
   config(
-    target_schema="{{ env_var('STARROCKS_DWS_DB', 'dws') }}",
+    target_schema=env_var('STARROCKS_DWS_DB', 'dws'),
     unique_key='customer_id',
     strategy='check',
     check_cols=['first_name', 'last_name'],
