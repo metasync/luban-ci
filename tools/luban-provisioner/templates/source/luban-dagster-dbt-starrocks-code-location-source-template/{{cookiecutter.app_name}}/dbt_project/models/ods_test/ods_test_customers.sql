@@ -2,7 +2,7 @@
   config(
     enabled=var('enable_ods_test', false),
     materialized='incremental',
-    schema="{{ sr_ods_db() }}",
+    schema="{{ env_var('STARROCKS_ODS_DB', 'ods') }}",
     alias='customers',
     tags=['ods_test']
   )
