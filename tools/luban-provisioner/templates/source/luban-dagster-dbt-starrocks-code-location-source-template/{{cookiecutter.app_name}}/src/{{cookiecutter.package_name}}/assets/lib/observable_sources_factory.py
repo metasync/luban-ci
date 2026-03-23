@@ -53,7 +53,7 @@ def build_observable_source_assets(
 
         if db_default is None:
             if source_name == "ods":
-                db_default = f"{os.getenv('STARROCKS_DB', 'dbt')}_ods"
+                db_default = "ods"
             else:
                 db_default = source_name
 
@@ -62,7 +62,14 @@ def build_observable_source_assets(
             required_resource_keys={"starrocks"},
         )
         def _observable(context) -> dg.DataVersion:
-            db_name = os.getenv(db_env_var, db_default)
+            db_suffix = os.getenv(db_env_var, db_default)
+
+            if source_name == "ods":
+                base_db = os.getenv("STARROCKS_DB", "dbt")
+                prefix = f"{base_db}_"
+                db_name = db_suffix if db_suffix.startswith(prefix) else f"{base_db}_{db_suffix}"
+            else:
+                db_name = db_suffix
             value = context.resources.starrocks.query_scalar(
                 f"select max({_quoted_identifier(watermark_column)}) from {_quoted_identifier(db_name)}.{_quoted_identifier(table_name)}"
             )

@@ -87,7 +87,7 @@ export STARROCKS_PASSWORD=""
 export STARROCKS_DB={{cookiecutter.app_name}}
 
 # ODS is typically a separate database on the same cluster
-export STARROCKS_ODS_DB={{cookiecutter.app_name}}_dev_ods
+export STARROCKS_ODS_DB=ods
 
 # Optional: explicitly place DWD/DWS into separate databases
 export STARROCKS_DWD_DB={{cookiecutter.app_name}}_dwd

@@ -56,7 +56,7 @@ with params as (
   select
     cast(coalesce((select max(customer_id) from {{ ref('ods_test_customers') }}), {{ customers_bootstrap | int }}) as bigint) as max_customer_id
 ),
-rows as (
+order_rows as (
   select
     cast({{ start_id }} as bigint) + cast(generate_series as bigint) as order_id,
     cast(generate_series as bigint) as seq
@@ -69,7 +69,7 @@ enriched as (
     cast((r.seq * 31) % {{ days | int }} as int) as day_offset,
     cast((r.seq * 17) % {{ hour_weights | length }} as int) as hour_bucket,
     cast((r.seq * 29) % 100 as int) as amt_bucket
-  from rows r
+  from order_rows r
   cross join params p
 )
 
