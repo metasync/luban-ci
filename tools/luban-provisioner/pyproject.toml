@@ -1,6 +1,6 @@
 [project]
 name = "luban-provisioner"
-version = "0.2.25"
+version = "0.2.26"
 description = "Tooling for provisioning Luban CI/CD resources and project scaffolding"
 readme = "README.md"
 requires-python = ">=3.12"

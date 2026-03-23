@@ -172,6 +172,10 @@ dbt schema behavior:
 
 - This template overrides dbt's default schema concatenation so a model's configured `schema` is used verbatim (StarRocks databases), instead of `target_schema_custom_schema`.
 
+dbt macros:
+
+- `luban_ods_db()`, `luban_dwd_db()`, `luban_dws_db()` resolve layer database names from env vars for use in SQL resources (models/snapshots).
+
 ## Jobs and schedules included
 
 - `dbt_daily_facts_job`: materializes the daily facts + upstream dependencies
