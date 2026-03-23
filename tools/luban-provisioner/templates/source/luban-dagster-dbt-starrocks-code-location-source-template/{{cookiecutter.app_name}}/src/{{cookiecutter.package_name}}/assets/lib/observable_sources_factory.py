@@ -18,7 +18,7 @@ def build_observable_source_assets(
     source_db_default_map: dict[str, str] = None,
 ):
     source_db_env_var_map = source_db_env_var_map or {"ods": "STARROCKS_ODS_DB"}
-    source_db_default_map = source_db_default_map or {"ods": "ods"}
+    source_db_default_map = source_db_default_map or {}
 
     dbt_assets_seq = dbt_assets if isinstance(dbt_assets, list) else [dbt_assets]
 
@@ -49,7 +49,13 @@ def build_observable_source_assets(
         watermark_column = spec["watermark_column"]
 
         db_env_var = source_db_env_var_map.get(source_name, f"STARROCKS_{source_name.upper()}_DB")
-        db_default = source_db_default_map.get(source_name, source_name)
+        db_default = source_db_default_map.get(source_name)
+
+        if db_default is None:
+            if source_name == "ods":
+                db_default = f"{os.getenv('STARROCKS_DB', 'dbt')}_ods"
+            else:
+                db_default = source_name
 
         @dg.observable_source_asset(
             key=resolve_source_asset_key(source_name, table_name),
@@ -65,4 +71,3 @@ def build_observable_source_assets(
         return _observable
 
     return [make_asset(spec) for spec in source_specs]
-
