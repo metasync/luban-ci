@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.2.44`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.2.45`.
+- **Template**: Added `docker/docker-compose.yml` and Makefile targets to spin up local StarRocks.
 - **Template**: Fixed local startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_ON_LOAD`).
 - **Provisioner**: Added optional ODS test models to generate `ods.customers` and `ods.orders` on demand.
 - **Template**: Added `make ods-test-bootstrap` and `make ods-test-append` for bootstrap + incremental arrival simulation.

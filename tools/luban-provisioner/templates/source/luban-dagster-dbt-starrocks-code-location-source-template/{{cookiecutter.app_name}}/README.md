@@ -62,6 +62,14 @@ make setup
 
 Once complete, open the newly created `.env` file in the root of the project and fill in your local StarRocks connection details.
 
+If you don't have a local StarRocks instance, you can start one with docker:
+
+```bash
+make docker-up
+```
+
+Then keep `STARROCKS_HOST=localhost` and `STARROCKS_PORT=9030` in your `.env`.
+
 After filling out the `.env` file, you can test your database connectivity by running:
 
 ```bash

@@ -1,0 +1,86 @@
+name: "{{cookiecutter.app_name}}-starrocks"
+
+services:
+  # StarRocks Frontend
+  starrocks-fe:
+    image: starrocks/fe-ubuntu:latest
+    hostname: starrocks-fe
+    command:
+      - /bin/bash
+      - -c
+      - |
+        # Create log directory and empty log file to prevent tail errors
+        mkdir -p /opt/starrocks/fe/log
+        touch /opt/starrocks/fe/log/fe.log
+        # Start FE in background
+        /opt/starrocks/fe/bin/start_fe.sh --daemon
+        # Wait for log to be populated (robust tail)
+        sleep 5
+        tail -f /opt/starrocks/fe/log/fe.log
+    ports:
+      - "8030:8030" # HTTP
+      - "9020:9020" # RPC
+      - "9030:9030" # MySQL
+    environment:
+      - TZ=UTC
+      # Limit Java Heap for local development stability
+      - JAVA_OPTS=-Xmx4g -Xms512m
+    networks:
+      - starrocks-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8030/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # StarRocks Backend
+  starrocks-be:
+    image: starrocks/be-ubuntu:latest
+    hostname: starrocks-be
+    command:
+      - /bin/bash
+      - -c
+      - |
+        mkdir -p /opt/starrocks/be/storage
+        /opt/starrocks/be/bin/start_be.sh --daemon
+        sleep 10
+        tail -f /opt/starrocks/be/log/be.INFO
+    ports:
+      - "8040:8040" # HTTP
+      - "9040:9040" # BRPC
+      - "9050:9050" # Heartbeat
+      - "8060:8060" # Web
+    environment:
+      - TZ=UTC
+    networks:
+      - starrocks-net
+    depends_on:
+      - starrocks-fe
+
+  starrocks-init:
+    image: starrocks/fe-ubuntu:latest
+    depends_on:
+      starrocks-fe:
+        condition: service_healthy
+      starrocks-be:
+        condition: service_started
+    networks:
+      - starrocks-net
+    command: >
+      /bin/bash -c "
+      echo 'Waiting for StarRocks FE...';
+      for i in {1..30}; do
+        mysql -h starrocks-fe -P 9030 -u root -e 'SELECT 1' && break;
+        echo 'Waiting...';
+        sleep 2;
+      done;
+      echo 'Registering Backend...';
+      mysql -h starrocks-fe -P 9030 -u root -e \"ALTER SYSTEM ADD BACKEND 'starrocks-be:9050';\";
+      echo 'Backend registered.';
+      "
+
+networks:
+  starrocks-net:
+    driver: bridge
+
+# No volumes needed for now (StarRocks storage is ephemeral in container or mapped manually if needed)

@@ -1,5 +1,5 @@
 
-.PHONY: help setup install dev test check-db ods-test-bootstrap ods-test-append dbt-deps dbt-parse dbt-build dbt-run clean
+.PHONY: help setup install dev test check-db docker-up docker-down docker-ps docker-logs ods-test-bootstrap ods-test-append dbt-deps dbt-parse dbt-build dbt-run clean
 
 
 # Load local environment variables (if present) for dbt/Dagster commands.
@@ -53,6 +53,22 @@ test: ## Run unit tests and dbt tests
 check-db: ## Test connectivity to the StarRocks database
 	@echo "Testing StarRocks connectivity using dbt debug..."
 	uv run dbt debug --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR)
+
+
+docker-up: ## Start local StarRocks via docker compose
+	docker compose -f docker/docker-compose.yml up -d
+
+
+docker-down: ## Stop local StarRocks docker compose stack
+	docker compose -f docker/docker-compose.yml down
+
+
+docker-ps: ## Show docker compose stack status
+	docker compose -f docker/docker-compose.yml ps
+
+
+docker-logs: ## Tail StarRocks logs
+	docker compose -f docker/docker-compose.yml logs -f --tail=200
 
 
 ods-test-bootstrap: dbt-deps ## Bootstrap ODS test tables (customers/orders)
