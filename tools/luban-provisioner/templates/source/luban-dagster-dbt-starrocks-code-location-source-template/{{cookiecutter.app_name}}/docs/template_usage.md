@@ -55,7 +55,7 @@ make dev
 
 Notes:
 
-- On startup, Dagster may run dbt to prepare `manifest.json`. This is disabled by default. You can enable it by setting `LUBAN_DBT_PREPARE_IF_DEV=true`.
+- On startup, Dagster ensures `dbt_project/target/manifest.json` exists by running `dbt deps` + `dbt parse` if needed. Control this via `LUBAN_DBT_PREPARE_ON_LOAD` (defaults to `1`).
 - The default daily partitions start date is controlled by `DAGSTER_DAILY_PARTITIONS_START_DATE`.
 - The dbt models in this template expect to run in Dagster partitioned mode and will fail fast at execution time if required dbt vars are missing.
 - For partitioned runs, Dagster passes dbt variables `min_date`/`max_date` and `min_datetime`/`max_datetime` based on the partition time window.
