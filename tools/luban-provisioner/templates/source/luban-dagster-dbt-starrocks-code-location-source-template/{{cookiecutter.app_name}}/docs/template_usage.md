@@ -53,6 +53,8 @@ Run Dagster:
 make dev
 ```
 
+Note: `docker/docker-compose.yml` is provided only as an optional local development convenience to spin up a local StarRocks instance. It is not intended for production use.
+
 Notes:
 
 - On startup, Dagster ensures `dbt_project/target/manifest.json` exists by running `dbt deps` + `dbt parse` if needed. Control this via `LUBAN_DBT_PREPARE_ON_LOAD` (defaults to `1`).

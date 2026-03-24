@@ -55,19 +55,19 @@ check-db: ## Test connectivity to the StarRocks database
 	uv run dbt debug --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR)
 
 
-docker-up: ## Start local StarRocks via docker compose
+docker-up: ## Start local StarRocks via docker compose (local dev only)
 	docker compose -f docker/docker-compose.yml up -d
 
 
-docker-down: ## Stop local StarRocks docker compose stack
+docker-down: ## Stop local StarRocks docker compose stack (local dev only)
 	docker compose -f docker/docker-compose.yml down
 
 
-docker-ps: ## Show docker compose stack status
+docker-ps: ## Show docker compose stack status (local dev only)
 	docker compose -f docker/docker-compose.yml ps
 
 
-docker-logs: ## Tail StarRocks logs
+docker-logs: ## Tail StarRocks logs (local dev only)
 	docker compose -f docker/docker-compose.yml logs -f --tail=200
 
 
