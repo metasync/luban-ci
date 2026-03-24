@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.0.2] - 2026-03-24
+
 ### Added
 
 - **Provisioner**: Added `luban-dagster-dbt-starrocks-code-location` source template for data transformation teams using dbt + StarRocks + Dagster.
