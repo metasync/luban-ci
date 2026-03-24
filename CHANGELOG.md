@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.2.47`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.2.49`.
 - **Docs**: Removed remaining `LUBAN_DBT_PREPARE_IF_DEV` mention in `template_usage.md`.
 - **Template**: Added `docker/docker-compose.yml` and Makefile targets to spin up local StarRocks.
 - **Template**: Fixed local startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_ON_LOAD`).

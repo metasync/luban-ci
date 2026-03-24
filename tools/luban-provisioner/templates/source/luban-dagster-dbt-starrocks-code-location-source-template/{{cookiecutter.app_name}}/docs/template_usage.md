@@ -172,7 +172,7 @@ dbt runtime stability/tuning:
 
 dbt manifest generation:
 
-- `LUBAN_DBT_PREPARE_ON_LOAD` (default `1`): if `target/manifest.json` is missing, the code location will run `dbt deps` and `dbt parse` on import to generate it.
+- `LUBAN_DBT_PREPARE_ON_LOAD` (default `1`): if `dbt_project/target/manifest.json` is missing, the code location will run `dbt deps` and `dbt parse` on import to generate it.
 
 ### StarRocks database mapping
 
