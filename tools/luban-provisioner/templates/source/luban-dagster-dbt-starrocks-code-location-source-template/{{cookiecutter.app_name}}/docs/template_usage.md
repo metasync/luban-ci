@@ -230,6 +230,12 @@ For hourly schedules, use `hourly_at(..., lookback_hours=N)` to run the current 
 
 To enable hourly partitioned jobs, set `DAGSTER_HOURLY_PARTITIONS_START_DATE` (default: `2026-01-01-00:00`).
 
+Partition mapping rules:
+
+- A dbt model tagged `daily` maps to Dagster daily partitions.
+- A dbt model tagged `hourly` maps to Dagster hourly partitions.
+- You can also explicitly list model names in `src/{{cookiecutter.package_name}}/assets/automation_config.py` via `DAGSTER_DAILY_PARTITIONED_MODELS` / `DAGSTER_HOURLY_PARTITIONED_MODELS`.
+
 If you see `DagsterDbtManifestNotFoundError` during local development, ensure `LUBAN_DBT_PREPARE_ON_LOAD=1` (default in `.env.example`) so the code location prepares `dbt_project/target/manifest.json` automatically.
 
 ### ODS test data (optional)

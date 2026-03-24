@@ -2,6 +2,8 @@
 
 Luban CI provides a set of tools to facilitate development and testing of the CI pipelines and event triggers.
 
+For local template rendering and running a generated project (Dagster/dbt), see `docs/guides/local-template-rendering.md`.
+
 ## User Access Management
 
 Luban CI automatically configures RBAC for your project namespaces to enable OIDC group access to the Argo Workflows UI via ServiceAccount mapping.
