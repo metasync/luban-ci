@@ -5,13 +5,22 @@ from typing import Any, Mapping, Optional
 import dagster as dg
 from dagster_dbt import DagsterDbtTranslator
 
-from ..automation_config import AUTOMATION_OBSERVABLE_SOURCES, DAGSTER_DAILY_PARTITIONED_MODELS
+from ..automation_config import (
+    AUTOMATION_OBSERVABLE_SOURCES,
+    DAGSTER_DAILY_PARTITIONED_MODELS,
+    DAGSTER_HOURLY_PARTITIONED_MODELS,
+)
 
 
 class LubanDagsterDbtTranslator(DagsterDbtTranslator):
-    def __init__(self, daily_partitions_def: dg.PartitionsDefinition):
+    def __init__(
+        self,
+        daily_partitions_def: dg.PartitionsDefinition,
+        hourly_partitions_def: dg.PartitionsDefinition,
+    ):
         super().__init__()
         self.daily_partitions_def = daily_partitions_def
+        self.hourly_partitions_def = hourly_partitions_def
 
     def get_automation_condition(self, dbt_resource_props):
         resource_type = dbt_resource_props.get("resource_type")
@@ -51,7 +60,8 @@ class LubanDagsterDbtTranslator(DagsterDbtTranslator):
 
     def get_partitions_def(self, dbt_resource_props: Mapping[str, Any]) -> Optional[dg.PartitionsDefinition]:
         tags = set(dbt_resource_props.get("tags", []))
+        if "hourly" in tags or dbt_resource_props.get("name") in set(DAGSTER_HOURLY_PARTITIONED_MODELS):
+            return self.hourly_partitions_def
         if "daily" in tags or dbt_resource_props.get("name") in set(DAGSTER_DAILY_PARTITIONED_MODELS):
             return self.daily_partitions_def
         return None
-

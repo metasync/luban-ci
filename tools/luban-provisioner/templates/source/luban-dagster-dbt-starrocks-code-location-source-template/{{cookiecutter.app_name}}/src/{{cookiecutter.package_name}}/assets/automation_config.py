@@ -17,3 +17,6 @@ DAGSTER_DAILY_PARTITIONED_MODELS = [
     "orders",
 ]
 
+# List of dbt model names that should be mapped to the Dagster HourlyPartitionsDefinition.
+# Models tagged with 'hourly' in dbt will automatically be included and do not need to be listed here.
+DAGSTER_HOURLY_PARTITIONED_MODELS = []
