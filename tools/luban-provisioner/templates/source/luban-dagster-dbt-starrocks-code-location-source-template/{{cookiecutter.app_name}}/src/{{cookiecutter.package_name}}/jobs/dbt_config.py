@@ -2,7 +2,6 @@ from .lib.dbt_job_presets import dbt_cli_build_job, key_prefix_job, models_job
 
 
 DBT_JOB_SPECS = [
-    key_prefix_job(name="dbt_assets_job", prefix="dbt"),
     models_job(
         name="dbt_daily_facts_job",
         models=["fact_orders_daily", "fact_customer_orders_daily"],

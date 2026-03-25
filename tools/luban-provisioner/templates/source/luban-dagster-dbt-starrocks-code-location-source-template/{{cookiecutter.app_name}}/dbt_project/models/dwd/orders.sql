@@ -3,7 +3,8 @@
         materialized='incremental',
         incremental_strategy='default',
         table_type='PRIMARY',
-        keys=['order_id']
+        keys=['order_id'],
+        tags=['daily']
     )
 }}
 

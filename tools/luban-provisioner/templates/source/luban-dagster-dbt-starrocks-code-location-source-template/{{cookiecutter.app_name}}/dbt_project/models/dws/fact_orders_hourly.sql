@@ -1,6 +1,5 @@
 {{
   config(
-    tags=["hourly"],
     materialized="incremental",
     unique_key="order_hour",
   )
@@ -12,8 +11,9 @@ select
   sum(order_amount) as total_amount
 from {{ ref('orders') }}
 
-{% set w = luban_partition_window_datetime() %}
-where order_datetime >= '{{ w["min_datetime"] }}'
-  and order_datetime < '{{ w["max_datetime"] }}'
+{% if is_incremental() %}
+  -- Incremental processing: only process new/updated data
+  where order_datetime >= (select max(order_hour) from {{ this }})
+{% endif %}
 
 group by 1
