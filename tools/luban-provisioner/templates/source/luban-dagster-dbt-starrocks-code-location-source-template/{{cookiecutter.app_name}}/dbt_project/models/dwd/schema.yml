@@ -3,6 +3,10 @@ version: 2
 models:
   - name: customers
     description: "DWD customer entity derived from ODS customer records. One row per customer."
+    tests:
+      - row_count_greater_than:
+          arguments:
+            min_value: 0
     columns:
       - name: customer_id
         description: "Customer unique identifier from the source system."
@@ -16,6 +20,10 @@ models:
 
   - name: orders
     description: "DWD order entity derived from ODS order records. One row per order."
+    tests:
+      - row_count_greater_than:
+          arguments:
+            min_value: 0
     columns:
       - name: order_id
         description: "Order unique identifier from the source system."

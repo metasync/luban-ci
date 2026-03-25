@@ -15,6 +15,8 @@ hourly_partitions_def = HourlyPartitionsDefinition(start_date=hourly_partitions_
 
 
 def _get_partitions_def(partitions: str):
+    if partitions is None or partitions in {"none", "unpartitioned", ""}:
+        return None
     if partitions == "daily":
         return daily_partitions_def
     if partitions == "hourly":
@@ -87,7 +89,7 @@ def build_dbt_asset_jobs(job_specs):
         name = job_spec["name"]
         if job_type == "asset":
             selection = _build_selection(job_spec["selection"])
-            partitions = job_spec.get("partitions", "daily")
+            partitions = job_spec.get("partitions")
             partitions_def = _get_partitions_def(partitions)
             jobs_by_name[name] = define_asset_job(
                 name=name,
