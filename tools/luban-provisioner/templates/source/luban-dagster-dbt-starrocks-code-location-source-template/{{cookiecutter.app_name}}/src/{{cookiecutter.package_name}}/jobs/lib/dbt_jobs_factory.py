@@ -2,7 +2,7 @@ import json
 import os
 
 import dagster as dg
-from dagster import AssetKey, AssetSelection, DailyPartitionsDefinition, HourlyPartitionsDefinition, define_asset_job
+from dagster import AssetKey, AssetSelection, DailyPartitionsDefinition, define_asset_job
 
 from ...assets.lib.partition_vars import _get_dbt_vars_for_context
 from ...resources.dbt import get_dbt_project_dir

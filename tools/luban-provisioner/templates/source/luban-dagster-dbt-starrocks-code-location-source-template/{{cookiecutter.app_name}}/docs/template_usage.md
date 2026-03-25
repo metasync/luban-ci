@@ -228,7 +228,7 @@ In Dagster, schedules can emit multiple partition runs in one schedule tick usin
 
 For hourly schedules, use `hourly_at(..., lookback_hours=N)` to run the current hour and prior hours.
 
-To enable hourly partitioned jobs, set `DAGSTER_HOURLY_PARTITIONS_START_DATE` (default: `2026-01-01-00:00`).
+This template currently ships with daily partitions only.
 
 If you see `DagsterDbtManifestNotFoundError` during local development, ensure `LUBAN_DBT_PREPARE_ON_LOAD=1` (default in `.env.example`) so the code location prepares `dbt_project/target/manifest.json` automatically.
 
@@ -268,9 +268,6 @@ Schedules:
 
 - `daily_facts_schedule` targets `dbt_daily_customer_facts_job` by default.
 - `orders_daily_schedule` targets `dbt_orders_daily_job` by default and runs with `lookback_days=1`.
-- `orders_hourly_schedule` targets `dbt_orders_hourly_job` (hourly partitions) and is disabled by default.
-
-Enable intraday refresh by setting `enabled=True` for `orders_hourly_schedule` in `src/{{cookiecutter.package_name}}/schedules/dbt_config.py`.
 
 #### Example: add a new dbt job
 
@@ -282,16 +279,11 @@ from .lib.dbt_job_presets import dbt_cli_build_job, key_prefix_job, models_job
 
 DBT_JOB_SPECS = [
     key_prefix_job(name="dbt_assets_job", prefix="dbt"),
-    models_job(
-        name="dbt_daily_facts_job",
-        models=["fact_orders_daily", "fact_customer_orders_daily"],
-        include_upstream=True,
-    ),
     dbt_cli_build_job(
-        name="dbt_orders_hourly_job",
-        models=["fact_orders_hourly"],
-        include_upstream=True,
-        partitions="hourly",
+        name="dbt_daily_customer_facts_job",
+        models=["fact_customer_orders_daily"],
+        include_upstream=False,
+        partitions="daily",
     ),
 ]
 ```
@@ -303,7 +295,7 @@ Note: `prefix="dbt"` targets assets whose Dagster asset key starts with `dbt/...
 Edit `src/{{cookiecutter.package_name}}/schedules/dbt_config.py`:
 
 ```python
-from .lib.dbt_schedule_presets import daily_at, hourly_at
+from .lib.dbt_schedule_presets import daily_at
 
 
 DBT_SCHEDULE_SPECS = [
@@ -315,10 +307,11 @@ DBT_SCHEDULE_SPECS = [
         minute=0,
         enabled=True,
     ),
-    hourly_at(
-        name="hourly_orders_schedule",
-        job_name="dbt_orders_hourly_job",
-        lookback_hours=0,
+    daily_at(
+        name="orders_daily_schedule",
+        job_name="dbt_orders_daily_job",
+        lookback_days=1,
+        hour=1,
         minute=0,
         enabled=True,
     ),

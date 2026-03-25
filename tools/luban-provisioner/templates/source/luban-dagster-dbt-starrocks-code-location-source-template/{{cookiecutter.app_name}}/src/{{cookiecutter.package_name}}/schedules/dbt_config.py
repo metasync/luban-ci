@@ -1,4 +1,4 @@
-from .lib.dbt_schedule_presets import daily_at, hourly_at
+from .lib.dbt_schedule_presets import daily_at
 
 
 DBT_SCHEDULE_SPECS = [
