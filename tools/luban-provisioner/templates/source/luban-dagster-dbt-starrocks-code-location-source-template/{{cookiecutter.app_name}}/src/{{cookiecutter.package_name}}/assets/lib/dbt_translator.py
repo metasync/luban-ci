@@ -9,10 +9,9 @@ from ..automation_config import AUTOMATION_OBSERVABLE_SOURCES
 
 
 class LubanDagsterDbtTranslator(DagsterDbtTranslator):
-    def __init__(self, daily_partitions_def: dg.PartitionsDefinition, hourly_partitions_def: dg.PartitionsDefinition):
+    def __init__(self, daily_partitions_def: dg.PartitionsDefinition):
         super().__init__()
         self.daily_partitions_def = daily_partitions_def
-        self.hourly_partitions_def = hourly_partitions_def
 
     def get_automation_condition(self, dbt_resource_props):
         resource_type = dbt_resource_props.get("resource_type")
@@ -22,9 +21,6 @@ class LubanDagsterDbtTranslator(DagsterDbtTranslator):
         fqn = dbt_resource_props.get("fqn", [])
         name = dbt_resource_props.get("name")
         tags = set(dbt_resource_props.get("tags", []))
-
-        if "daily" in tags or "hourly" in tags:
-            return None
 
         automation_tables = {spec["table"] for spec in AUTOMATION_OBSERVABLE_SOURCES}
 
@@ -56,10 +52,6 @@ class LubanDagsterDbtTranslator(DagsterDbtTranslator):
     def get_partitions_def(self, dbt_resource_props: Mapping[str, Any]) -> Optional[dg.PartitionsDefinition]:
         tags = set(dbt_resource_props.get("tags", []))
         
-        # Check for hourly partition definition (tags only)
-        if "hourly" in tags:
-            return self.hourly_partitions_def
-            
         # Check for daily partition definition (tags only)
         if "daily" in tags:
             return self.daily_partitions_def

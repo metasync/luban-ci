@@ -1,6 +1,5 @@
 {{
   config(
-    tags=["hourly"],
     materialized="incremental",
     unique_key="order_hour",
   )

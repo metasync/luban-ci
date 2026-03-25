@@ -10,17 +10,12 @@ from ...assets.lib.partition_vars import _get_dbt_vars_for_context
 daily_partitions_start_date = os.getenv("DAGSTER_DAILY_PARTITIONS_START_DATE", "2026-01-01")
 daily_partitions_def = DailyPartitionsDefinition(start_date=daily_partitions_start_date)
 
-hourly_partitions_start_date = os.getenv("DAGSTER_HOURLY_PARTITIONS_START_DATE", "2026-01-01-00:00")
-hourly_partitions_def = HourlyPartitionsDefinition(start_date=hourly_partitions_start_date)
-
 
 def _get_partitions_def(partitions: str):
     if partitions is None or partitions in {"none", "unpartitioned", ""}:
         return None
     if partitions == "daily":
         return daily_partitions_def
-    if partitions == "hourly":
-        return hourly_partitions_def
     raise ValueError(f"Unsupported partitions value: {partitions}")
 
 

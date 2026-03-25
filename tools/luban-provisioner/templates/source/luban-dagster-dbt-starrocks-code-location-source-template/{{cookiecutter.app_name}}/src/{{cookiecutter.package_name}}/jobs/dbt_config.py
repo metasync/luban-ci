@@ -19,10 +19,4 @@ DBT_JOB_SPECS = [
         models=["fact_orders_daily"],
         include_upstream=False,
     ),
-    dbt_cli_build_job(
-        name="dbt_orders_hourly_job",
-        models=["fact_orders_hourly"],
-        include_upstream=False,
-        partitions="hourly",
-    ),
 ]
