@@ -5,6 +5,7 @@ import dagster as dg
 from dagster import AssetKey, AssetSelection, DailyPartitionsDefinition, HourlyPartitionsDefinition, define_asset_job
 
 from ...assets.lib.partition_vars import _get_dbt_vars_for_context
+from ...resources.dbt import get_dbt_project_dir
 
 
 daily_partitions_start_date = os.getenv("DAGSTER_DAILY_PARTITIONS_START_DATE", "2026-01-01")
@@ -55,7 +56,11 @@ def _build_dbt_cli_job(job_spec):
         args = [command, "--select", select]
         if combined_vars:
             args += ["--vars", json.dumps(combined_vars)]
-        yield from context.resources.dbt.cli(args, context=context).stream()
+        target_path = get_dbt_project_dir() / "target"
+        invocation = context.resources.dbt.cli(args, context=context, target_path=target_path)
+        for event in invocation.stream_raw_events():
+            context.log.info(str(event))
+        invocation.wait()
 
     @dg.job(name=job_name, partitions_def=partitions_def)
     def _job():
