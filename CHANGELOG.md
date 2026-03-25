@@ -41,7 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Provisioner**: Updated GitOps template routing to use explicit `elif` chain for `dagster-platform` / `dagster-code-location` variants, replacing legacy fallback heuristics.
 - **Provisioner**: Updated `profiles.yml` to use `{{cookiecutter.package_name}}` instead of `{{cookiecutter.app_name}}` for dbt project name and profile, ensuring Python-identifier-safe names.
 - **Provisioner**: Updated `profiles.yml` to use `env_var('STARROCKS_*', '<default>')` defaults, making the buildpack adapter-agnostic — no `STARROCKS_*` env vars need to be set during build.
-- **Provisioner**: Refined the Dagster+dbt+StarRocks code location source template to standardize on orchestration-level lookback, add first-class hourly partitions, and simplify schedule/job configuration.
+- **Provisioner**: Refined the Dagster+dbt+StarRocks code location source template to standardize on orchestration-level lookback and simplify schedule/job configuration.
+- **Docs**: Updated the Dagster+dbt+StarRocks template usage docs to remove hourly partition references.
+- **Template**: Removed hourly partition configuration from `.env.example` to match the shipped daily-only partition setup.
+- **Template**: Removed hourly partition support for now due to Dagster auto-materialize subset limitations with mixed partition definitions.
 - **Workflows**: Improved `luban-ci-kpack-workflow-template` to wait for the correct `BUILD_REV` match before proceeding, fixing a race condition on fast-rebuilding images.
 
 ### Fixed
@@ -53,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Provisioner**: Fixed `relationships` generic test in `sources.yml` to use dbt v1.11 `arguments:` nesting.
 - **Docs**: Removed stale `source_template_type` parameter reference from `dagster-integration.md`.
 - **Config**: Removed duplicate commented `webhook_url` entry in `luban-config.yaml`.
+- **Template**: Fixed `dbt_cli_build_job` execution failing with `KeyError: 'nodes'` by switching CLI jobs to stream raw dbt events and wait for completion (no manifest-based asset event mapping).
 
 ### Docs
 
