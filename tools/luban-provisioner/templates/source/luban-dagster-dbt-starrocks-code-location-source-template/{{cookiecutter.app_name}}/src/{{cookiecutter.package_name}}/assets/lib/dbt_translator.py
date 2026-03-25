@@ -5,7 +5,7 @@ from typing import Any, Mapping, Optional
 import dagster as dg
 from dagster_dbt import DagsterDbtTranslator
 
-from ..automation_config import AUTOMATION_OBSERVABLE_SOURCES, DAGSTER_DAILY_PARTITIONED_MODELS
+from ..automation_config import AUTOMATION_OBSERVABLE_SOURCES
 
 
 class LubanDagsterDbtTranslator(DagsterDbtTranslator):
@@ -51,7 +51,10 @@ class LubanDagsterDbtTranslator(DagsterDbtTranslator):
 
     def get_partitions_def(self, dbt_resource_props: Mapping[str, Any]) -> Optional[dg.PartitionsDefinition]:
         tags = set(dbt_resource_props.get("tags", []))
-        if "daily" in tags or dbt_resource_props.get("name") in set(DAGSTER_DAILY_PARTITIONED_MODELS):
+        
+        # Check for daily partition definition (tags only)
+        if "daily" in tags:
             return self.daily_partitions_def
+            
         return None
 

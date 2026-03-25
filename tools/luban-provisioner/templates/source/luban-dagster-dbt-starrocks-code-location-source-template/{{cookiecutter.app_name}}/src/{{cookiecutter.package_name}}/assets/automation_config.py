@@ -11,9 +11,6 @@ AUTOMATION_OBSERVABLE_SOURCES = [
     },
 ]
 
-# List of dbt model names that should be mapped to the Dagster DailyPartitionsDefinition.
-# Models tagged with 'daily' in dbt will automatically be included and do not need to be listed here.
-DAGSTER_DAILY_PARTITIONED_MODELS = [
-    "orders",
-]
+# Tag-based daily partition support
+# Models tagged with 'daily' in dbt will automatically be mapped to DailyPartitionsDefinition
 
