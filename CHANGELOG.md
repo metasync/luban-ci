@@ -7,17 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [luban-provisioner-v0.3.0] - 2026-03-26
+
 ### Added
 
 - **Provisioner**: Added `luban-dagster-dbt-starrocks-code-location` source template for data transformation teams using dbt + StarRocks + Dagster.
 - **Provisioner**: Added corresponding GitOps and workflow templates (`luban-dagster-dbt-starrocks-code-location-setup-template`).
 - **Buildpack**: Added `dbt manifest.json` pre-generation during the build phase for Dagster + dbt code locations. The buildpack now runs `dbt deps` (if packages detected) and `dbt parse` to produce a pre-baked manifest, eliminating `DagsterDbtManifestNotFoundError` at startup.
-- **Docs**: Added `dagster-dbt-code-location-template.md` documenting the dbt/Dagster boundary, runtime contract, and conventions.
+- **Docs**: Added `docs/dagster/concepts/dagster-dbt-code-location-template.md` documenting the dbt/Dagster boundary, runtime contract, and conventions.
 
 ### Changed
 
 - **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.2.47`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.0`.
 - **Docs**: Removed remaining `LUBAN_DBT_PREPARE_IF_DEV` mention in `template_usage.md`.
 - **Template**: Added `docker/docker-compose.yml` and Makefile targets to spin up local StarRocks.
 - **Template**: Fixed local startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_ON_LOAD`).
@@ -61,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
-- Documented dbt/Dagster boundary, repository layout, runtime contract, local development workflow, layer conventions, and extension patterns in `dagster-dbt-code-location-template.md`.
+- Documented dbt/Dagster boundary, repository layout, runtime contract, local development workflow, layer conventions, and extension patterns in `docs/dagster/concepts/dagster-dbt-code-location-template.md`.
 
 ## [v1.0.1] - 2026-03-16
 
