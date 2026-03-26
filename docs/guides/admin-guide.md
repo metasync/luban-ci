@@ -34,6 +34,13 @@ This guide covers the administration and configuration of the Luban CI platform.
     - `platform_port`, `code_location_port`
     - `dagster_version`, `postgres_version`
 
+## Dagster + dbt Partitioning Notes
+
+- Daily partitions are the default and recommended granularity for data warehouse workloads.
+- Partitioning is primarily for query pruning and retention management (for example, dropping data by day).
+- Hourly aggregation is a common modeling pattern, but the aggregated tables are usually much smaller than the raw transactional tables and often do not need hourly partitioning.
+- Hourly partitions can be useful for high-frequency, large-volume access patterns, but they add orchestration complexity and are not enabled in the current Dagster+dbt template.
+
 ### Registry Configuration
 - Default `registry_server` and `image_pull_secret` are managed in the `luban-config` ConfigMap.
 - Override per run by passing parameters to the workflow or environment variables used by the Makefile.

@@ -32,6 +32,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+      start_period: 10s
 
   # StarRocks Backend
   starrocks-be:
@@ -52,6 +53,12 @@ services:
       - "8060:8060" # Web
     environment:
       - TZ=UTC
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8040/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     networks:
       - starrocks-net
     depends_on:
@@ -63,9 +70,10 @@ services:
       starrocks-fe:
         condition: service_healthy
       starrocks-be:
-        condition: service_started
+        condition: service_healthy
     networks:
       - starrocks-net
+    restart: "no"
     command: >
       /bin/bash -c "
       echo 'Waiting for StarRocks FE...';
