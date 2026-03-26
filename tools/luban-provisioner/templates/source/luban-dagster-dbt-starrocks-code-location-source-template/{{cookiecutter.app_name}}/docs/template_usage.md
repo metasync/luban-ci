@@ -2,6 +2,8 @@
 
 This repository is a Dagster code location that orchestrates a dbt project on StarRocks.
 
+For local development (running StarRocks + Dagster + dbt together), see `docs/local_development.md`.
+
 The template includes:
 
 - dbt models (`dbt_project/`) that build `dwd/*` and `dws/*`

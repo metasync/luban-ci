@@ -1,3 +1,5 @@
+import os
+import re
 import requests
 import click
 import time
@@ -8,11 +10,84 @@ class AzureProvider(GitProvider):
         super().__init__(token, organization, project, git_server)
         self.base_url = f"https://{git_server}/{organization}"
         self.auth = ('', self.token)
+        versions = os.getenv("AZURE_DEVOPS_API_VERSIONS", "").strip()
+        if versions:
+            self.api_versions = [v.strip() for v in versions.split(",") if v.strip()]
+        else:
+            self.api_versions = ["7.1", "7.0", "6.1", "6.1-preview", "6.0", "5.1"]
+
+    def _is_unsupported_api_version(self, resp):
+        if resp is None:
+            return False
+        if resp.status_code not in {400, 404}:
+            return False
+        body = (resp.text or "").lower()
+        if "api-version" not in body:
+            return False
+        return any(
+            s in body
+            for s in [
+                "not supported",
+                "unsupported",
+                "invalid",
+                "unknown",
+                "out of range",
+                "latest rest api version",
+            ]
+        )
+
+    def _is_preview_required(self, resp):
+        if resp is None:
+            return False
+        if resp.status_code not in {400, 404}:
+            return False
+        body = (resp.text or "").lower()
+        return "-preview" in body and "api-version" in body and "must be supplied" in body
+
+    def _extract_suggested_preview_version(self, resp):
+        if resp is None:
+            return None
+        text = resp.text or ""
+        match = re.search(r'"(\d+(?:\.\d+)*-preview)"', text)
+        if match:
+            return match.group(1)
+        return None
+
+    def _apply_api_version(self, url, api_version):
+        if "api-version=" in url:
+            return re.sub(r"api-version=[^&]+", f"api-version={api_version}", url)
+        sep = "&" if "?" in url else "?"
+        return f"{url}{sep}api-version={api_version}"
+
+    def _request(self, method, url, **kwargs):
+        last_resp = None
+        tried = set()
+        for version in self.api_versions:
+            for candidate in [version]:
+                if candidate in tried:
+                    continue
+                tried.add(candidate)
+                versioned_url = self._apply_api_version(url, candidate)
+                resp = requests.request(method, versioned_url, auth=self.auth, **kwargs)
+                last_resp = resp
+                if self._is_preview_required(resp) and "-preview" not in candidate:
+                    suggested = self._extract_suggested_preview_version(resp)
+                    preview_version = suggested or f"{candidate}-preview"
+                    if preview_version not in tried:
+                        tried.add(preview_version)
+                        preview_url = self._apply_api_version(url, preview_version)
+                        preview_resp = requests.request(method, preview_url, auth=self.auth, **kwargs)
+                        last_resp = preview_resp
+                        if not self._is_unsupported_api_version(preview_resp) and not self._is_preview_required(preview_resp):
+                            return preview_resp
+                if not self._is_unsupported_api_version(resp) and not self._is_preview_required(resp):
+                    return resp
+        return last_resp
 
     def _get_project_id(self):
         """Get the ID of the Azure DevOps Project."""
         url = f"{self.base_url}/_apis/projects/{self.project}?api-version=7.1"
-        resp = requests.get(url, auth=self.auth)
+        resp = self._request("GET", url)
         if resp.status_code == 200:
             return resp.json().get('id')
         elif resp.status_code == 404:
@@ -29,7 +104,7 @@ class AzureProvider(GitProvider):
         url = f"{self.base_url}/{self.project}/_apis/git/repositories?api-version=7.1"
         start = time.time()
         while True:
-            resp = requests.get(url, auth=self.auth)
+            resp = self._request("GET", url)
             if resp.status_code == 200:
                 return True
             if self._is_git_dataspace_not_ready(resp):
@@ -46,9 +121,6 @@ class AzureProvider(GitProvider):
                 err=True,
             )
             return False
-        else:
-            click.echo(f"Failed to check project existence. Status: {resp.status_code}, URL: {url}, Body: {resp.text}", err=True)
-            return None
 
     def _get_repo_id(self, repo_identifier):
         """Helper to resolve repo ID from name or dict."""
@@ -58,7 +130,7 @@ class AzureProvider(GitProvider):
         # If string, assume it's a name or ID. Try to fetch it.
         # GET /_apis/git/repositories/{repositoryId}
         url = f"{self.base_url}/{self.project}/_apis/git/repositories/{repo_identifier}?api-version=7.1"
-        resp = requests.get(url, auth=self.auth)
+        resp = self._request("GET", url)
         if resp.status_code == 200:
             return resp.json().get('id')
         return None
@@ -66,7 +138,7 @@ class AzureProvider(GitProvider):
     def _get_policy_type_id(self, display_name):
         """Get policy type ID by display name."""
         url = f"{self.base_url}/{self.project}/_apis/policy/types?api-version=7.1"
-        resp = requests.get(url, auth=self.auth)
+        resp = self._request("GET", url)
         if resp.status_code == 200:
             types = resp.json().get("value", [])
             for t in types:
@@ -78,7 +150,7 @@ class AzureProvider(GitProvider):
         """Check if a repository exists."""
         # Azure DevOps API: GET /_apis/git/repositories/{repositoryId}
         url = f"{self.base_url}/{self.project}/_apis/git/repositories/{repo_name}?api-version=7.1"
-        resp = requests.get(url, auth=self.auth)
+        resp = self._request("GET", url)
         return resp.status_code == 200
 
     def create_repo(self, name, description=None):
@@ -99,7 +171,7 @@ class AzureProvider(GitProvider):
         
         click.echo(f"Creating repo '{name}' in project '{self.project}'...")
         for attempt in range(1, 11):
-            resp = requests.post(url, json=payload, auth=self.auth)
+            resp = self._request("POST", url, json=payload)
             if resp.status_code == 201:
                 return resp.json()
 
@@ -149,7 +221,7 @@ class AzureProvider(GitProvider):
         
         # Check existing hooks
         list_url = f"{self.base_url}/_apis/hooks/subscriptions?publisherId=tfs&eventType=git.push&api-version=7.1"
-        list_resp = requests.get(list_url, auth=self.auth)
+        list_resp = self._request("GET", list_url)
         if list_resp.status_code == 200:
             subs = list_resp.json().get("value", [])
             for sub in subs:
@@ -159,7 +231,7 @@ class AzureProvider(GitProvider):
                     return sub
 
         click.echo(f"Creating webhook for repo {repo_id}...")
-        resp = requests.post(url, json=payload, auth=self.auth)
+        resp = self._request("POST", url, json=payload)
         
         if resp.status_code == 200: 
             return resp.json()
@@ -180,7 +252,7 @@ class AzureProvider(GitProvider):
         }
         
         click.echo(f"Setting default branch to '{branch_name}'...")
-        resp = requests.patch(url, json=payload, auth=self.auth)
+        resp = self._request("PATCH", url, json=payload)
         
         if resp.status_code != 200:
             click.echo(f"Failed to set default branch. Status: {resp.status_code}, Body: {resp.text}", err=True)
@@ -221,7 +293,7 @@ class AzureProvider(GitProvider):
         }
         
         click.echo(f"Enabling branch protection (Min Reviewers={min_reviewers}) for '{branch_name}'...")
-        resp = requests.post(url, json=payload, auth=self.auth)
+        resp = self._request("POST", url, json=payload)
         
         if resp.status_code in [200, 201]:
             return True
@@ -235,7 +307,7 @@ class AzureProvider(GitProvider):
         """
         # Check if project exists
         check_url = f"{self.base_url}/_apis/projects/{project_name}?api-version=7.1"
-        check_resp = requests.get(check_url, auth=self.auth)
+        check_resp = self._request("GET", check_url)
         
         if check_resp.status_code == 200:
             click.echo(f"Project '{project_name}' already exists.")
@@ -261,7 +333,7 @@ class AzureProvider(GitProvider):
         
         # Try to find Agile template
         process_url = f"{self.base_url}/_apis/process/processes?api-version=7.1"
-        process_resp = requests.get(process_url, auth=self.auth)
+        process_resp = self._request("GET", process_url)
         if process_resp.status_code == 200:
             processes = process_resp.json().get("value", [])
             agile_template = next((p for p in processes if p["name"] == "Agile"), None)
@@ -271,7 +343,7 @@ class AzureProvider(GitProvider):
                 payload["capabilities"]["processTemplate"]["templateTypeId"] = processes[0]["id"]
         
         click.echo(f"Creating Azure DevOps Project '{project_name}'...")
-        resp = requests.post(url, json=payload, auth=self.auth)
+        resp = self._request("POST", url, json=payload)
         
         if resp.status_code == 202:
             operation_ref = resp.json()
@@ -307,7 +379,7 @@ class AzureProvider(GitProvider):
         }
         
         click.echo(f"Creating PR '{title}' in {self.project} (Repo ID: {repo_id})...")
-        resp = requests.post(url, json=payload, auth=self.auth)
+        resp = self._request("POST", url, json=payload)
         
         if resp.status_code == 201:
             pr = resp.json()
