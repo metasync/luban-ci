@@ -21,15 +21,16 @@ def dagster():
 @click.option('--location-port', required=True, default=3000, help='Port of the Code Location Service')
 @click.option('--git-organization', required=True, help='Git Organization')
 @click.option('--git-provider', required=True, help='Git Provider')
+@click.option('--git-username', envvar='GIT_USERNAME', default='git', help='Git Username')
 @click.option('--git-token', envvar='GIT_TOKEN', required=True, help='Git Token')
 @click.option('--git-server', envvar='GIT_SERVER', required=True, help='Git Server')
-def register_location(platform_project, platform_app, environment, location_name, location_host, location_port, git_organization, git_provider, git_token, git_server):
+def register_location(platform_project, platform_app, environment, location_name, location_host, location_port, git_organization, git_provider, git_username, git_token, git_server):
     """
     Register a Code Location in the Dagster Platform's workspace.yaml.
     """
     click.echo(f"Registering code location '{location_name}' in platform '{platform_app}' ({environment})...")
 
-    configure_git_https_auth(git_token, git_server)
+    configure_git_https_auth(git_username, git_token, git_server)
     configure_git_identity()
 
     # 2. Clone Platform GitOps Repo

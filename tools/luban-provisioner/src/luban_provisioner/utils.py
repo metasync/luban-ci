@@ -3,16 +3,35 @@ import click
 import os
 import traceback
 import random
+from urllib.parse import urlsplit, urlunsplit
 from ruamel.yaml import YAML
 import json
 from cookiecutter.main import cookiecutter
 
 
-def configure_git_https_auth(git_token, git_server):
+def configure_git_https_auth(git_username, git_token, git_server):
+    if not git_username:
+        git_username = "git"
+    if git_server and "://" in git_server:
+        parts = urlsplit(git_server)
+        if parts.netloc:
+            git_server = parts.netloc
+    git_server = (git_server or "").strip().strip("/")
     subprocess.run(["git", "config", "--global", "credential.helper", "store"], check=True)
     credentials_path = os.path.expanduser("~/.git-credentials")
     with open(credentials_path, "w", encoding="utf-8") as f:
-        f.write(f"https://git:{git_token}@{git_server}\n")
+        f.write(f"https://{git_username}:{git_token}@{git_server}\n")
+
+
+def _redact_url(url: str) -> str:
+    try:
+        parts = urlsplit(url)
+        if "@" not in parts.netloc:
+            return url
+        host = parts.netloc.split("@", 1)[1]
+        return urlunsplit((parts.scheme, host, parts.path, parts.query, parts.fragment))
+    except Exception:
+        return "<redacted>"
 
 
 def configure_git_identity(user_name="Luban CI", user_email="ci@luban.com"):
@@ -85,7 +104,7 @@ def render_template(template_path, output_dir, context, overwrite=False):
 def clone_git_repo(repo_url, target_dir, user_name="Luban CI", user_email="ci@luban.com"):
     """Clone a git repository to a target directory."""
     try:
-        click.echo(f"Cloning {repo_url} into {target_dir}...")
+        click.echo(f"Cloning {_redact_url(repo_url)} into {target_dir}...")
         subprocess.run(["git", "clone", repo_url, target_dir], check=True)
 
         # Configure local git user

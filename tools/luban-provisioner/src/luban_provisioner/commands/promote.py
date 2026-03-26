@@ -32,10 +32,11 @@ def _select_image(images, app_name):
 @click.option('--app-name', required=True, help='Application name')
 @click.option('--git-organization', required=True, help='Git Organization')
 @click.option('--git-provider', required=True, type=click.Choice(['github', 'azure']), help='Git Provider')
+@click.option('--git-username', required=False, envvar='GIT_USERNAME', default='git', help='Git Username (env: GIT_USERNAME)')
 @click.option('--git-token', required=True, envvar='GIT_TOKEN', help='Git Token (env: GIT_TOKEN)')
 @click.option('--git-server', required=True, envvar='GIT_SERVER', help='Git Server (env: GIT_SERVER)')
 @click.option('--project-name', required=True, help='Project Name (for Azure)')
-def promote(app_name, git_organization, git_provider, git_token, git_server, project_name):
+def promote(app_name, git_organization, git_provider, git_username, git_token, git_server, project_name):
     """Promote an application from Sandbox (snd) to Production (prd)."""
     gitops_repo_name = f"{app_name}-gitops"
 
@@ -46,7 +47,7 @@ def promote(app_name, git_organization, git_provider, git_token, git_server, pro
         sys.exit(1)
     repo_url = get_remote_url(git_provider, git_token, git_server, org, project_name, gitops_repo_name)
 
-    configure_git_https_auth(git_token, git_server)
+    configure_git_https_auth(git_username, git_token, git_server)
     configure_git_identity()
 
     yaml = YAML()

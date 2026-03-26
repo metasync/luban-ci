@@ -30,6 +30,10 @@ GITHUB_TOKEN=ghp_xxxxxxxxxxxx
 GITHUB_ORGANIZATION=your_org
 ```
 
+Notes:
+- Luban CI uses clean HTTPS repo URLs and relies on git's credential mechanism for authentication (no PATs embedded in remote URLs).
+- `GITHUB_USERNAME` is used as the Basic auth username; the PAT is used as the password.
+
 **Option B: Azure DevOps**
 Create `secrets/azure.env`:
 ```bash
@@ -37,6 +41,10 @@ Create `secrets/azure.env`:
 AZURE_DEVOPS_TOKEN=xxxxxxxxxxxx
 AZURE_ORGANIZATION=your_org
 ```
+
+Notes:
+- For Azure DevOps Server (on-prem), set `azure_server` in `manifests/config/luban-config.yaml` to your server hostname.
+- Luban CI uses git's credential mechanism for HTTPS auth for both Azure DevOps cloud and on-prem.
 
 **Azure SSH Keys (Required for kpack builds on Azure)**:
 1. Generate an SSH key pair: `ssh-keygen -t rsa -b 4096 -f secrets/azure_id_rsa`

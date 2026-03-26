@@ -113,6 +113,14 @@ If you are using Azure DevOps instead of GitHub:
     - For a self-hosted Azure DevOps Server, set `azure_server` in `manifests/config/luban-config.yaml`.
     - Set `azure_devops_api_version` in `manifests/config/luban-config.yaml`.
 
+### Git Authentication (Workflows + Provisioner)
+
+- Workflows and `luban-provisioner` use clean HTTPS repo URLs and rely on git's credential mechanism (`credential.helper store`) for authentication.
+- This avoids embedding PATs in remote URLs (which can leak via logs or `.git/config`) and works for Azure DevOps cloud and on-prem.
+- Git credentials come from `*-creds` Secrets (for example `github-creds` and `azure-creds`) and include:
+  - `username`
+  - `token`
+
 Common values:
 
 - Azure DevOps Services (cloud): `7.1`

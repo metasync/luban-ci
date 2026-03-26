@@ -91,6 +91,8 @@ spec:
           - "{{inputs.parameters.git_provider}}"
           - --git-server
           - "$(GIT_SERVER)"
+          - --git-username
+          - "$(GIT_USERNAME)"
           - --config-file
           - "{{inputs.parameters.config_file}}"
           - --git-token
@@ -112,6 +114,11 @@ spec:
               secretKeyRef:
                 name: "{{inputs.parameters.git_provider}}-creds"
                 key: token
+          - name: GIT_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: "{{inputs.parameters.git_provider}}-creds"
+                key: username
           - name: WEBHOOK_SECRET
             valueFrom:
               secretKeyRef:

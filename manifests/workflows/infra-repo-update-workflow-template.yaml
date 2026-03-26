@@ -55,6 +55,8 @@ spec:
       - "{{inputs.parameters.developer_group}}"
       - --git-server
       - "$(GIT_SERVER)"
+      - --git-username
+      - "$(GIT_USERNAME)"
       - --git-token
       - "$(GIT_TOKEN)"
       - --work-dir
@@ -77,6 +79,11 @@ spec:
           secretKeyRef:
             name: "{{inputs.parameters.git_provider}}-creds"
             key: token
+      - name: GIT_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: "{{inputs.parameters.git_provider}}-creds"
+            key: username
       - name: AZURE_DEVOPS_API_VERSION
         valueFrom:
           configMapKeyRef:
@@ -116,6 +123,8 @@ spec:
       - "{{inputs.parameters.git_provider}}"
       - --git-server
       - "$(GIT_SERVER)"
+      - --git-username
+      - "$(GIT_USERNAME)"
       - --git-token
       - "$(GIT_TOKEN)"
       - --work-dir
@@ -138,6 +147,11 @@ spec:
           secretKeyRef:
             name: "{{inputs.parameters.git_provider}}-creds"
             key: token
+      - name: GIT_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: "{{inputs.parameters.git_provider}}-creds"
+            key: username
       - name: AZURE_DEVOPS_API_VERSION
         valueFrom:
           configMapKeyRef:

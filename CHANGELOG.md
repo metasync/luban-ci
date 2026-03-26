@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Provisioner**: Standardized git HTTPS auth to use git's credential mechanism (no PATs embedded in remote URLs). Added `GIT_USERNAME` support in workflows and bumped `luban-provisioner` to `0.3.1`.
+
+## [v1.0.3] - 2026-03-26
+
+### Changed
+
+- Aligns this release with `luban-provisioner-v0.3.0` and associated workflow/config updates.
+
 ## [luban-provisioner-v0.3.0] - 2026-03-26
 
 ### Added

@@ -1,7 +1,7 @@
 import sys
 import os
 import click
-from luban_provisioner.utils import initialize_git_repo, render_template, load_config
+from luban_provisioner.utils import initialize_git_repo, render_template, load_config, configure_git_https_auth, configure_git_identity
 from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 
 @click.command(name='source')
@@ -11,13 +11,14 @@ from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 @click.option('--git-organization', default='metasync', help='Git Organization')
 @click.option('--git-provider', default='github', help='Git Provider')
 @click.option('--webhook-url', required=False, help='Webhook URL')
+@click.option('--git-username', envvar='GIT_USERNAME', default='git', help='Git Username (env: GIT_USERNAME)')
 @click.option('--git-token', envvar='GIT_TOKEN', required=True, help='Git Token (env: GIT_TOKEN)')
 @click.option('--webhook-secret', envvar='WEBHOOK_SECRET', help='Webhook Secret')
 @click.option('--git-server', envvar='GIT_SERVER', required=True, help='Git Server Domain (env: GIT_SERVER)')
 @click.option('--template-type', default='python', help='Template type: python, dagster-platform, dagster-code-location, dagster-dbt-starrocks-code-location')
 @click.option('--config-file', required=False, help='Path to configuration file (YAML/JSON)')
 @click.option('--set', multiple=True, help='Set extra context values (key=value)')
-def source(project_name, application_name, output_dir, git_organization, git_provider, webhook_url, git_token, webhook_secret, git_server, template_type, config_file, set):
+def source(project_name, application_name, output_dir, git_organization, git_provider, webhook_url, git_username, git_token, webhook_secret, git_server, template_type, config_file, set):
     """Provision Source Code Repository"""
     
     # Load config file
@@ -112,5 +113,8 @@ def source(project_name, application_name, output_dir, git_organization, git_pro
         # Push
         repo_dir = os.path.join(output_dir, application_name)
         remote_url = get_remote_url(git_provider, git_token, git_server, org, project_name, repo_name)
+
+        configure_git_https_auth(git_username, git_token, git_server)
+        configure_git_identity()
             
         initialize_git_repo(repo_dir, remote_url)

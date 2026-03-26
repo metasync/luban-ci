@@ -1,7 +1,19 @@
 import click
 import sys
+from urllib.parse import urlsplit
 from luban_provisioner.providers.github import GitHubProvider
 from luban_provisioner.providers.azure import AzureProvider
+
+
+def _normalize_git_server(server):
+    if not server:
+        return server
+    server = server.strip()
+    if "://" in server:
+        parts = urlsplit(server)
+        if parts.netloc:
+            server = parts.netloc
+    return server.strip("/")
 
 def get_git_provider(provider_name, token, server=None, organization=None, project=None):
     """
@@ -10,11 +22,13 @@ def get_git_provider(provider_name, token, server=None, organization=None, proje
     if provider_name == 'github':
         if not server:
             server = "github.com"
+        server = _normalize_git_server(server)
         return GitHubProvider(token, organization=organization, project=project, git_server=server)
     
     elif provider_name == 'azure':
         if not server:
             server = "dev.azure.com"
+        server = _normalize_git_server(server)
             
         # For Azure, we need organization and project
         # If organization is missing, we try to derive it or fail
@@ -32,19 +46,20 @@ def get_git_provider(provider_name, token, server=None, organization=None, proje
         click.echo(f"Unsupported git provider: {provider_name}", err=True)
         sys.exit(1)
 
-def get_remote_url(provider_name, token, server, organization, project, repo_name):
+def get_remote_url(provider_name, _token, server, organization, project, repo_name):
     """
     Generate the remote URL based on the provider.
     """
     if provider_name == 'github':
         if not server:
             server = "github.com"
-        return f"https://{token}@{server}/{organization}/{repo_name}.git"
+        server = _normalize_git_server(server)
+        return f"https://{server}/{organization}/{repo_name}.git"
     
     elif provider_name == 'azure':
         if not server:
             server = "dev.azure.com"
-        # Azure DevOps URL format
-        return f"https://git:{token}@{server}/{organization}/{project}/_git/{repo_name}"
+        server = _normalize_git_server(server)
+        return f"https://{server}/{organization}/{project}/_git/{repo_name}"
     
     return ""

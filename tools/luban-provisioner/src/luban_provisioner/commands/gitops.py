@@ -2,7 +2,7 @@ import sys
 import os
 import click
 
-from luban_provisioner.utils import initialize_git_repo, create_and_push_branch, render_template, load_config
+from luban_provisioner.utils import initialize_git_repo, create_and_push_branch, render_template, load_config, configure_git_https_auth, configure_git_identity
 from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 
 @click.command(name='gitops')
@@ -16,12 +16,13 @@ from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 @click.option('--default-image-tag', required=False, help='Default image tag')
 @click.option('--git-organization', default='metasync', help='Git Organization')
 @click.option('--git-provider', default='github', help='Git Provider')
+@click.option('--git-username', envvar='GIT_USERNAME', default='git', help='Git Username (env: GIT_USERNAME)')
 @click.option('--git-token', envvar='GIT_TOKEN', required=True, help='Git Token (env: GIT_TOKEN)')
 @click.option('--git-server', envvar='GIT_SERVER', required=True, help='Git Server Domain (env: GIT_SERVER)')
 @click.option('--template-type', default='standard', help='Template type: standard, dagster-platform, dagster-code-location')
 @click.option('--config-file', required=False, help='Path to configuration file (YAML/JSON)')
 @click.option('--set', multiple=True, help='Set extra context values (key=value)')
-def gitops(project_name, application_name, output_dir, container_port, service_port, domain_suffix, default_image_name, default_image_tag, git_organization, git_provider, git_token, git_server, template_type, config_file, set):
+def gitops(project_name, application_name, output_dir, container_port, service_port, domain_suffix, default_image_name, default_image_tag, git_organization, git_provider, git_username, git_token, git_server, template_type, config_file, set):
     """Provision GitOps Repository"""
     
     # Load config file
@@ -125,6 +126,9 @@ def gitops(project_name, application_name, output_dir, container_port, service_p
         # Init and Push Main
         repo_dir = os.path.join(output_dir, repo_name)
         remote_url = get_remote_url(git_provider, git_token, git_server, org, project_name, repo_name)
+
+        configure_git_https_auth(git_username, git_token, git_server)
+        configure_git_identity()
 
         initialize_git_repo(repo_dir, remote_url)
         
