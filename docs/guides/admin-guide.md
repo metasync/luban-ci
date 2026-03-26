@@ -14,6 +14,7 @@ This guide covers the administration and configuration of the Luban CI platform.
     - `cluster_map`: JSON map of `deploy_env` -> Kubernetes cluster URL (e.g., `snd`/`prd`).
     - `github_server`: GitHub server hostname (default: `github.com`).
     - `azure_server`: Azure DevOps server hostname (default: `dev.azure.com`).
+    - `azure_devops_api_version`: Azure DevOps REST API version (default: `7.1`).
     - `luban_provisioner_image`: Container image for `luban-provisioner`.
     - `gitops_utils_image`: Container image for GitOps utility tools.
     - `python_index_url`: (Optional) Custom Python Package Index URL for project scaffolding.
@@ -109,8 +110,13 @@ If you are using Azure DevOps instead of GitHub:
     - Scopes required: `Code (Read & Write)`, `Project and Team (Read & Write)`, `Work Items (Read & Write)`.
     - Configure in `secrets/*.env` (exporting `AZURE_DEVOPS_TOKEN` and `AZURE_ORGANIZATION`, mapped to the `azure-creds` secret).
 3.  **Environment Variables**:
-    - Ensure `AZURE_SERVER` is available in the environment if using a self-hosted Azure DevOps Server.
-    - Default is `dev.azure.com`.
+    - For a self-hosted Azure DevOps Server, set `azure_server` in `manifests/config/luban-config.yaml`.
+    - Set `azure_devops_api_version` in `manifests/config/luban-config.yaml`.
+
+Common values:
+
+- Azure DevOps Services (cloud): `7.1`
+- Azure DevOps Server 2020 (on-prem): often `6.1-preview` (depending on the endpoint)
 
 ## Application Deployment Configuration
 

@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docs**: Updated the Dagster+dbt+StarRocks template usage docs to remove hourly partition references.
 - **Template**: Removed hourly partition configuration from `.env.example` to match the shipped daily-only partition setup.
 - **Template**: Removed hourly partition support for now due to Dagster auto-materialize subset limitations with mixed partition definitions.
+- **Azure DevOps**: Standardized Azure DevOps REST API version selection as configuration via `luban-config.azure_devops_api_version` (exported to workflows as `AZURE_DEVOPS_API_VERSION`), removing runtime API-version probing.
 - **Workflows**: Improved `luban-ci-kpack-workflow-template` to wait for the correct `BUILD_REV` match before proceeding, fixing a race condition on fast-rebuilding images.
 
 ### Fixed
@@ -54,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Provisioner**: Improved error message in `gitops.py` `except Exception` handler to include the output directory path.
 - **Provisioner**: Fixed `row_count_greater_than` generic test definitions in `dwd/schema.yml` and `dws/schema.yml` to use dbt v1.11 `arguments:` nesting (was deprecated at top level).
 - **Provisioner**: Fixed `relationships` generic test in `sources.yml` to use dbt v1.11 `arguments:` nesting.
-- **Docs**: Removed stale `source_template_type` parameter reference from `dagster-integration.md`.
+- **Docs**: Removed stale `source_template_type` parameter reference from `docs/dagster/concepts/dagster-integration.md`.
 - **Config**: Removed duplicate commented `webhook_url` entry in `luban-config.yaml`.
 - **Template**: Fixed `dbt_cli_build_job` execution failing with `KeyError: 'nodes'` by switching CLI jobs to stream raw dbt events and wait for completion (no manifest-based asset event mapping).
 

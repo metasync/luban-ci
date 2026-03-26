@@ -132,6 +132,14 @@ spec:
           - --set
           - template_type=dagster-platform
 
+        env:
+          - name: AZURE_DEVOPS_API_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: azure_devops_api_version
+                optional: true
+
         volumeMounts:
           - name: workdir
             mountPath: /workdir

@@ -1,10 +1,10 @@
 import os
 import re
-from urllib.parse import urlparse
 
-import requests
 import click
+import requests
 import time
+
 from .base import GitProvider
 
 class AzureProvider(GitProvider):
@@ -12,50 +12,11 @@ class AzureProvider(GitProvider):
         super().__init__(token, organization, project, git_server)
         self.base_url = f"https://{git_server}/{organization}"
         self.auth = ('', self.token)
-        versions = os.getenv("AZURE_DEVOPS_API_VERSIONS", "").strip()
-        if versions:
-            self.api_versions = [v.strip() for v in versions.split(",") if v.strip()]
-        else:
-            self.api_versions = ["7.1", "7.0", "6.1", "6.1-preview", "6.0", "5.1"]
 
-        self._api_version_cache_by_path = {}
-
-    def _is_unsupported_api_version(self, resp):
-        if resp is None:
-            return False
-        if resp.status_code not in {400, 404}:
-            return False
-        body = (resp.text or "").lower()
-        if "api-version" not in body:
-            return False
-        return any(
-            s in body
-            for s in [
-                "not supported",
-                "unsupported",
-                "invalid",
-                "unknown",
-                "out of range",
-                "latest rest api version",
-            ]
-        )
-
-    def _is_preview_required(self, resp):
-        if resp is None:
-            return False
-        if resp.status_code not in {400, 404}:
-            return False
-        body = (resp.text or "").lower()
-        return "-preview" in body and "api-version" in body and "must be supplied" in body
-
-    def _extract_suggested_preview_version(self, resp):
-        if resp is None:
-            return None
-        text = resp.text or ""
-        match = re.search(r'"(\d+(?:\.\d+)*-preview)"', text)
-        if match:
-            return match.group(1)
-        return None
+        api_version = os.getenv("AZURE_DEVOPS_API_VERSION", "").strip() or os.getenv(
+            "AZURE_API_VERSION", ""
+        ).strip()
+        self.api_version = api_version or "7.1"
 
     def _apply_api_version(self, url, api_version):
         if "api-version=" in url:
@@ -64,37 +25,8 @@ class AzureProvider(GitProvider):
         return f"{url}{sep}api-version={api_version}"
 
     def _request(self, method, url, **kwargs):
-        last_resp = None
-        tried = set()
-        path_key = urlparse(url).path
-        cached_version = self._api_version_cache_by_path.get(path_key)
-        ordered_versions = ([cached_version] if cached_version else []) + [
-            v for v in self.api_versions if v != cached_version
-        ]
-
-        for version in ordered_versions:
-            for candidate in [version]:
-                if candidate in tried:
-                    continue
-                tried.add(candidate)
-                versioned_url = self._apply_api_version(url, candidate)
-                resp = requests.request(method, versioned_url, auth=self.auth, **kwargs)
-                last_resp = resp
-                if self._is_preview_required(resp) and "-preview" not in candidate:
-                    suggested = self._extract_suggested_preview_version(resp)
-                    preview_version = suggested or f"{candidate}-preview"
-                    if preview_version not in tried:
-                        tried.add(preview_version)
-                        preview_url = self._apply_api_version(url, preview_version)
-                        preview_resp = requests.request(method, preview_url, auth=self.auth, **kwargs)
-                        last_resp = preview_resp
-                        if not self._is_unsupported_api_version(preview_resp) and not self._is_preview_required(preview_resp):
-                            self._api_version_cache_by_path[path_key] = preview_version
-                            return preview_resp
-                if not self._is_unsupported_api_version(resp) and not self._is_preview_required(resp):
-                    self._api_version_cache_by_path[path_key] = candidate
-                    return resp
-        return last_resp
+        versioned_url = self._apply_api_version(url, self.api_version)
+        return requests.request(method, versioned_url, auth=self.auth, **kwargs)
 
     def _get_project_id(self):
         """Get the ID of the Azure DevOps Project."""

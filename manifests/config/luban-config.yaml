@@ -31,6 +31,9 @@ data:
   github_server: "github.com"
   azure_server: "dev.azure.com"
 
+  # Azure DevOps REST API version
+  azure_devops_api_version: "7.1"
+
   # Tooling Images
   luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.2.48"
   gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.3.7"

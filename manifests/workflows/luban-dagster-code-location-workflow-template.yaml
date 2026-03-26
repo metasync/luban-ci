@@ -234,6 +234,12 @@ spec:
               secretKeyRef:
                 name: "{{inputs.parameters.git_provider}}-creds"
                 key: token
+          - name: AZURE_DEVOPS_API_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: azure_devops_api_version
+                optional: true
           - name: GIT_SERVER
             valueFrom:
               configMapKeyRef:
