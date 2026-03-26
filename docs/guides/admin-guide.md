@@ -34,7 +34,7 @@ This guide covers the administration and configuration of the Luban CI platform.
     - `platform_port`, `code_location_port`
     - `dagster_version`, `postgres_version`
 
-## Dagster + dbt Partitioning Notes
+### Dagster + dbt Partitioning Notes
 
 - Daily partitions are the default and recommended granularity for data warehouse workloads.
 - Partitioning is primarily for query pruning and retention management (for example, dropping data by day).
