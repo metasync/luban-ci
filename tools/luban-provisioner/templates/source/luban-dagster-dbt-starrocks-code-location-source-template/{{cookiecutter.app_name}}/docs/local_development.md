@@ -48,17 +48,9 @@ Validate connectivity:
 make check-db
 ```
 
-## Run Dagster
-
-From the rendered project root:
-
-```bash
-make dev
-```
-
-Dagster Webserver should be available at `http://localhost:3000`.
-
 ## Generate sample ODS data (optional)
+
+If you plan to use the built-in ODS observation loop and automation, create the demo ODS tables before starting Dagster.
 
 To bootstrap demo ODS data:
 
@@ -71,6 +63,16 @@ To simulate incremental arrival:
 ```bash
 make ods-test-append
 ```
+
+## Run Dagster
+
+From the rendered project root:
+
+```bash
+make dev
+```
+
+Dagster Webserver should be available at `http://localhost:3000`.
 
 ## Run dbt manually
 
