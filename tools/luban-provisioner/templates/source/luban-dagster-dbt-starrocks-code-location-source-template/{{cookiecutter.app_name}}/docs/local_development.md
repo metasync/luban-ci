@@ -7,12 +7,20 @@ This guide explains how to run the rendered Dagster + dbt + StarRocks code locat
 - Docker (or OrbStack) with Docker Compose support
 - `uv` installed (recommended) or a working Python environment
 
+## Setup
+
+From the rendered project root:
+
+```bash
+make setup
+```
+
 ## Start StarRocks locally
 
 From the rendered project root:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+make docker-up
 ```
 
 Wait until the `starrocks-init` container finishes. It registers the BE into FE.
@@ -25,11 +33,7 @@ StarRocks ports exposed locally:
 
 ## Configure environment
 
-Copy `.env.example` to `.env` and adjust if needed:
-
-```bash
-cp .env.example .env
-```
+`make setup` creates `.env` if missing. Update it with your StarRocks connection values.
 
 For local StarRocks via Docker Compose, these defaults typically work:
 
@@ -37,6 +41,12 @@ For local StarRocks via Docker Compose, these defaults typically work:
 - `STARROCKS_PORT=9030`
 - `STARROCKS_USER=root`
 - `STARROCKS_PASSWORD=`
+
+Validate connectivity:
+
+```bash
+make check-db
+```
 
 ## Run Dagster
 
@@ -67,8 +77,9 @@ make ods-test-append
 Examples:
 
 ```bash
-uv run dbt build --project-dir dbt_project --select tag:ods_test --vars '{"enable_ods_test": true}'
-uv run dbt build --project-dir dbt_project --select fact_customer_orders_daily
+make dbt-deps
+export DBT_VARS='{"min_date":"2026-01-02","max_date":"2026-01-03","min_datetime":"2026-01-02 00:00:00","max_datetime":"2026-01-03 00:00:00"}'
+make dbt-build
 ```
 
 ## Partitioning notes
@@ -77,4 +88,3 @@ This template ships with daily partition support only.
 
 - Daily partitions are a good default for warehouse-scale transactional tables.
 - Hourly aggregation models can still be built, but are usually small enough that hourly partitioning is not required.
-
