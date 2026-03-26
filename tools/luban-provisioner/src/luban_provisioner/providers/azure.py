@@ -1,5 +1,7 @@
 import os
 import re
+from urllib.parse import urlparse
+
 import requests
 import click
 import time
@@ -15,6 +17,8 @@ class AzureProvider(GitProvider):
             self.api_versions = [v.strip() for v in versions.split(",") if v.strip()]
         else:
             self.api_versions = ["7.1", "7.0", "6.1", "6.1-preview", "6.0", "5.1"]
+
+        self._api_version_cache_by_path = {}
 
     def _is_unsupported_api_version(self, resp):
         if resp is None:
@@ -62,7 +66,13 @@ class AzureProvider(GitProvider):
     def _request(self, method, url, **kwargs):
         last_resp = None
         tried = set()
-        for version in self.api_versions:
+        path_key = urlparse(url).path
+        cached_version = self._api_version_cache_by_path.get(path_key)
+        ordered_versions = ([cached_version] if cached_version else []) + [
+            v for v in self.api_versions if v != cached_version
+        ]
+
+        for version in ordered_versions:
             for candidate in [version]:
                 if candidate in tried:
                     continue
@@ -79,8 +89,10 @@ class AzureProvider(GitProvider):
                         preview_resp = requests.request(method, preview_url, auth=self.auth, **kwargs)
                         last_resp = preview_resp
                         if not self._is_unsupported_api_version(preview_resp) and not self._is_preview_required(preview_resp):
+                            self._api_version_cache_by_path[path_key] = preview_version
                             return preview_resp
                 if not self._is_unsupported_api_version(resp) and not self._is_preview_required(resp):
+                    self._api_version_cache_by_path[path_key] = candidate
                     return resp
         return last_resp
 
