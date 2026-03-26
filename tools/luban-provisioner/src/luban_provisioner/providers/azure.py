@@ -13,9 +13,7 @@ class AzureProvider(GitProvider):
         self.base_url = f"https://{git_server}/{organization}"
         self.auth = ('', self.token)
 
-        api_version = os.getenv("AZURE_DEVOPS_API_VERSION", "").strip() or os.getenv(
-            "AZURE_API_VERSION", ""
-        ).strip()
+        api_version = os.getenv("AZURE_DEVOPS_API_VERSION", "").strip()
         self.api_version = api_version or "7.1"
 
     def _apply_api_version(self, url, api_version):
