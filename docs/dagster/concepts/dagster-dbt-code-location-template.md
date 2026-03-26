@@ -143,3 +143,4 @@ Common extensions that keep the boundary clean:
 - Add ingestion assets in Dagster that produce dbt sources, then make dbt depend on them.
 - Add partitioning in Dagster for incremental models, passing partition ranges into dbt via `--vars`.
 - Add asset checks for dbt tests to show failures at the asset level.
+

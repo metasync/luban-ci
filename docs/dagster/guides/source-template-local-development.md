@@ -22,7 +22,7 @@ make setup
 ## Start StarRocks (Docker Compose)
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+make docker-up
 ```
 
 Wait until the `starrocks-init` container finishes. It registers the BE into FE.
@@ -35,11 +35,7 @@ StarRocks ports exposed locally:
 
 ## Configure environment
 
-In the rendered project:
-
-```bash
-cp .env.example .env
-```
+`make setup` creates `.env` if missing. Update it with your StarRocks connection values.
 
 For local StarRocks via Docker Compose, these defaults typically work:
 
@@ -48,15 +44,15 @@ For local StarRocks via Docker Compose, these defaults typically work:
 - `STARROCKS_USER=root`
 - `STARROCKS_PASSWORD=`
 
-## Run Dagster
+Validate connectivity:
 
 ```bash
-make dev
+make check-db
 ```
 
-Dagster Webserver should be available at `http://localhost:3000`.
-
 ## ODS demo data (optional)
+
+If you plan to use the built-in ODS observation loop and automation, create the demo ODS tables before starting Dagster.
 
 Bootstrap:
 
@@ -69,6 +65,16 @@ Append new rows (simulate incremental arrival):
 ```bash
 make ods-test-append
 ```
+
+## Run Dagster
+
+```bash
+make dev
+```
+
+Dagster Webserver should be available at `http://localhost:3000`.
+
+From this point onward, the workflow is the same as the rendered project’s `docs/local_development.md`.
 
 ## Partitioning notes
 

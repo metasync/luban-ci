@@ -3,6 +3,7 @@
 Luban CI provides first-class support for Dagster, enabling data teams to deploy platforms and code locations using GitOps.
 
 ## Features
+
 - **Full Platform Provisioning**:
   - Daemon, Webserver, Postgres, and Dagit (UI).
   - GitOps-managed infrastructure.
@@ -16,7 +17,7 @@ Luban CI provides first-class support for Dagster, enabling data teams to deploy
 
 This Workflow bootstraps a full Dagster instance for a team.
 
-- **Template**: [luban-dagster-platform-setup-template.yaml](../../manifests/workflows/luban-dagster-platform-setup-template.yaml)
+- **Template**: [luban-dagster-platform-setup-template.yaml](../../../manifests/workflows/luban-dagster-platform-setup-template.yaml)
 - **What it does**:
   1.  **GitOps Repository**: Provisions `<app_name>-gitops` with Dagster Platform Helm/Kustomize base.
   2.  **ArgoCD Application**: Deploys the platform components to the target environment (e.g., `snd-data`).
@@ -29,7 +30,7 @@ This Workflow bootstraps a full Dagster instance for a team.
 
 This Workflow bootstraps a new Code Location for user code.
 
-- **Template**: [luban-dagster-code-location-workflow-template.yaml](../../manifests/workflows/luban-dagster-code-location-workflow-template.yaml)
+- **Template**: [luban-dagster-code-location-workflow-template.yaml](../../../manifests/workflows/luban-dagster-code-location-workflow-template.yaml)
 - **What it does**:
   1.  **GitOps Repository**: Provisions `<app_name>-gitops` with Code Location deployment manifests.
   2.  **ArgoCD Application**: Deploys the code location server.
@@ -44,3 +45,4 @@ This Workflow bootstraps a new Code Location for user code.
 For teams using dbt as the transformation engine on StarRocks, Luban CI provides a standardized Dagster code location skeleton that wires Dagster orchestration to dbt execution.
 
 - **Concept**: [dagster-dbt-code-location-template.md](dagster-dbt-code-location-template.md)
+
