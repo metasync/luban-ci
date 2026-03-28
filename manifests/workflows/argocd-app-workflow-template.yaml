@@ -126,6 +126,12 @@ spec:
             configMapKeyRef:
               name: luban-config
               key: "{{inputs.parameters.git_provider}}_server"
+        - name: GIT_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: "{{inputs.parameters.git_provider}}_base_url"
+              optional: true
         - name: CLUSTER_MAP
           valueFrom:
             configMapKeyRef:
@@ -165,14 +171,16 @@ spec:
           REVISION="develop"
         fi
         
+        BASE_URL="${GIT_BASE_URL:-https://${GIT_SERVER}}"
+
         # Repo URL Construction
         if [ "{{inputs.parameters.git_provider}}" = "azure" ] && [ -n "{{inputs.parameters.git_organization}}" ]; then
             # Azure DevOps with Organization
             # URL: https://dev.azure.com/{ORG}/{PROJECT}/_git/{REPO}
-            REPO_URL="https://${GIT_SERVER}/${ORG}/${PROJECT_NAME}/_git/${APP_NAME_RAW}-gitops"
+            REPO_URL="${BASE_URL}/${ORG}/${PROJECT_NAME}/_git/${APP_NAME_RAW}-gitops"
         else
             # Standard GitHub or Azure without Org (Org=Project)
-            REPO_URL="https://${GIT_SERVER}/${ORG}/${APP_NAME_RAW}-gitops.git"
+            REPO_URL="${BASE_URL}/${ORG}/${APP_NAME_RAW}-gitops.git"
         fi
 
         # Determine Sync Policy

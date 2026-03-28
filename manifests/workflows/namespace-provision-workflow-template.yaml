@@ -76,6 +76,12 @@ spec:
             configMapKeyRef:
               name: luban-config
               key: "{{inputs.parameters.git_provider}}_server"
+        - name: GIT_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: "{{inputs.parameters.git_provider}}_base_url"
+              optional: true
         - name: CLUSTER_MAP
           valueFrom:
             configMapKeyRef:
@@ -89,10 +95,11 @@ spec:
         # Assuming luban-infra project for Azure
         INFRA_PROJECT="luban-infra"
 
+        BASE_URL="${GIT_BASE_URL:-https://${GIT_SERVER}}"
         if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
-            REPO_URL="https://${GIT_SERVER}/{{inputs.parameters.git_organization}}/${INFRA_PROJECT}/_git/${REPO_NAME}"
+            REPO_URL="${BASE_URL}/{{inputs.parameters.git_organization}}/${INFRA_PROJECT}/_git/${REPO_NAME}"
         else
-            REPO_URL="https://${GIT_SERVER}/{{inputs.parameters.git_organization}}/${REPO_NAME}.git"
+            REPO_URL="${BASE_URL}/{{inputs.parameters.git_organization}}/${REPO_NAME}.git"
         fi
 
         APP_NAME="{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}-infra"

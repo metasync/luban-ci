@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## [v1.0.7] - 2026-03-29
+
+### Changed
+
+- Aligns this release with `luban-provisioner-v0.3.7` and associated workflow/config/documentation updates.
+
+## [luban-provisioner-v0.3.7] - 2026-03-29
+
+### Changed
+
+- **Git HTTPS**: Switched to provider-scoped config (`<provider>_https_auth_mode`, `<provider>_base_url`, `<provider>_basic_auth_username`) and wired workflows to pass `GIT_HTTPS_AUTH_MODE`/`GIT_BASE_URL`/`GIT_BASIC_AUTH_USERNAME`.
+- **Git HTTPS**: Added header-based auth mode (`extraheader_basic`) to support Azure DevOps Server (on-prem) without persisting PATs in `~/.git-credentials`.
+
+## [v1.0.6] - 2026-03-28
+
+### Changed
+
+- Aligns this release with `luban-provisioner-v0.3.5` and associated workflow/config/documentation updates.
+
+## [luban-provisioner-v0.3.5] - 2026-03-28
+
+### Added
+
+- **Git HTTPS (Azure DevOps Server)**: Added header-based auth mode (`extraheader_basic`) to avoid persisting PATs in `~/.git-credentials`.
+- **Git HTTPS (Azure DevOps Server)**: Added `azure_base_url` support for deployments with path prefixes (e.g. `/tfs`).
+
+### Changed
+
+- **Git HTTPS**: `git` subprocess calls now honor header-based auth when enabled.
+
 ## [v1.0.5] - 2026-03-28
 
 ### Changed

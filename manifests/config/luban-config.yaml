@@ -31,11 +31,28 @@ data:
   github_server: "github.com"
   azure_server: "dev.azure.com"
 
+  # Git HTTPS authentication (provider-scoped)
+  # Values:
+  # - "credential_store": use `git credential.helper store` and write PAT to `~/.git-credentials` inside the workflow/provisioner container.
+  # - "extraheader_basic": do not write credential files; send `Authorization: Basic <base64(username:PAT)>` via `http.extraHeader` per git command.
+  github_https_auth_mode: "credential_store"
+  azure_https_auth_mode: "credential_store"
+  # Optional provider base URL overrides (scheme + optional path prefix)
+  # github_base_url: "https://github.mycorp.com"
+  
+  # Azure DevOps Server base URL (scheme + optional path prefix)
+  # azure_base_url: "https://ado.example.com/tfs"
+
+  # Optional username used to build the Basic auth header for git HTTPS when using `extraheader_basic`
+  # (default: `username` from the `azure-creds` secret)
+  # azure_basic_auth_username: "git"
+  
+
   # Azure DevOps REST API version
   azure_devops_api_version: "7.1"
 
   # Tooling Images
-  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.3.4"
+  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.3.7"
   gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.3.7"
 
   # Python Package Index (Optional)

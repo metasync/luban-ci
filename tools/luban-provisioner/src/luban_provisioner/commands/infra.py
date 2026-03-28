@@ -22,7 +22,7 @@ def cd():
 
 # --- Helper Functions ---
 
-def _update_impl(template_path, context, repo_name, project_name, env_name, git_organization, git_provider, git_server, git_username, git_token, work_dir, infra_project_name, local_dir=None):
+def _update_impl(template_path, context, repo_name, project_name, env_name, git_organization, git_provider, git_server, git_base_url, git_username, git_token, work_dir, infra_project_name, local_dir=None):
     # Fallback for local template
     if not os.path.exists(template_path):
         cwd = os.getcwd()
@@ -36,7 +36,7 @@ def _update_impl(template_path, context, repo_name, project_name, env_name, git_
             sys.exit(1)
 
     # Clone Repo
-    remote_url = get_remote_url(git_provider, git_token, git_server, git_organization, infra_project_name, repo_name)
+    remote_url = get_remote_url(git_provider, git_token, git_server, git_organization, infra_project_name, repo_name, base_url=git_base_url)
 
     configure_git_https_auth(git_username, git_token, git_server)
     configure_git_identity()
@@ -65,7 +65,7 @@ def _update_impl(template_path, context, repo_name, project_name, env_name, git_
     commit_and_push(repo_dir, f"Add overlay for {project_name} ({msg_suffix})")
     click.echo("Successfully updated infra repo.")
 
-def _init_impl(template_path, context, repo_name, template_type, git_organization, git_provider, git_server, git_username, git_token, output_dir, project_name):
+def _init_impl(template_path, context, repo_name, template_type, git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name):
     # Fallback logic
     if not os.path.exists(template_path):
         cwd = os.getcwd()
@@ -78,7 +78,7 @@ def _init_impl(template_path, context, repo_name, template_type, git_organizatio
             sys.exit(1)
 
     # Get Provider
-    provider = get_git_provider(git_provider, git_token, server=git_server, organization=git_organization, project=project_name)
+    provider = get_git_provider(git_provider, git_token, server=git_server, organization=git_organization, project=project_name, base_url=git_base_url)
     if not provider:
         click.echo("Error: Failed to initialize Git provider.", err=True)
         sys.exit(1)
@@ -97,7 +97,7 @@ def _init_impl(template_path, context, repo_name, template_type, git_organizatio
         click.echo(f"Repo {repo_name} already exists. Updating base...")
 
     # Clone Repo
-    remote_url = get_remote_url(git_provider, git_token, git_server, git_organization, project_name, repo_name)
+    remote_url = get_remote_url(git_provider, git_token, git_server, git_organization, project_name, repo_name, base_url=git_base_url)
     repo_dir = os.path.join(output_dir, repo_name)
 
     configure_git_https_auth(git_username, git_token, git_server)
@@ -135,6 +135,7 @@ def _init_impl(template_path, context, repo_name, template_type, git_organizatio
 @click.option('--git-organization', default='metasync')
 @click.option('--git-provider', default='github')
 @click.option('--git-server', envvar='GIT_SERVER')
+@click.option('--git-base-url', envvar='GIT_BASE_URL', default='', help='Git base URL (optional, supports path prefixes)')
 @click.option('--git-username', envvar='GIT_USERNAME', default='git')
 @click.option('--git-token', envvar='GIT_TOKEN')
 @click.option('--work-dir', default='/workdir')
@@ -143,7 +144,7 @@ def _init_impl(template_path, context, repo_name, template_type, git_organizatio
 @click.option('--developer-group', required=True, help='AD Group for Developers')
 @click.option('--image-pull-secret', default='harbor-creds', envvar='IMAGE_PULL_SECRET', help='Image Pull Secret Name (env: IMAGE_PULL_SECRET)')
 @click.option('--local-dir', default=None, help='Local directory name (defaults to repo-name)')
-def update_ci(repo_name, project_name, git_organization, git_provider, git_server, git_username, git_token, work_dir, infra_project_name, admin_group, developer_group, image_pull_secret, local_dir):
+def update_ci(repo_name, project_name, git_organization, git_provider, git_server, git_base_url, git_username, git_token, work_dir, infra_project_name, admin_group, developer_group, image_pull_secret, local_dir):
     """Update CI infra repo with new overlay."""
     context = {
         "project_name": project_name,
@@ -153,24 +154,25 @@ def update_ci(repo_name, project_name, git_organization, git_provider, git_serve
         "git_organization": git_organization,
         "git_provider": git_provider
     }
-    _update_impl("/app/templates/infra-ci-overlay", context, repo_name, project_name, None, git_organization, git_provider, git_server, git_username, git_token, work_dir, infra_project_name, local_dir=local_dir)
+    _update_impl("/app/templates/infra-ci-overlay", context, repo_name, project_name, None, git_organization, git_provider, git_server, git_base_url, git_username, git_token, work_dir, infra_project_name, local_dir=local_dir)
 
 @ci.command(name='init')
 @click.option('--repo-name', required=True)
 @click.option('--git-organization', default='metasync')
 @click.option('--git-provider', default='github')
 @click.option('--git-server', envvar='GIT_SERVER')
+@click.option('--git-base-url', envvar='GIT_BASE_URL', default='', help='Git base URL (optional, supports path prefixes)')
 @click.option('--git-username', envvar='GIT_USERNAME', default='git')
 @click.option('--git-token', envvar='GIT_TOKEN')
 @click.option('--output-dir', default='/workdir')
 @click.option('--project-name', default='luban-infra')
 @click.option('--image-pull-secret', default='harbor-creds', envvar='IMAGE_PULL_SECRET', help='Image Pull Secret Name (env: IMAGE_PULL_SECRET)')
-def init_ci(repo_name, git_organization, git_provider, git_server, git_username, git_token, output_dir, project_name, image_pull_secret):
+def init_ci(repo_name, git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name, image_pull_secret):
     """Initialize CI infra repo with base structure."""
     context = {
         "image_pull_secret": image_pull_secret
     }
-    _init_impl("/app/templates/infra-ci-base", context, repo_name, "ci", git_organization, git_provider, git_server, git_username, git_token, output_dir, project_name)
+    _init_impl("/app/templates/infra-ci-base", context, repo_name, "ci", git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name)
 
 # --- CD Commands ---
 
@@ -181,13 +183,14 @@ def init_ci(repo_name, git_organization, git_provider, git_server, git_username,
 @click.option('--git-organization', default='metasync')
 @click.option('--git-provider', default='github')
 @click.option('--git-server', envvar='GIT_SERVER')
+@click.option('--git-base-url', envvar='GIT_BASE_URL', default='', help='Git base URL (optional, supports path prefixes)')
 @click.option('--git-username', envvar='GIT_USERNAME', default='git')
 @click.option('--git-token', envvar='GIT_TOKEN')
 @click.option('--work-dir', default='/workdir')
 @click.option('--infra-project-name', default='luban-infra')
 @click.option('--image-pull-secret', default='harbor-creds', envvar='IMAGE_PULL_SECRET', help='Image Pull Secret Name (env: IMAGE_PULL_SECRET)')
 @click.option('--local-dir', default=None, help='Local directory name (defaults to repo-name)')
-def update_cd(repo_name, project_name, env, git_organization, git_provider, git_server, git_username, git_token, work_dir, infra_project_name, image_pull_secret, local_dir):
+def update_cd(repo_name, project_name, env, git_organization, git_provider, git_server, git_base_url, git_username, git_token, work_dir, infra_project_name, image_pull_secret, local_dir):
     """Update CD infra repo with new overlay."""
     context = {
         "project_name": project_name,
@@ -196,21 +199,22 @@ def update_cd(repo_name, project_name, env, git_organization, git_provider, git_
         "git_organization": git_organization,
         "git_provider": git_provider
     }
-    _update_impl("/app/templates/infra-cd-overlay", context, repo_name, project_name, env, git_organization, git_provider, git_server, git_username, git_token, work_dir, infra_project_name, local_dir=local_dir)
+    _update_impl("/app/templates/infra-cd-overlay", context, repo_name, project_name, env, git_organization, git_provider, git_server, git_base_url, git_username, git_token, work_dir, infra_project_name, local_dir=local_dir)
 
 @cd.command(name='init')
 @click.option('--repo-name', required=True)
 @click.option('--git-organization', default='metasync')
 @click.option('--git-provider', default='github')
 @click.option('--git-server', envvar='GIT_SERVER')
+@click.option('--git-base-url', envvar='GIT_BASE_URL', default='', help='Git base URL (optional, supports path prefixes)')
 @click.option('--git-username', envvar='GIT_USERNAME', default='git')
 @click.option('--git-token', envvar='GIT_TOKEN')
 @click.option('--output-dir', default='/workdir')
 @click.option('--project-name', default='luban-infra')
 @click.option('--image-pull-secret', default='harbor-creds', envvar='IMAGE_PULL_SECRET', help='Image Pull Secret Name (env: IMAGE_PULL_SECRET)')
-def init_cd(repo_name, git_organization, git_provider, git_server, git_username, git_token, output_dir, project_name, image_pull_secret):
+def init_cd(repo_name, git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name, image_pull_secret):
     """Initialize CD infra repo with base structure."""
     context = {
         "image_pull_secret": image_pull_secret
     }
-    _init_impl("/app/templates/infra-cd-base", context, repo_name, "cd", git_organization, git_provider, git_server, git_username, git_token, output_dir, project_name)
+    _init_impl("/app/templates/infra-cd-base", context, repo_name, "cd", git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name)

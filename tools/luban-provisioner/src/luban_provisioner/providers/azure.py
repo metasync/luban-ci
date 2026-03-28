@@ -8,9 +8,12 @@ import time
 from .base import GitProvider
 
 class AzureProvider(GitProvider):
-    def __init__(self, token, organization, project, git_server="dev.azure.com"):
+    def __init__(self, token, organization, project, git_server="dev.azure.com", git_base_url=None):
         super().__init__(token, organization, project, git_server)
-        self.base_url = f"https://{git_server}/{organization}"
+        if git_base_url:
+            self.base_url = f"{git_base_url.rstrip('/')}/{organization}"
+        else:
+            self.base_url = f"https://{git_server}/{organization}"
         self.auth = ('', self.token)
 
         api_version = os.getenv("AZURE_DEVOPS_API_VERSION", "").strip()

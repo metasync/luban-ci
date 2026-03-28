@@ -1,7 +1,7 @@
 import sys
 import os
 import click
-from luban_provisioner.utils import initialize_git_repo, render_template, load_config, configure_git_https_auth, configure_git_identity
+from luban_provisioner.utils import initialize_git_repo, render_template, load_config, configure_git_https_auth, configure_git_identity, apply_git_https_config
 from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 
 @click.command(name='source')
@@ -39,7 +39,8 @@ def source(project_name, application_name, output_dir, git_organization, git_pro
     org = git_organization if git_organization else project_name
     repo_name = application_name
     
-    provider = get_git_provider(git_provider, git_token, server=git_server, organization=org, project=project_name)
+    git_base_url = apply_git_https_config(config, git_provider, git_server)
+    provider = get_git_provider(git_provider, git_token, server=git_server, organization=org, project=project_name, base_url=git_base_url)
     
     if provider.repo_exists(repo_name):
         click.echo(f"Repository {repo_name} already exists. Skipping.")
@@ -112,7 +113,7 @@ def source(project_name, application_name, output_dir, git_organization, git_pro
             
         # Push
         repo_dir = os.path.join(output_dir, application_name)
-        remote_url = get_remote_url(git_provider, git_token, git_server, org, project_name, repo_name)
+        remote_url = get_remote_url(git_provider, git_token, git_server, org, project_name, repo_name, base_url=git_base_url)
 
         configure_git_https_auth(git_username, git_token, git_server)
         configure_git_identity()

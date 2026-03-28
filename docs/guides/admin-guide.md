@@ -115,8 +115,17 @@ If you are using Azure DevOps instead of GitHub:
 
 ### Git Authentication (Workflows + Provisioner)
 
-- Workflows and `luban-provisioner` use clean HTTPS repo URLs and rely on git's credential mechanism (`credential.helper store`) for authentication.
-- This avoids embedding PATs in remote URLs (which can leak via logs or `.git/config`) and works for Azure DevOps cloud and on-prem.
+- By default, workflows and `luban-provisioner` use clean HTTPS repo URLs and rely on git's credential mechanism (`credential.helper store`) for authentication.
+- This avoids embedding PATs in remote URLs (which can leak via logs or `.git/config`) and works for GitHub and Azure DevOps Services (cloud).
+
+For Azure DevOps Server (on-prem), you may need to send an explicit HTTP `Authorization: Basic <base64(username:PAT)>` header for git operations. Luban supports this via an alternate auth mode.
+
+**Config keys (in `luban-config`)**
+
+- `github_https_auth_mode`: recommended `credential_store`.
+- `azure_https_auth_mode`: `credential_store` (Azure DevOps Services) or `extraheader_basic` (Azure DevOps Server on-prem).
+- `azure_basic_auth_username`: optional username to use when building the Basic auth header.
+- `azure_base_url`: optional base URL (scheme + optional path prefix), used for Azure DevOps Server.
 - Git credentials come from `*-creds` Secrets (for example `github-creds` and `azure-creds`) and include:
   - `username`
   - `token`

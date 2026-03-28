@@ -5,7 +5,7 @@ import shutil
 import tempfile
 from ruamel.yaml import YAML
 from luban_provisioner.provider_factory import get_git_provider, get_remote_url
-from luban_provisioner.utils import configure_git_https_auth, configure_git_identity
+from luban_provisioner.utils import configure_git_https_auth, configure_git_identity, run_git
 
 @click.group()
 def dagster():
@@ -24,7 +24,8 @@ def dagster():
 @click.option('--git-username', envvar='GIT_USERNAME', default='git', help='Git Username')
 @click.option('--git-token', envvar='GIT_TOKEN', required=True, help='Git Token')
 @click.option('--git-server', envvar='GIT_SERVER', required=True, help='Git Server')
-def register_location(platform_project, platform_app, environment, location_name, location_host, location_port, git_organization, git_provider, git_username, git_token, git_server):
+@click.option('--git-base-url', envvar='GIT_BASE_URL', default='', help='Git base URL (optional, supports path prefixes)')
+def register_location(platform_project, platform_app, environment, location_name, location_host, location_port, git_organization, git_provider, git_username, git_token, git_server, git_base_url):
     """
     Register a Code Location in the Dagster Platform's workspace.yaml.
     """
@@ -36,7 +37,7 @@ def register_location(platform_project, platform_app, environment, location_name
     # 2. Clone Platform GitOps Repo
     platform_repo_name = f"{platform_app}-gitops"
     org = git_organization if git_organization else platform_project
-    repo_url = get_remote_url(git_provider, git_token, git_server, org, platform_project, platform_repo_name)
+    repo_url = get_remote_url(git_provider, git_token, git_server, org, platform_project, platform_repo_name, base_url=git_base_url)
     
     work_dir = tempfile.mkdtemp()
     click.echo(f"Cloning {repo_url} into {work_dir}...")
@@ -47,7 +48,7 @@ def register_location(platform_project, platform_app, environment, location_name
         # Let's follow the standard: changes go to 'develop' -> PR -> 'main'.
         # However, 'setup' workflow might want to write directly if allowed.
         # For simplicity in 'setup', we'll try to checkout 'develop'.
-        subprocess.run(["git", "clone", "-b", "develop", repo_url, work_dir], check=True)
+        run_git(["clone", "-b", "develop", repo_url, work_dir], check=True)
     except subprocess.CalledProcessError:
         click.echo("Failed to clone repository. Check credentials and URL.", err=True)
         # Clean up
@@ -165,17 +166,17 @@ def register_location(platform_project, platform_app, environment, location_name
             yaml.dump(workspace_data, f)
 
         # 6. Commit and Push
-        status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+        status = run_git(["status", "--porcelain"], capture_output=True, text=True, check=False)
         if not status.stdout.strip():
             click.echo("No changes to register.")
             return
 
         commit_msg = f"Register code location '{location_name}' in {environment}"
-        subprocess.run(["git", "add", "."], check=True)
-        subprocess.run(["git", "commit", "-m", commit_msg], check=True)
+        run_git(["add", "."], check=True)
+        run_git(["commit", "-m", commit_msg], check=True)
         
         click.echo(f"Pushing to develop...")
-        subprocess.run(["git", "push", "origin", "develop"], check=True)
+        run_git(["push", "origin", "develop"], check=True)
         
         if environment == 'prd':
              click.echo("Environment is PRD. Creating Pull Request to merge changes to 'main'...")
@@ -185,7 +186,8 @@ def register_location(platform_project, platform_app, environment, location_name
                  git_token, 
                  server=git_server, 
                  organization=org, 
-                 project=platform_project
+                 project=platform_project,
+                 base_url=git_base_url,
              )
              
              pr_title = f"Register Code Location: {location_name}"

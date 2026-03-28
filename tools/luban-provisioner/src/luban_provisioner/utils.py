@@ -3,6 +3,7 @@ import click
 import os
 import traceback
 import random
+import base64
 from urllib.parse import urlsplit, urlunsplit
 from ruamel.yaml import YAML
 import json
@@ -10,8 +11,25 @@ from cookiecutter.main import cookiecutter
 
 
 def configure_git_https_auth(git_username, git_token, git_server):
+    mode = (os.getenv("GIT_HTTPS_AUTH_MODE") or "credential_store").strip()
+    if mode not in {"credential_store", "extraheader_basic"}:
+        mode = "credential_store"
     if not git_username:
         git_username = "git"
+
+    os.environ["GIT_TERMINAL_PROMPT"] = "0"
+
+    if mode == "extraheader_basic":
+        basic_user = (os.getenv("GIT_BASIC_AUTH_USERNAME") or git_username).strip()
+        raw = f"{basic_user}:{git_token}".encode("utf-8")
+        basic = base64.b64encode(raw).decode("ascii")
+        os.environ["LUBAN_GIT_HTTPS_AUTH_MODE"] = "extraheader_basic"
+        os.environ["LUBAN_GIT_AUTH_HEADER"] = f"Authorization: Basic {basic}"
+        return
+
+    os.environ["LUBAN_GIT_HTTPS_AUTH_MODE"] = "credential_store"
+    os.environ.pop("LUBAN_GIT_AUTH_HEADER", None)
+
     if git_server and "://" in git_server:
         parts = urlsplit(git_server)
         if parts.netloc:
@@ -21,6 +39,42 @@ def configure_git_https_auth(git_username, git_token, git_server):
     credentials_path = os.path.expanduser("~/.git-credentials")
     with open(credentials_path, "w", encoding="utf-8") as f:
         f.write(f"https://{git_username}:{git_token}@{git_server}\n")
+
+
+def run_git(args, cwd=None, check=True, capture_output=False, text=True):
+    env = os.environ.copy()
+    env.setdefault("GIT_TERMINAL_PROMPT", "0")
+
+    cmd = ["git"]
+    if env.get("LUBAN_GIT_HTTPS_AUTH_MODE") == "extraheader_basic" and env.get("LUBAN_GIT_AUTH_HEADER"):
+        cmd.extend(["--config-env=http.extraHeader=LUBAN_GIT_AUTH_HEADER"])
+
+    cmd.extend(args)
+    return subprocess.run(cmd, cwd=cwd, env=env, check=check, capture_output=capture_output, text=text)
+
+
+def apply_git_https_config(config: dict, git_provider: str, git_server: str):
+    config = config or {}
+
+    env_mode = (os.getenv("GIT_HTTPS_AUTH_MODE") or "").strip()
+    env_base_url = (os.getenv("GIT_BASE_URL") or "").strip()
+    env_basic_user = (os.getenv("GIT_BASIC_AUTH_USERNAME") or "").strip()
+
+    base_url = env_base_url or config.get(f"{git_provider}_base_url")
+
+    mode = env_mode or config.get(f"{git_provider}_https_auth_mode")
+    if not mode:
+        mode = "credential_store"
+    if str(mode).strip() not in {"credential_store", "extraheader_basic"}:
+        mode = "credential_store"
+
+    os.environ["GIT_HTTPS_AUTH_MODE"] = str(mode).strip()
+
+    basic_user = env_basic_user or config.get(f"{git_provider}_basic_auth_username")
+    if basic_user is not None and str(basic_user).strip() != "":
+        os.environ["GIT_BASIC_AUTH_USERNAME"] = str(basic_user).strip()
+
+    return base_url
 
 
 def _redact_url(url: str) -> str:
@@ -35,9 +89,9 @@ def _redact_url(url: str) -> str:
 
 
 def configure_git_identity(user_name="Luban CI", user_email="ci@luban.com"):
-    subprocess.run(["git", "config", "--global", "user.email", user_email], check=True)
-    subprocess.run(["git", "config", "--global", "user.name", user_name], check=True)
-    subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], check=True)
+    run_git(["config", "--global", "user.email", user_email], check=True)
+    run_git(["config", "--global", "user.name", user_name], check=True)
+    run_git(["config", "--global", "--add", "safe.directory", "*"], check=True)
 
 
 def load_config(config_file):
@@ -105,14 +159,14 @@ def clone_git_repo(repo_url, target_dir, user_name="Luban CI", user_email="ci@lu
     """Clone a git repository to a target directory."""
     try:
         click.echo(f"Cloning {_redact_url(repo_url)} into {target_dir}...")
-        subprocess.run(["git", "clone", repo_url, target_dir], check=True)
+        run_git(["clone", repo_url, target_dir], check=True)
 
         # Configure local git user
         cwd = os.getcwd()
         os.chdir(target_dir)
         try:
-            subprocess.run(["git", "config", "user.name", user_name], check=True)
-            subprocess.run(["git", "config", "user.email", user_email], check=True)
+            run_git(["config", "user.name", user_name], check=True)
+            run_git(["config", "user.email", user_email], check=True)
         finally:
             os.chdir(cwd)
 
@@ -130,27 +184,27 @@ def commit_and_push(repo_dir, message, branch="main", retries=5):
         click.echo(f"Committing changes in {repo_dir}...")
 
         # Add all files
-        subprocess.run(["git", "add", "."], check=True)
+        run_git(["add", "."], check=True)
 
         # Check if there are changes
-        status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+        status = run_git(["status", "--porcelain"], capture_output=True, text=True, check=False)
         if not status.stdout.strip():
             click.echo("No changes to commit.")
         else:
             # Commit
-            subprocess.run(["git", "commit", "-m", message], check=True)
+            run_git(["commit", "-m", message], check=True)
 
         # Ensure we are on the target branch
-        current_branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True).stdout.strip()
+        current_branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
         if current_branch != branch:
             click.echo(f"Renaming branch {current_branch} to {branch}...")
-            subprocess.run(["git", "branch", "-M", branch], check=True)
+            run_git(["branch", "-M", branch], check=True)
 
         # Push with retry
         for i in range(retries):
             try:
                 click.echo(f"Pushing to {branch} (Attempt {i+1}/{retries})...")
-                subprocess.run(["git", "push", "origin", branch], check=True)
+                run_git(["push", "origin", branch], check=True)
                 click.echo("Push successful.")
                 break
             except subprocess.CalledProcessError:
@@ -158,7 +212,7 @@ def commit_and_push(repo_dir, message, branch="main", retries=5):
                     click.echo(f"Push failed. Pulling rebase and retrying...")
                     time.sleep(random.uniform(1, 3)) # Random jitter
                     try:
-                        subprocess.run(["git", "pull", "--rebase", "origin", branch], check=True)
+                        run_git(["pull", "--rebase", "origin", branch], check=True)
                     except subprocess.CalledProcessError as e:
                         click.echo(f"Pull rebase failed: {e}. Aborting retry.", err=True)
                         raise e
@@ -181,24 +235,24 @@ def initialize_git_repo(repo_dir, remote_url, user_name="Luban CI", user_email="
         click.echo(f"Initializing git repo in {repo_dir}...")
         
         # Init
-        subprocess.run(["git", "init"], check=True)
-        subprocess.run(["git", "config", "user.name", user_name], check=True)
-        subprocess.run(["git", "config", "user.email", user_email], check=True)
-        subprocess.run(["git", "config", "--add", "safe.directory", "*"], check=True)
+        run_git(["init"], check=True)
+        run_git(["config", "user.name", user_name], check=True)
+        run_git(["config", "user.email", user_email], check=True)
+        run_git(["config", "--add", "safe.directory", "*"], check=True)
         
         # Branch
-        subprocess.run(["git", "branch", "-M", initial_branch], check=True)
+        run_git(["branch", "-M", initial_branch], check=True)
         
         # Add and Commit
-        subprocess.run(["git", "add", "."], check=True)
-        subprocess.run(["git", "commit", "-m", "Initial provisioning"], check=True)
+        run_git(["add", "."], check=True)
+        run_git(["commit", "-m", "Initial provisioning"], check=True)
         
         # Remote
-        subprocess.run(["git", "remote", "add", "origin", remote_url], check=True)
+        run_git(["remote", "add", "origin", remote_url], check=True)
         
         # Push
         click.echo(f"Pushing to {initial_branch}...")
-        subprocess.run(["git", "push", "-u", "origin", initial_branch, "--force"], check=True)
+        run_git(["push", "-u", "origin", initial_branch, "--force"], check=True)
         
     except subprocess.CalledProcessError as e:
         click.echo(f"Git operation failed: {e}", err=True)
@@ -219,8 +273,8 @@ def create_and_push_branch(repo_dir, branch_name):
     try:
         os.chdir(repo_dir)
         click.echo(f"Creating and pushing branch {branch_name}...")
-        subprocess.run(["git", "checkout", "-b", branch_name], check=True)
-        subprocess.run(["git", "push", "-u", "origin", branch_name, "--force"], check=True)
+        run_git(["checkout", "-b", branch_name], check=True)
+        run_git(["push", "-u", "origin", branch_name, "--force"], check=True)
     except subprocess.CalledProcessError as e:
         click.echo(f"Git branch operation failed: {e}", err=True)
         raise e

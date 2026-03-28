@@ -95,6 +95,24 @@ spec:
               configMapKeyRef:
                 name: luban-config
                 key: "{{inputs.parameters.git_provider}}_server"
+          - name: GIT_HTTPS_AUTH_MODE
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_https_auth_mode"
+                optional: true
+          - name: GIT_BASE_URL
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_base_url"
+                optional: true
+          - name: GIT_BASIC_AUTH_USERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_basic_auth_username"
+                optional: true
           - name: AZURE_DEVOPS_API_VERSION
             valueFrom:
               configMapKeyRef:
