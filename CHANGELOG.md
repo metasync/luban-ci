@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+## [v1.0.5] - 2026-03-28
+
+### Changed
+
+- Aligns this release with `luban-provisioner-v0.3.4` and associated workflow/config/documentation updates.
+
+## [luban-provisioner-v0.3.4] - 2026-03-28
+
+### Changed
+
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.4`.
+- **Dagster GitOps**: Enhanced `dagster-code-location` GitOps template to include app-scoped `<app_name>-config` ConfigMap and `<app_name>-secret` Secret (with replicator stubs in overlays).
+- **Dagster GitOps**: Made dbt/StarRocks env vars conditional on `template_type` and standardized StarRocks DB naming to use `package_name`.
+
 ## [v1.0.4] - 2026-03-27
 
 ### Changed

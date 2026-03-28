@@ -9,3 +9,7 @@ namespace: snd-{{cookiecutter.project_name}}
 images:
   - name: "{{cookiecutter.registry_server}}/{{cookiecutter.project_name}}/{{cookiecutter.app_name}}"
     newTag: "{{cookiecutter.image_tag}}"
+
+patches:
+  - path: configmap.yaml
+  - path: secret.yaml

@@ -2,6 +2,7 @@
   "project_name": "",
   "app_name": "",
   "package_name": "",
+  "template_type": "dagster-code-location",
   "code_location_port": "3000",
   "registry_server": "",
   "image_tag": "latest"

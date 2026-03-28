@@ -40,9 +40,18 @@ This Workflow bootstraps a new Code Location for user code.
   - `app_name`: (Required) The name of the code location (e.g., `etl-jobs`).
   - `setup_source_repo`: (Optional) Whether to scaffold source code. Default: `yes`.
 
+### Runtime Configuration (GitOps)
+
+The code location GitOps template wires environment variables into the code-server Deployment via:
+
+- `dagster-env` ConfigMap (optional): shared Dagster platform connection settings.
+- `<app_name>-config` ConfigMap: app-specific configuration.
+- `<app_name>-secret` Secret (optional): app-specific secrets, typically replicated from `luban-ci`.
+
+For secrets, the `snd`/`prd` overlays include a stub Secret with `replicate-from` so GitOps owns the object metadata while the replicator controller fills the secret data.
+
 ## Dagster + dbt (StarRocks) Code Location
 
 For teams using dbt as the transformation engine on StarRocks, Luban CI provides a standardized Dagster code location skeleton that wires Dagster orchestration to dbt execution.
 
 - **Concept**: [dagster-dbt-code-location-template.md](dagster-dbt-code-location-template.md)
-

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{cookiecutter.app_name}}-config
+data:
+  APP_ENV: "snd"
+{% if 'dbt' in cookiecutter.template_type %}
+  DBT_TARGET: "sandbox"
+{% endif %}
+{% if 'starrocks' in cookiecutter.template_type %}
+  STARROCKS_ODS_DB: "{{cookiecutter.package_name}}_ods_snd"
+  STARROCKS_DWD_DB: "{{cookiecutter.package_name}}_dwd_snd"
+  STARROCKS_DWS_DB: "{{cookiecutter.package_name}}_dws_snd"
+  STARROCKS_DB: "{{cookiecutter.package_name}}_dws_snd"
+{% endif %}

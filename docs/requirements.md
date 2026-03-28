@@ -68,6 +68,11 @@ Secrets are provided via `secrets/*.env` (gitignored). These files are parsed by
   - Source secrets set `replication-allowed` and `replication-allowed-namespaces`.
   - Target namespaces include stub resources with `replicate-from: luban-ci/<name>`.
 
+For application runtime secrets, the recommended naming convention is:
+
+- Source secret in `luban-ci`: `<project>-<app>-secrets-<env>` (for example `dwt1-etl-jobs-secrets-snd`).
+- Target secret in `<env>-<project>`: `<app>-secret` (a GitOps-managed stub with `replicate-from`).
+
 ### 5.3 Docker Registry Credential Semantics
 - `luban-ci/quay-creds`, `luban-ci/harbor-creds`, `luban-ci/harbor-ro-creds` contain the real `.dockerconfigjson`.
 - Target namespaces include stub `kubernetes.io/dockerconfigjson` Secrets with `replicate-from`.

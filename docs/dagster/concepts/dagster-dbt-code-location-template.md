@@ -48,7 +48,7 @@ Do not use this template when:
 
 The template is a single Git repo representing **one** code location.
 
-- `src/<app_name>/` Dagster code location module
+- `src/<package_name>/` Dagster code location module
   - `definitions.py` exports `defs` (Dagster entrypoint)
   - `assets/dbt.py` defines how dbt is exposed as Dagster assets
 - `dbt_project/` dbt project
@@ -63,11 +63,15 @@ The template is a single Git repo representing **one** code location.
 
 Luban CI deploys code locations as a Kubernetes Deployment that runs:
 
-`dagster code-server start -h 0.0.0.0 -p <port> -m <app_name>`
+`dagster code-server start -h 0.0.0.0 -p <port> -m <package_name>`
+
+Notes:
+
+- `package_name` is the Python-module-safe form of `app_name` (for example `test-app` → `test_app`).
 
 This implies:
 
-- The Python module `<app_name>` must import successfully.
+- The Python module `<package_name>` must import successfully.
 - The module must expose `defs` (via `__init__.py`).
 
 ## Local Development
@@ -109,12 +113,17 @@ Common mapping:
 
 Set `DBT_TARGET` to one of the configured environments. In GitOps deployments, you typically keep env var names the same and just provide different values per environment.
 
+In GitOps, the code location template sets:
+
+- `snd`: `DBT_TARGET=sandbox`
+- `prd`: `DBT_TARGET=production`
+
 ## Layers as Separate Databases (StarRocks)
 
 In many StarRocks deployments, `ods`, `dwd`, and `dws` are separate databases on the same cluster.
 In this setup:
 
-- dbt models are built into the target database configured by `STARROCKS_DB` (and `STARROCKS_SANDBOX_DB` / `STARROCKS_PROD_DB`).
+- dbt models are built into the target database configured by `STARROCKS_DB`.
 - The `ods` source is mapped via `dbt_project/models/dwd/sources.yml`.
 
 The template centralizes layer mapping in `dbt_project.yml` using env-var-driven dbt `vars`:
@@ -128,6 +137,10 @@ By default, `STARROCKS_DWD_DB` falls back to `dwd` and `STARROCKS_DWS_DB` falls 
 You can override ODS schema mapping at runtime with `--vars` (e.g., `ods_schema`) when needed.
 
 Convention: ODS source table `name` matches the physical table name. If you need a different physical name, set `identifier` in `dwd/sources.yml`.
+
+### Naming Convention
+
+In both local `.env.example` and GitOps overlays, the default StarRocks database names are prefixed with `package_name` (not raw `app_name`) to ensure identifier-safe defaults.
 
 ## Recommended Conventions
 
@@ -143,4 +156,3 @@ Common extensions that keep the boundary clean:
 - Add ingestion assets in Dagster that produce dbt sources, then make dbt depend on them.
 - Add partitioning in Dagster for incremental models, passing partition ranges into dbt via `--vars`.
 - Add asset checks for dbt tests to show failures at the asset level.
-

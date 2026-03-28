@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{cookiecutter.app_name}}-config
+data:
+  APP_ENV: "base"
+  LUBAN_TEMPLATE_TYPE: "{{cookiecutter.template_type}}"
+{% if 'dbt' in cookiecutter.template_type %}
+  DBT_TARGET: "production"
+  DBT_THREADS: "4"
+  DBT_PROJECT_DIR: "./dbt_project"
+  DBT_PROFILES_DIR: "./dbt_project"
+  LUBAN_DBT_PREPARE_ON_LOAD: "1"
+  DAGSTER_DAILY_PARTITIONS_START_DATE: "2026-03-01"
+  LUBAN_OBSERVE_SOURCES_CRON: "*/5 * * * *"
+{% endif %}
+{% if 'starrocks' in cookiecutter.template_type %}
+  STARROCKS_HOST: ""
+  STARROCKS_PORT: "9030"
+  STARROCKS_USER: ""
+  STARROCKS_USE_PURE: "true"
+{% endif %}

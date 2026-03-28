@@ -28,6 +28,11 @@ spec:
             - configMapRef:
                 name: dagster-env
                 optional: true
+            - configMapRef:
+                name: {{cookiecutter.app_name}}-config
+            - secretRef:
+                name: {{cookiecutter.app_name}}-secret
+                optional: true
           env:
             - name: DAGSTER_CURRENT_IMAGE
               value: "$(DAGSTER_APP_IMAGE)"
