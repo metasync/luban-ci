@@ -19,10 +19,10 @@ spec:
     secondsAfterSuccess: 3600     # 1 hour (clean up successful runs faster)
     secondsAfterFailure: 86400    # 24 hours (keep failed runs longer)
   synchronization:
-    semaphore:
-      configMapKeyRef:
-        name: workflow-semaphores
-        key: kpack-builds
+    semaphores:
+      - configMapKeyRef:
+          name: workflow-semaphores
+          key: kpack-builds
   arguments:
     parameters:
       - name: repo_url

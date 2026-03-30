@@ -83,6 +83,14 @@ This roadmap breaks down the implementation of `luban-ci` into iterative milesto
 - Tighten Argo CD `AppProject.namespaceResourceWhitelist` (inventory required resource kinds first).
 - Consider making secret annotation cleanup best-effort (warn on failure) if RBAC is constrained.
 
+### Secrets Roadmap
+- Introduce per-environment secrets namespaces (for example `snd-secrets` / `prd-secrets`) and move source-of-truth runtime secrets out of `luban-ci`.
+- Standardize an application runtime secret contract in app namespaces (for example `{{app}}-secret` with stable keys like `postgresql-password`) to keep workloads decoupled from the secret delivery mechanism.
+- Update Dagster GitOps templates to stop committing any default secret payloads (for example remove/replace `dagster-postgresql-secret` data) and ensure a single GitOps owner produces the runtime Secret.
+- Ensure Argo CD does not fight replicated/operator-managed secrets (ignore `/data` and `/stringData` diffs for replicated/runtime secrets).
+- Evaluate External Secrets Operator (ESO) + Vault as the long-term secret delivery mechanism and define an ESO-ready shape (SecretStore/ClusterSecretStore, Vault auth/policy model, and secret path conventions).
+- Plan and document a phased migration from replication-based secrets to ESO-produced secrets (swap producer while keeping the app secret contract stable).
+
 ### GitOps Operations
 - Align auto-sync policy for infra Argo CD Applications (keep `prd` manual where applicable).
 
