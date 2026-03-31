@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## [v1.0.8] - 2026-03-31
+
+### Changed
+
 - **Workflows**: Updated `synchronization.semaphore` to `synchronization.semaphores` for Argo Workflows v4 compatibility.
 
 ### Docs
