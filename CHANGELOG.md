@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Workflows**: Updated `synchronization.semaphore` to `synchronization.semaphores` for Argo Workflows v4 compatibility.
+
+### Docs
+
+- Added a Secrets roadmap section to track the per-env secrets namespace and ESO/Vault direction.
+
 ## [v1.0.7] - 2026-03-29
 
 ### Changed
