@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## [v1.0.9] - 2026-03-31
+
+### Changed
+
 - **Azure DevOps**: Improved on-prem URL handling by deriving project namespace scope from the segment before `/_git/`.
 - **Argo CD**: AppProject destination servers are now resolved from `luban-config.cluster_map` instead of hard-coded in-cluster defaults.
 
