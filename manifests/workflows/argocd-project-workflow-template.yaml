@@ -125,6 +125,11 @@ spec:
               name: luban-config
               key: azure_server
               optional: true
+        - name: CLUSTER_MAP
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: cluster_map
       command: [sh, -c]
       args:
       - |
@@ -195,6 +200,14 @@ spec:
         fi
         
         echo "Creating AppProject ${PROJECT_NAME}..."
+
+        DEST_SERVER=$(echo "$CLUSTER_MAP" | jq -r --arg env "$ENV" '.[$env]')
+
+        if [ -z "$DEST_SERVER" ] || [ "$DEST_SERVER" = "null" ]; then
+          echo "Error: Could not find cluster URL for environment '$ENV' in cluster_map." >&2
+          echo "Cluster Map: $CLUSTER_MAP" >&2
+          exit 1
+        fi
         
         cat <<EOF | kubectl apply -f -
         apiVersion: argoproj.io/v1alpha1
@@ -208,9 +221,9 @@ spec:
           - "${GITOPS_REPOS_WHITELIST}"
           destinations:
           - namespace: ${PROJECT_NAME}
-            server: "https://kubernetes.default.svc"
+            server: "${DEST_SERVER}"
           - namespace: gateway
-            server: "https://kubernetes.default.svc"
+            server: "${DEST_SERVER}"
           clusterResourceWhitelist:
           - group: ''
             kind: Namespace

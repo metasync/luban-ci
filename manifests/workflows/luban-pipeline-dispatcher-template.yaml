@@ -81,13 +81,6 @@ spec:
             PROJECT="$SEG2"
           fi
           NAMESPACE_SCOPE="$PROJECT"
-        elif [ "$HOST" = "dev.azure.com" ]; then
-          ORG="$SEG1"
-          PROJECT="$SEG2"
-          if [ "$PROJECT" = "_git" ] || [ -z "$PROJECT" ]; then
-            PROJECT="$ORG"
-          fi
-          NAMESPACE_SCOPE="$PROJECT"
         elif [ "$HOST" = "ssh.dev.azure.com" ]; then
           if [ "$SEG1" = "v3" ]; then
             ORG="$SEG2"
@@ -97,6 +90,13 @@ spec:
             ORG="$SEG1"
             NAMESPACE_SCOPE="$ORG"
           fi
+        elif [ "{{inputs.parameters.git_provider}}" = "azure" ] && printf '%s' "$PATH_PART" | grep -q '/_git/'; then
+          PROJECT=$(printf '%s' "$PATH_PART" | awk -F/ '{for(i=1;i<=NF;i++) if($i=="_git") {print $(i-1); exit}}')
+          if [ -z "$PROJECT" ]; then
+            echo "Error: Failed to derive Azure project from repo_url" >&2
+            exit 1
+          fi
+          NAMESPACE_SCOPE="$PROJECT"
         else
           ORG="$SEG1"
           NAMESPACE_SCOPE="$ORG"

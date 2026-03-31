@@ -113,6 +113,60 @@ If you are using Azure DevOps instead of GitHub:
     - For a self-hosted Azure DevOps Server, set `azure_server` in `manifests/config/luban-config.yaml`.
     - Set `azure_devops_api_version` in `manifests/config/luban-config.yaml`.
 
+### Argo CD Destinations (Multi-Cluster)
+
+Argo CD Projects and Applications must agree on which Kubernetes cluster a given environment deploys to.
+
+- `luban-config.cluster_map` defines the destination cluster URL per environment (for example `snd` and `prd`).
+- `argocd-app-setup-template` uses `cluster_map` to set `Application.spec.destination.server`.
+- `argocd-project-setup-template` uses `cluster_map` to set the `AppProject.spec.destinations[].server` allowlist.
+
+If these drift, Argo CD may reject application syncs due to destination not being permitted by the AppProject.
+
+### Azure DevOps URL Parsing (Dispatcher + GitOps)
+
+Luban derives CI routing and GitOps repo locations from Azure DevOps repository URLs.
+
+**Namespace derivation (webhook dispatcher)**
+
+The `luban-ci-dispatch` workflow derives the tenant CI namespace from the Azure DevOps *project*.
+
+- Input: the webhook `remoteUrl` (passed as `repo_url`)
+- Rule (HTTPS URLs): the project is the path segment immediately before `/_git/`
+- Output:
+  - `registry_namespace` / `namespace scope` = `<project>`
+  - target CI namespace = `ci-<project>`
+
+Examples:
+
+- Azure DevOps Services (cloud):
+  - `https://dev.azure.com/<org>/<project>/_git/<repo>`
+  - derives `<project>`
+- Azure DevOps Server (on-prem):
+  - `https://<host>/<collection>/<project>/_git/<repo>`
+  - derives `<project>` (not `<collection>`)
+  - if you have a path prefix (for example `/tfs`): `https://<host>/tfs/<collection>/<project>/_git/<repo>` still derives `<project>`
+
+This avoids coupling namespace routing to the Azure DevOps Server collection name, which is often not the tenancy boundary.
+
+**GitOps repo URL derivation (kpack `git-update`)**
+
+When `git_provider=azure`, the CI pipeline updates the application GitOps repository by rewriting the repository portion of the URL:
+
+- Input: application repo URL `.../_git/<repo>`
+- Output: GitOps repo URL `.../_git/<app_name>-gitops`
+
+For Azure DevOps Server (on-prem), this preserves the original host/collection/project path so the pipeline does not hardcode `dev.azure.com`.
+
+Notes:
+
+- The convention assumes the GitOps repo is named `<app_name>-gitops`.
+- Azure SSH URLs (`git@ssh.dev.azure.com:v3/...`) are treated as Azure DevOps Services (cloud) URLs; on-prem deployments should rely on HTTPS URLs.
+
+### Gateway Namespace
+
+The `gateway` namespace hosts the shared Gateway API `Gateway` (for example `luban-gateway`). Application `HTTPRoute` resources typically live in the application namespace but attach to the shared Gateway using `parentRefs.namespace: gateway`.
+
 ### Git Authentication (Workflows + Provisioner)
 
 - By default, workflows and `luban-provisioner` use clean HTTPS repo URLs and rely on git's credential mechanism (`credential.helper store`) for authentication.
@@ -170,7 +224,7 @@ Common values:
 
 - **Recommended**: Argo Workflows Semaphores
   - A ConfigMap (`workflow-semaphores`) defines a named semaphore and its limit in each tenant CI namespace (`ci-*`).
-  - The CI kpack ClusterWorkflowTemplate references this semaphore via `spec.synchronization.semaphore.configMapKeyRef`.
+  - The CI kpack ClusterWorkflowTemplate references this semaphore via `spec.synchronization.semaphores[].configMapKeyRef`.
   - Increase or decrease `kpack-builds` in the tenant namespace ConfigMap to control how many kpack builds run concurrently.
 - **Optional**: Workflow spec.parallelism
   - Limits concurrent nodes within a single workflow. Our pipeline is sequential, so this is less impactful.
