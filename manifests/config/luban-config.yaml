@@ -52,7 +52,7 @@ data:
   azure_devops_api_version: "7.1"
 
   # Tooling Images
-  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.3.7"
+  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.3.8"
   gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.3.7"
 
   # Python Package Index (Optional)
