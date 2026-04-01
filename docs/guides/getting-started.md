@@ -51,7 +51,11 @@ Notes:
 2. Add the public key (`secrets/azure_id_rsa.pub`) to your Azure DevOps user settings (SSH Public Keys).
 3. Add Azure's host key to `secrets/known_hosts`:
    ```bash
+   # Azure DevOps Services (cloud)
    ssh-keyscan -t rsa ssh.dev.azure.com > secrets/known_hosts
+
+   # Azure DevOps Server (on-prem)
+   # ssh-keyscan -t rsa <your_azure_server_host> > secrets/known_hosts
    ```
 
 #### Container Registry Credentials (Required)

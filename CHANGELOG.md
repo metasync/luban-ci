@@ -303,7 +303,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Provisioning**: Transitioned all initial Git provisioning operations (Project setup, Repo creation, App scaffolding) to use **HTTPS** with embedded tokens, eliminating complex SSH key management in CI/CD containers.
-  - *Note*: For kpack builds on Azure DevOps, the workflow automatically converts HTTPS URLs to SSH format (`git@ssh.dev.azure.com...`) to workaround HTTPS authentication limitations with the current kpack buildpack stack. This is handled transparently by the `luban-ci-kpack` workflow.
+  - *Note*: For kpack builds on Azure DevOps (`git_provider=azure`), the workflow automatically normalizes HTTPS URLs to SSH clone URLs (Azure DevOps Services `git@ssh.dev.azure.com:v3/...`; Azure DevOps Server `ssh://git@<host>:22/...`) to avoid HTTPS authentication limitations in the kpack build environment.
 - **Workflow**: Updated `luban-promotion-workflow-template` to robustly handle optional environment variables (like `AZURE_SERVER`) via shell execution, preventing "Bad hostname" errors.
 - **Workflow**: Updated all core workflow templates to use `luban-provisioner:0.1.45`.
 - **Policy**: Updated Azure Branch Protection policies to allow Pull Request creators to approve their own changes (`creatorVoteCounts: true`), streamlining development for smaller teams.

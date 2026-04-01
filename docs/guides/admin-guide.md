@@ -13,7 +13,7 @@ This guide covers the administration and configuration of the Luban CI platform.
     - `webhook_url`: Public webhook endpoint for the event gateway.
     - `cluster_map`: JSON map of `deploy_env` -> Kubernetes cluster URL (e.g., `snd`/`prd`).
     - `github_server`: GitHub server hostname (default: `github.com`).
-    - `azure_server`: Azure DevOps server hostname (default: `dev.azure.com`).
+    - `azure_server`: Azure DevOps host used for REST API calls (default: `dev.azure.com`; for Azure DevOps Server set your server hostname).
     - `azure_devops_api_version`: Azure DevOps REST API version (default: `7.1`).
     - `luban_provisioner_image`: Container image for `luban-provisioner`.
     - `gitops_utils_image`: Container image for GitOps utility tools.
@@ -161,7 +161,11 @@ For Azure DevOps Server (on-prem), this preserves the original host/collection/p
 Notes:
 
 - The convention assumes the GitOps repo is named `<app_name>-gitops`.
-- Azure SSH URLs (`git@ssh.dev.azure.com:v3/...`) are treated as Azure DevOps Services (cloud) URLs; on-prem deployments should rely on HTTPS URLs.
+- The `build-push` step uses `git_provider=azure` to normalize Azure `repo_url` to an SSH clone URL:
+  - Azure DevOps Services: `git@ssh.dev.azure.com:v3/<org>/<project>/<repo>`
+  - Azure DevOps Server: `ssh://git@<host>:22/<collection>/<project>/_git/<repo>` (preserves any path prefix like `/tfs`)
+  - If you pass an SSH URL already, it is used as-is.
+- Azure DevOps Server requires SSH to be enabled on the server side.
 
 ### Gateway Namespace
 

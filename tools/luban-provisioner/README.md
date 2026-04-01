@@ -35,7 +35,7 @@ It uses `uv` for dependency management and runs inside a container (Alpine-based
 The tool requires the following environment variables for Git provider authentication:
 
 -   `GIT_TOKEN`: Personal Access Token (PAT) for GitHub or Azure DevOps.
--   `GIT_SERVER`: The Git server domain (e.g., `github.com` or `dev.azure.com`).
+-   `GIT_SERVER`: The Git server domain (e.g., `github.com`, `dev.azure.com`, or an Azure DevOps Server hostname like `ado.example.com`).
 
 ### Configuration File (Optional)
 The `source` and `gitops` commands accept a `--config-file` argument (YAML/JSON). This allows injecting custom variables into templates, such as:
