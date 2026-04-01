@@ -1,4 +1,5 @@
 {
   "image_pull_secret": "harbor-creds",
-  "repo_name": "luban-infra-ci"
+  "repo_name": "luban-infra-ci",
+  "azure_ssh_host": "ssh.dev.azure.com"
 }

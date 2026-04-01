@@ -217,6 +217,21 @@ spec:
         fi
 
         if [ "$IS_AZURE_SSH" -eq 1 ]; then
+          EXPECTED_GIT_HOST=""
+          case "$REPO_URL" in
+            ssh://git@*) EXPECTED_GIT_HOST=$(printf "%s" "$REPO_URL" | sed -E 's|^ssh://git@([^/:]+).*|\1|') ;;
+            git@*:* ) EXPECTED_GIT_HOST=$(printf "%s" "$REPO_URL" | sed -E 's|^git@([^:]+):.*|\1|') ;;
+          esac
+
+          SECRET_GIT_HOST=$($KUBECTL -n "$TARGET_NAMESPACE" get secret azure-ssh-creds -o jsonpath='{.metadata.annotations.kpack\.io/git}' 2>/dev/null || true)
+          if [ -n "$EXPECTED_GIT_HOST" ] && [ -n "$SECRET_GIT_HOST" ] && [ "$EXPECTED_GIT_HOST" != "$SECRET_GIT_HOST" ]; then
+            echo "Error: kpack git host mismatch for Azure SSH clone."
+            echo "- Repo URL host:      $EXPECTED_GIT_HOST"
+            echo "- azure-ssh-creds kpack.io/git: $SECRET_GIT_HOST"
+            echo "Fix: set azure-ssh-creds annotation kpack.io/git to '$EXPECTED_GIT_HOST' in namespace '$TARGET_NAMESPACE' (via CI infra repo), and ensure known_hosts includes that host key."
+            exit 1
+          fi
+
           KEY_B64=""
           for _ in $(seq 1 60); do
             KEY_B64=$($KUBECTL -n "$TARGET_NAMESPACE" get secret azure-ssh-creds -o jsonpath='{.data.ssh-privatekey}' 2>/dev/null || true)

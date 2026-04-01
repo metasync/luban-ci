@@ -40,6 +40,10 @@ Create `secrets/azure.env`:
 # Personal Access Token (PAT) with Code (Read & Write) scope
 AZURE_DEVOPS_TOKEN=xxxxxxxxxxxx
 AZURE_ORGANIZATION=your_org
+
+# Optional (Azure DevOps Server / on-prem)
+# Hostname used for SSH clones in kpack (kpack.io/git annotation)
+# AZURE_SSH_HOST=ado.example.com
 ```
 
 Notes:

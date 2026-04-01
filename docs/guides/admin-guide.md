@@ -113,6 +113,8 @@ If you are using Azure DevOps instead of GitHub:
     - For a self-hosted Azure DevOps Server, set `azure_server` in `manifests/config/luban-config.yaml`.
     - Set `azure_devops_api_version` in `manifests/config/luban-config.yaml`.
 
+For kpack builds using SSH on Azure DevOps Server, ensure `azure-ssh-creds` in each `ci-*` namespace has `kpack.io/git` set to the SSH clone host (for example `ado.example.com`).
+
 ### Argo CD Destinations (Multi-Cluster)
 
 Argo CD Projects and Applications must agree on which Kubernetes cluster a given environment deploys to.

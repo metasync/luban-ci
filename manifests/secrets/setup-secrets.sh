@@ -249,7 +249,9 @@ strip_last_applied secret github-creds "$K8S_NAMESPACE"
 apply_template azure-creds.yaml.tmpl
 strip_last_applied secret azure-creds "$K8S_NAMESPACE"
 
-create_ssh_auth_secret azure-ssh-creds "$K8S_NAMESPACE" "${ROOT_DIR}/secrets/azure_id_rsa" "${ROOT_DIR}/secrets/known_hosts" "ssh.dev.azure.com"
+AZURE_SSH_HOST=${AZURE_SSH_HOST:-${AZURE_SERVER:-ssh.dev.azure.com}}
+AZURE_SSH_HOST=$(printf "%s" "$AZURE_SSH_HOST" | sed -E 's|^https?://||; s|/.*$||; s|:.*$||')
+create_ssh_auth_secret azure-ssh-creds "$K8S_NAMESPACE" "${ROOT_DIR}/secrets/azure_id_rsa" "${ROOT_DIR}/secrets/known_hosts" "$AZURE_SSH_HOST"
 strip_last_applied secret azure-ssh-creds "$K8S_NAMESPACE"
 
 if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then

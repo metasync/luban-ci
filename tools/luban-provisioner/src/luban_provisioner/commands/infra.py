@@ -167,10 +167,25 @@ def update_ci(repo_name, project_name, git_organization, git_provider, git_serve
 @click.option('--output-dir', default='/workdir')
 @click.option('--project-name', default='luban-infra')
 @click.option('--image-pull-secret', default='harbor-creds', envvar='IMAGE_PULL_SECRET', help='Image Pull Secret Name (env: IMAGE_PULL_SECRET)')
-def init_ci(repo_name, git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name, image_pull_secret):
+@click.option('--azure-ssh-host', envvar='AZURE_SSH_HOST', default='', help='Host for Azure Repos SSH (kpack.io/git annotation)')
+def init_ci(repo_name, git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name, image_pull_secret, azure_ssh_host):
     """Initialize CI infra repo with base structure."""
+
+    if not azure_ssh_host and git_provider == 'azure':
+        if git_server and git_server not in ('dev.azure.com', 'ssh.dev.azure.com'):
+            azure_ssh_host = git_server
+        else:
+            azure_ssh_host = 'ssh.dev.azure.com'
+
+    if azure_ssh_host:
+        azure_ssh_host = azure_ssh_host.strip()
+        azure_ssh_host = azure_ssh_host.removeprefix('https://').removeprefix('http://')
+        azure_ssh_host = azure_ssh_host.split('/', 1)[0]
+        azure_ssh_host = azure_ssh_host.split(':', 1)[0]
+
     context = {
-        "image_pull_secret": image_pull_secret
+        "image_pull_secret": image_pull_secret,
+        "azure_ssh_host": azure_ssh_host
     }
     _init_impl("/app/templates/infra-ci-base", context, repo_name, "ci", git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name)
 
