@@ -9,13 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## [v1.0.10] - 2026-04-01
+
+### Changed
+
+- **kpack CI (Azure DevOps)**: In `luban-ci-kpack` `build-push`, normalize Azure `repo_url` to SSH clone URLs based on `git_provider=azure` (supports Azure DevOps Services and Azure DevOps Server).
 - **kpack CI (Azure DevOps Server)**: Added `AZURE_SSH_HOST` support so `azure-ssh-creds` `kpack.io/git` can match on-prem SSH clone hosts; CI infra templates and `infra ci init` now render the correct host by default.
 - **kpack CI (Azure DevOps)**: Fail fast with a clear error when the SSH repo host does not match `azure-ssh-creds` `kpack.io/git` (prevents opaque `SSH_AUTH_SOCK` errors).
 - **kpack CI (Azure DevOps Server)**: Use scp-style SSH URLs (`git@<host>:/...`) for compatibility with the git fetcher.
 - **Provisioner**: Bumped `luban-provisioner` to `0.3.8`.
 - **Buildpack (python-uv)**: Added optional netrc Service Binding (`uv-mirror-netrc`) to support HTTP Basic Auth for uv release and managed Python mirrors.
-
-- **kpack CI (Azure DevOps)**: In `luban-ci-kpack` `build-push`, normalize Azure `repo_url` to SSH clone URLs based on `git_provider=azure` (supports Azure DevOps Services and Azure DevOps Server).
 
 ## [v1.0.9] - 2026-03-31
 
