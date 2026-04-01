@@ -165,7 +165,7 @@ Notes:
 - The convention assumes the GitOps repo is named `<app_name>-gitops`.
 - The `build-push` step uses `git_provider=azure` to normalize Azure `repo_url` to an SSH clone URL:
   - Azure DevOps Services: `git@ssh.dev.azure.com:v3/<org>/<project>/<repo>`
-  - Azure DevOps Server: `ssh://git@<host>:22/<collection>/<project>/_git/<repo>` (preserves any path prefix like `/tfs`)
+  - Azure DevOps Server: `git@<host>:/<collection>/<project>/_git/<repo>` (preserves any path prefix like `/tfs`)
   - If you pass an SSH URL already, it is used as-is.
 - Azure DevOps Server requires SSH to be enabled on the server side.
 

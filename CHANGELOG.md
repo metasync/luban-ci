@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **kpack CI (Azure DevOps Server)**: Added `AZURE_SSH_HOST` support so `azure-ssh-creds` `kpack.io/git` can match on-prem SSH clone hosts; CI infra templates and `infra ci init` now render the correct host by default.
 - **kpack CI (Azure DevOps)**: Fail fast with a clear error when the SSH repo host does not match `azure-ssh-creds` `kpack.io/git` (prevents opaque `SSH_AUTH_SOCK` errors).
+- **kpack CI (Azure DevOps Server)**: Use scp-style SSH URLs (`git@<host>:/...`) for compatibility with the git fetcher.
 - **Provisioner**: Bumped `luban-provisioner` to `0.3.8`.
 
 - **kpack CI (Azure DevOps)**: In `luban-ci-kpack` `build-push`, normalize Azure `repo_url` to SSH clone URLs based on `git_provider=azure` (supports Azure DevOps Services and Azure DevOps Server).
@@ -309,7 +310,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Provisioning**: Transitioned all initial Git provisioning operations (Project setup, Repo creation, App scaffolding) to use **HTTPS** with embedded tokens, eliminating complex SSH key management in CI/CD containers.
-  - *Note*: For kpack builds on Azure DevOps (`git_provider=azure`), the workflow automatically normalizes HTTPS URLs to SSH clone URLs (Azure DevOps Services `git@ssh.dev.azure.com:v3/...`; Azure DevOps Server `ssh://git@<host>:22/...`) to avoid HTTPS authentication limitations in the kpack build environment.
+  - *Note*: For kpack builds on Azure DevOps (`git_provider=azure`), the workflow automatically normalizes HTTPS URLs to SSH clone URLs (Azure DevOps Services `git@ssh.dev.azure.com:v3/...`; Azure DevOps Server `git@<host>:/...`) to avoid HTTPS authentication limitations in the kpack build environment.
 - **Workflow**: Updated `luban-promotion-workflow-template` to robustly handle optional environment variables (like `AZURE_SERVER`) via shell execution, preventing "Bad hostname" errors.
 - **Workflow**: Updated all core workflow templates to use `luban-provisioner:0.1.45`.
 - **Policy**: Updated Azure Branch Protection policies to allow Pull Request creators to approve their own changes (`creatorVoteCounts: true`), streamlining development for smaller teams.
