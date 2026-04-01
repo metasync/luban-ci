@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **kpack CI (Azure DevOps)**: In `luban-ci-kpack` `build-push`, normalize Azure `repo_url` to SSH clone URLs based on `git_provider=azure` (supports Azure DevOps Services and Azure DevOps Server).
+
 ## [v1.0.9] - 2026-03-31
 
 ### Changed
