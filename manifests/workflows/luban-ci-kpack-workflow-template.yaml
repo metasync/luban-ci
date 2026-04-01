@@ -250,6 +250,14 @@ spec:
           fi
         fi
 
+        HAS_UV_NETRC=0
+        if $KUBECTL -n "$TARGET_NAMESPACE" get secret uv-mirror-netrc >/dev/null 2>&1; then
+          NETRC_B64=$($KUBECTL -n "$TARGET_NAMESPACE" get secret uv-mirror-netrc -o jsonpath='{.data.netrc}' 2>/dev/null || true)
+          if [ -n "$NETRC_B64" ] && [ "$NETRC_B64" != "cGxhY2Vob2xkZXI=" ]; then
+            HAS_UV_NETRC=1
+          fi
+        fi
+
         echo "Processing $MODE build for {{workflow.parameters.app_name}}..."
         echo "Source Revision:  $REVISION"
         echo "Target Image Tag: $IMAGE_TAG"
@@ -291,6 +299,18 @@ spec:
             subPath: "$SUB_PATH_VALUE"
           serviceAccountName: workflow-runner
           build:
+        EOF
+
+        if [ "$HAS_UV_NETRC" -eq 1 ]; then
+          cat >>"$IMAGE_SPEC_FILE" <<EOF
+            services:
+            - name: uv-mirror-netrc
+              kind: Secret
+              apiVersion: v1
+        EOF
+        fi
+
+        cat >>"$IMAGE_SPEC_FILE" <<EOF
             env:
             - name: BP_UV_RELEASE_BASE_URL
               valueFrom:

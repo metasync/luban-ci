@@ -62,6 +62,45 @@ Notes:
    # ssh-keyscan -t rsa <your_azure_server_host> > secrets/known_hosts
    ```
 
+**uv/Python Mirrors (HTTP Basic Auth via netrc, Optional)**
+
+If you use air-gapped mirrors for:
+- `BP_UV_RELEASE_BASE_URL` (uv binaries + `.sha256`)
+- `BP_UV_PYTHON_INSTALL_MIRROR` (uv managed Python downloads)
+
+and those mirrors require HTTP Basic Auth, configure a netrc binding.
+
+1. Create `secrets/uv-mirror.env`:
+   ```bash
+   # Required if your uv release mirror requires auth
+   # Host only; scheme/path/port are ignored if present.
+   UV_MIRROR_HOST=mirror.example.com
+   UV_MIRROR_USERNAME=your_user
+   UV_MIRROR_PASSWORD=your_password
+
+   # Optional: set only if the Python mirror is a different host
+   # If set, credentials default to UV_MIRROR_USERNAME/PASSWORD unless overridden.
+   UV_PYTHON_MIRROR_HOST=python-mirror.example.com
+   # Leave empty to reuse UV_MIRROR_USERNAME/PASSWORD
+   UV_PYTHON_MIRROR_USERNAME=
+   UV_PYTHON_MIRROR_PASSWORD=
+   ```
+
+2. Apply secrets:
+   ```bash
+   make secrets
+   ```
+
+What this does:
+- Creates `luban-ci/uv-mirror-netrc` (type `service.binding/netrc`) containing a `netrc` file.
+- CI namespaces (`ci-*`) contain a stub `uv-mirror-netrc` Secret; the replicator fills the real data.
+- During kpack builds, if `ci-*/uv-mirror-netrc` contains a real `netrc` (not placeholder), the CI workflow mounts it as a kpack Service Binding.
+
+Notes:
+- If all `UV_*` fields are empty, no netrc secret is created and builds run unchanged.
+- If you set `UV_PYTHON_MIRROR_HOST`, you must provide credentials either via `UV_PYTHON_MIRROR_USERNAME/PASSWORD` or `UV_MIRROR_USERNAME/PASSWORD`.
+- Do not put credentials into `BP_UV_RELEASE_BASE_URL` / `BP_UV_PYTHON_INSTALL_MIRROR` URLs; they may be logged.
+
 #### Container Registry Credentials (Required)
 
 **Quay.io (Public/Private Registry)**

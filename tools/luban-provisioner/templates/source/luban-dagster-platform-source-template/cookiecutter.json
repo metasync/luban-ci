@@ -1,5 +1,7 @@
 {
   "project_name": "",
   "app_name": "",
-  "dagster_version": ""
+  "dagster_version": "",
+  "python_index_url": "",
+  "python_index_name": "custom"
 }

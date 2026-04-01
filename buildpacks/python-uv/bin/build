@@ -10,6 +10,26 @@ echo "---> Luban Python uv Buildpack"
 uv_layer="$CNB_LAYERS_DIR/uv"
 mkdir -p "$uv_layer/bin"
 
+binding_root="${SERVICE_BINDING_ROOT:-${CNB_PLATFORM_DIR:-/platform}/bindings}"
+NETRC_FILE=""
+if [ -d "$binding_root" ]; then
+    for d in "$binding_root"/*; do
+        [ -d "$d" ] || continue
+        if [ -f "$d/type" ] && [ "$(cat "$d/type" 2>/dev/null || true)" = "netrc" ] && [ -f "$d/netrc" ]; then
+            NETRC_FILE="/tmp/uv-mirror.netrc"
+            cp "$d/netrc" "$NETRC_FILE"
+            chmod 600 "$NETRC_FILE"
+            export NETRC="$NETRC_FILE"
+            break
+        fi
+    done
+fi
+
+WGET_ARGS=()
+if [ -n "$NETRC_FILE" ]; then
+    WGET_ARGS+=(--netrc-file "$NETRC_FILE")
+fi
+
 # Determine uv version
 DEFAULT_UV_VERSION="0.10.4"
 
@@ -56,12 +76,12 @@ if [[ "$CACHED_VERSION" != "$UV_VERSION" ]] || [[ ! -f "$uv_layer/bin/uv" ]]; th
     
     # Download
     echo "Downloading uv from $UV_URL..."
-    wget -q -O uv.tar.gz "$UV_URL" || { echo "Error: Failed to download uv from $UV_URL"; exit 1; }
+    wget -q -O uv.tar.gz "${WGET_ARGS[@]}" "$UV_URL" || { echo "Error: Failed to download uv from $UV_URL"; exit 1; }
 
     # Verify Checksum
     echo "Verifying checksum..."
     CHECKSUM_URL="${UV_URL}.sha256"
-    wget -q -O uv.tar.gz.sha256 "$CHECKSUM_URL" || { echo "Error: Failed to download checksum from $CHECKSUM_URL"; exit 1; }
+    wget -q -O uv.tar.gz.sha256 "${WGET_ARGS[@]}" "$CHECKSUM_URL" || { echo "Error: Failed to download checksum from $CHECKSUM_URL"; exit 1; }
     
     EXPECTED_SHA256=$(cat uv.tar.gz.sha256 | cut -d' ' -f1)
     ACTUAL_SHA256=$(sha256sum uv.tar.gz | cut -d' ' -f1)

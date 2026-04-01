@@ -174,6 +174,27 @@ create_ssh_auth_secret() {
   apply_template ssh-auth-secret.yaml.tmpl
 }
 
+create_netrc_binding_secret() {
+  local secret_name="$1"
+  local namespace="$2"
+  local allowed_namespaces="$3"
+  local netrc_text="$4"
+
+  export SECRET_NAME="$secret_name"
+  export NAMESPACE="$namespace"
+  export REPLICATION_ALLOWED_NAMESPACES="$allowed_namespaces"
+  export BINDING_TYPE_B64
+  export BINDING_PROVIDER_B64
+  export NETRC_B64
+
+  BINDING_TYPE_B64=$(printf '%s' 'netrc' | base64 | tr -d '\n')
+  BINDING_PROVIDER_B64=$(printf '%s' 'luban-ci' | base64 | tr -d '\n')
+  NETRC_B64=$(printf '%s' "$netrc_text" | base64 | tr -d '\n')
+
+  apply_template netrc-service-binding-secret.yaml.tmpl
+  strip_last_applied secret "$SECRET_NAME" "$NAMESPACE"
+}
+
 create_argocd_repo_creds_secret() {
   local secret_name="$1"
   local namespace="$2"
@@ -253,6 +274,47 @@ AZURE_SSH_HOST=${AZURE_SSH_HOST:-${AZURE_SERVER:-ssh.dev.azure.com}}
 AZURE_SSH_HOST=$(printf "%s" "$AZURE_SSH_HOST" | sed -E 's|^https?://||; s|/.*$||; s|:.*$||')
 create_ssh_auth_secret azure-ssh-creds "$K8S_NAMESPACE" "${ROOT_DIR}/secrets/azure_id_rsa" "${ROOT_DIR}/secrets/known_hosts" "$AZURE_SSH_HOST"
 strip_last_applied secret azure-ssh-creds "$K8S_NAMESPACE"
+
+normalize_host() {
+  printf "%s" "$1" | sed -E 's|^https?://||; s|/.*$||; s|:.*$||'
+}
+
+append_netrc_entry() {
+  local host="$1"
+  local username="$2"
+  local password="$3"
+  NETRC_CONTENT="${NETRC_CONTENT}$(printf "machine %s\n  login %s\n  password %s\n" "$host" "$username" "$password")"
+}
+
+NETRC_CONTENT=""
+UV_MIRROR_HOST_NORM=""
+
+if [ -n "${UV_MIRROR_HOST:-}" ]; then
+  if [ -z "${UV_MIRROR_USERNAME:-}" ] || [ -z "${UV_MIRROR_PASSWORD:-}" ]; then
+    echo "Error: UV_MIRROR_HOST is set but UV_MIRROR_USERNAME/UV_MIRROR_PASSWORD are missing" >&2
+    exit 1
+  fi
+  UV_MIRROR_HOST_NORM=$(normalize_host "$UV_MIRROR_HOST")
+  append_netrc_entry "$UV_MIRROR_HOST_NORM" "$UV_MIRROR_USERNAME" "$UV_MIRROR_PASSWORD"
+fi
+
+if [ -n "${UV_PYTHON_MIRROR_HOST:-}" ]; then
+  UV_PYTHON_MIRROR_HOST_NORM=$(normalize_host "$UV_PYTHON_MIRROR_HOST")
+  if [ "$UV_PYTHON_MIRROR_HOST_NORM" != "$UV_MIRROR_HOST_NORM" ]; then
+    if [ -n "${UV_PYTHON_MIRROR_USERNAME:-}" ] && [ -n "${UV_PYTHON_MIRROR_PASSWORD:-}" ]; then
+      append_netrc_entry "$UV_PYTHON_MIRROR_HOST_NORM" "$UV_PYTHON_MIRROR_USERNAME" "$UV_PYTHON_MIRROR_PASSWORD"
+    elif [ -n "${UV_MIRROR_USERNAME:-}" ] && [ -n "${UV_MIRROR_PASSWORD:-}" ]; then
+      append_netrc_entry "$UV_PYTHON_MIRROR_HOST_NORM" "$UV_MIRROR_USERNAME" "$UV_MIRROR_PASSWORD"
+    else
+      echo "Error: UV_PYTHON_MIRROR_HOST is set but no credentials provided (set UV_PYTHON_MIRROR_USERNAME/UV_PYTHON_MIRROR_PASSWORD or UV_MIRROR_USERNAME/UV_MIRROR_PASSWORD)" >&2
+      exit 1
+    fi
+  fi
+fi
+
+if [ -n "$NETRC_CONTENT" ]; then
+  create_netrc_binding_secret uv-mirror-netrc "$K8S_NAMESPACE" "^ci-.*" "$NETRC_CONTENT"
+fi
 
 if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
   apply_template cloudflare-api-token.yaml.tmpl

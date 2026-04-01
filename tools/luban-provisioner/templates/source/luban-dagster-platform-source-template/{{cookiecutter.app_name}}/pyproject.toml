@@ -10,3 +10,10 @@ dependencies = [
     "dagster-postgres",
     "dagster-k8s"
 ]
+
+{% if cookiecutter.python_index_url %}
+[[tool.uv.index]]
+name = "{{ cookiecutter.python_index_name }}"
+url = "{{ cookiecutter.python_index_url }}"
+default = true
+{% endif %}
