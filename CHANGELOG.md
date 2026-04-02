@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-04-02
+## [v1.1.0] - 2026-04-02
 
 ### Added
 
@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Aligns this release with `luban-provisioner-v0.3.7` and associated workflow/config/documentation updates.
 
-## [luban-provisioner-v0.3.7] - 2026-03-29
+### luban-provisioner v0.3.7 (2026-03-29)
 
 ### Changed
 
@@ -90,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Aligns this release with `luban-provisioner-v0.3.4` and associated workflow/config/documentation updates.
 
-## [luban-provisioner-v0.3.4] - 2026-03-28
+### luban-provisioner v0.3.4 (2026-03-28)
 
 ### Changed
 
@@ -104,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Aligns this release with `luban-provisioner-v0.3.2` and associated workflow/config/documentation updates.
 
-## [luban-provisioner-v0.3.2] - 2026-03-27
+### luban-provisioner v0.3.2 (2026-03-27)
 
 ### Changed
 
@@ -118,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Aligns this release with `luban-provisioner-v0.3.0` and associated workflow/config updates.
 
-## [luban-provisioner-v0.3.0] - 2026-03-26
+### luban-provisioner v0.3.0 (2026-03-26)
 
 ### Added
 
