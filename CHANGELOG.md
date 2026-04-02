@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Cilium Egress Gateway (CI)**: Added opt-in namespace labeling via Argo CD `managedNamespaceMetadata` using `luban-config.cilium_egress_gateway_policy`.
+
+### Docs
+
+- Added `docs/guides/cilium-egress-gateway.md` with an end-to-end setup and sample `CiliumEgressGatewayPolicy`.
+
 ## [v1.1.0] - 2026-04-02
 
 ### Added
