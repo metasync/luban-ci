@@ -81,6 +81,12 @@ spec:
               name: luban-config
               key: "{{inputs.parameters.git_provider}}_base_url"
               optional: true
+        - name: CILIUM_EGRESS_GATEWAY_POLICY
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: cilium_egress_gateway_policy
+              optional: true
       command: [sh, -c]
       args:
       - |
@@ -99,6 +105,16 @@ spec:
         APP_NAME="ci-{{inputs.parameters.project_name}}-infra"
         DEST_SERVER="https://kubernetes.default.svc" # CI always local
         NAMESPACE="ci-{{inputs.parameters.project_name}}"
+
+        MANAGED_NS_METADATA=""
+        if [ -n "${CILIUM_EGRESS_GATEWAY_POLICY:-}" ]; then
+          MANAGED_NS_METADATA=$(cat <<EOF
+            managedNamespaceMetadata:
+              labels:
+                luban-ci.io/cilium-egress-gateway-policy: "${CILIUM_EGRESS_GATEWAY_POLICY}"
+        EOF
+          )
+        fi
         
         echo "Creating CI Infra App $APP_NAME..."
         
@@ -180,6 +196,7 @@ spec:
             syncOptions:
               - CreateNamespace=true
               - ServerSideApply=true
+        ${MANAGED_NS_METADATA}
         EOF
 
   volumeClaimTemplates:

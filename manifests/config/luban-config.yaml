@@ -19,6 +19,11 @@ data:
   # Web Hook URL
   webhook_url: "https://webhook-luban.metasync.cc"
 
+  # Cilium Egress Gateway (Optional)
+  # Name of the shared cluster-scoped CiliumEgressGatewayPolicy used for CI namespaces.
+  # When set, newly created `ci-*` namespaces will be labeled via Argo CD managedNamespaceMetadata.
+  cilium_egress_gateway_policy: ""
+
   # Cluster Map (JSON) - Maps environments to Cluster URLs
   # For single-cluster setup, both map to the local cluster (https://kubernetes.default.svc)
   cluster_map: |

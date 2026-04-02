@@ -12,6 +12,7 @@ This guide covers the administration and configuration of the Luban CI platform.
     - `image_pull_secret`: Name of the secret for pulling images (e.g., `harbor-ro-creds`).
     - `webhook_url`: Public webhook endpoint for the event gateway.
     - `cluster_map`: JSON map of `deploy_env` -> Kubernetes cluster URL (e.g., `snd`/`prd`).
+    - `cilium_egress_gateway_policy`: (Optional) Shared `CiliumEgressGatewayPolicy` name for CI egress IP control.
     - `github_server`: GitHub server hostname (default: `github.com`).
     - `azure_server`: Azure DevOps Services (cloud) host used for REST API calls (default: `dev.azure.com`).
     - `ado_server`: Azure DevOps Server (on-prem) host used for REST API calls (required when `git_provider=ado`).
@@ -104,6 +105,16 @@ This patches CoreDNS `NodeHosts` to map the ingress domains to the Gateway LoadB
 The `luban-ci-kpack` pipeline updates the application GitOps repo on `gitops_branch` (default: `develop`).
 - If the branch exists remotely, it checks it out.
 - If it does not exist, it creates the branch and pushes it (requires write access).
+
+### Cilium Egress Gateway (Optional)
+
+If the cluster uses Cilium Egress Gateway and CI egress IPs are controlled by a shared `CiliumEgressGatewayPolicy`, set `cilium_egress_gateway_policy` in `luban-config`.
+
+When this key is set, Luban labels each newly created `ci-*` namespace via Argo CD `managedNamespaceMetadata` with:
+
+- `luban-ci.io/cilium-egress-gateway-policy=<policy-name>`
+
+The policy should select namespaces by this label. A complete sample policy is in `docs/guides/cilium-egress-gateway.md`.
 
 ### Git Provider Configuration (Azure DevOps)
 
