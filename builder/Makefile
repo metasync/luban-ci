@@ -16,8 +16,12 @@ build: ## Create the CNB Builder
 push: ## Check remote, build (if needed), tag and push Builder Image
 	$(MAKE) build || exit 1; \
 	if [ "$(PLATFORM)" = "$(LOCAL_PLATFORM)" ]; then \
-		echo "Logging in to Quay.io..."; \
-		echo "$(QUAY_PASSWORD)" | docker login -u "$(QUAY_USERNAME)" --password-stdin $(REGISTRY_SERVER); \
+		if [ -n "$(QUAY_USERNAME)" ] && [ -n "$(QUAY_PASSWORD)" ]; then \
+			echo "Logging in to $(REGISTRY_SERVER)..."; \
+			echo "$(QUAY_PASSWORD)" | docker login -u "$(QUAY_USERNAME)" --password-stdin $(REGISTRY_SERVER); \
+		else \
+			echo "QUAY_USERNAME/QUAY_PASSWORD not set; assuming docker is already logged in."; \
+		fi; \
 		echo "Tagging builder as $(REMOTE_BUILDER_TAG_IMMUTABLE)..."; \
 		docker tag $(BUILDER_IMAGE) $(REMOTE_BUILDER_TAG_IMMUTABLE); \
 		echo "Pushing images..."; \

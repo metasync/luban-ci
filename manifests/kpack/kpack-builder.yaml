@@ -11,7 +11,7 @@ kind: ClusterBuilder
 metadata:
   name: luban-builder
 spec:
-  tag: quay.io/luban-ci/luban-kpack-builder:al2023-bc44680d0abe
+  tag: quay.io/luban-ci/luban-kpack-builder:al2023-5974942589e4
   stack:
     name: luban-stack
     kind: ClusterStack
