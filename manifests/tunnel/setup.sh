@@ -1,104 +1,94 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Default values
-TUNNEL_NAME=${TUNNEL_NAME:-"luban-webhook"}
-TUNNEL_HOSTNAME=${TUNNEL_HOSTNAME:-"webhook-luban.metasync.cc"}
+# This script manages the Kubernetes-side resources for an existing Cloudflare Tunnel.
+# It does NOT create tunnels or route DNS. Those are assumed to be already done.
+
+# Namespace where cloudflared runs and where the ConfigMap/Secret live.
 K8S_NAMESPACE=${K8S_NAMESPACE:-"luban-ci"}
-CREDENTIALS_SECRET_NAME="cloudflare-tunnel-credentials"
-# Script directory
+
+# Hostname for incoming webhook traffic (optional). If unset, derive from the existing ConfigMap.
+TUNNEL_HOSTNAME=${TUNNEL_HOSTNAME:-""}
+
+# Tunnel name is informational only when relying solely on Kubernetes resources.
+TUNNEL_NAME=${TUNNEL_NAME:-"luban-webhook"}
+
+# Secret holding the Cloudflare tunnel credentials.
+CREDENTIALS_SECRET_NAME=${CREDENTIALS_SECRET_NAME:-"cloudflare-tunnel-credentials"}
+
+# Paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_FILE="$SCRIPT_DIR/cloudflared-config.yaml.template"
 CONFIG_FILE="$SCRIPT_DIR/cloudflared-config.yaml"
 DEPLOYMENT_FILE="$SCRIPT_DIR/cloudflared-deployment.yaml"
 
 echo "------------------------------------------------"
-echo "Cloudflare Tunnel Setup"
+echo "Cloudflare Tunnel Setup (Kubernetes only)"
 echo "Tunnel Name: $TUNNEL_NAME"
-echo "Hostname:    $TUNNEL_HOSTNAME"
+echo "Hostname:    ${TUNNEL_HOSTNAME:-<derive from cluster>}"
 echo "Namespace:   $K8S_NAMESPACE"
 echo "------------------------------------------------"
 
-# Check dependencies
-if ! command -v cloudflared &> /dev/null; then
-    echo "Error: cloudflared not found. Please install it first."
-    exit 1
-fi
-
-if ! command -v kubectl &> /dev/null; then
-    echo "Error: kubectl not found. Please install it first."
-    exit 1
+if ! command -v kubectl >/dev/null 2>&1; then
+  echo "Error: kubectl not found. Please install it first." >&2
+  exit 1
 fi
 
 if [ ! -f "$TEMPLATE_FILE" ]; then
-    echo "Error: Template file $TEMPLATE_FILE not found."
-    exit 1
+  echo "Error: Template file $TEMPLATE_FILE not found." >&2
+  exit 1
 fi
 
-# 1. Login
-echo "Checking Cloudflare authentication..."
-if [ ! -f ~/.cloudflared/cert.pem ]; then
-    echo "You are not logged in. Opening browser for authentication..."
-    cloudflared tunnel login
-else
-    echo "Already logged in."
+if [ ! -f "$DEPLOYMENT_FILE" ]; then
+  echo "Error: Deployment file $DEPLOYMENT_FILE not found." >&2
+  exit 1
 fi
 
-# 2. Create Tunnel
-echo "Checking tunnel '$TUNNEL_NAME'..."
-# Try to find existing tunnel ID by name
-TUNNEL_ID=$(cloudflared tunnel list | grep "$TUNNEL_NAME" | awk '{print $1}' | head -n 1)
+echo "Ensuring namespace '$K8S_NAMESPACE' exists..."
+kubectl create ns "$K8S_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
+echo "Reading existing tunnel configuration from ConfigMap/cloudflared-config..."
+EXISTING_CFG=$(kubectl get configmap cloudflared-config -n "$K8S_NAMESPACE" -o jsonpath='{.data.config\.yaml}' 2>/dev/null || true)
+if [ -z "$EXISTING_CFG" ]; then
+  echo "Error: missing ConfigMap cloudflared-config in namespace '$K8S_NAMESPACE'." >&2
+  echo "This script manages an existing tunnel; bootstrap the tunnel and credentials first." >&2
+  exit 1
+fi
+
+TUNNEL_ID=$(printf '%s\n' "$EXISTING_CFG" | awk -F': *' '/^\s*tunnel:\s*/{print $2; exit}' | tr -d '"')
 if [ -z "$TUNNEL_ID" ]; then
-    echo "Creating tunnel '$TUNNEL_NAME'..."
-    cloudflared tunnel create "$TUNNEL_NAME"
-    TUNNEL_ID=$(cloudflared tunnel list | grep "$TUNNEL_NAME" | awk '{print $1}' | head -n 1)
-else
-    echo "Tunnel '$TUNNEL_NAME' exists with ID: $TUNNEL_ID"
+  echo "Error: failed to derive tunnel id from existing cloudflared-config." >&2
+  exit 1
 fi
 
-if [ -z "$TUNNEL_ID" ]; then
-    echo "Error: Failed to obtain Tunnel ID."
-    exit 1
+if [ -z "$TUNNEL_HOSTNAME" ]; then
+  TUNNEL_HOSTNAME=$(printf '%s\n' "$EXISTING_CFG" | awk -F': *' '/hostname:\s*/{print $2; exit}' | tr -d '"')
 fi
 
-# 3. Route DNS
-echo "Routing DNS '$TUNNEL_HOSTNAME' to tunnel..."
-# Use -f to overwrite if exists
-cloudflared tunnel route dns -f "$TUNNEL_NAME" "$TUNNEL_HOSTNAME"
-
-# 4. Create Kubernetes Secret
-echo "Creating Kubernetes Secret..."
-CRED_FILE=~/.cloudflared/$TUNNEL_ID.json
-
-if [ ! -f "$CRED_FILE" ]; then
-    echo "Error: Credentials file $CRED_FILE not found!"
-    exit 1
+if [ -z "$TUNNEL_HOSTNAME" ]; then
+  echo "Error: TUNNEL_HOSTNAME is not set and could not be derived from existing config." >&2
+  exit 1
 fi
 
-# Ensure namespace exists
-kubectl create ns "$K8S_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+echo "Checking credentials Secret/${CREDENTIALS_SECRET_NAME}..."
+if ! kubectl -n "$K8S_NAMESPACE" get secret "$CREDENTIALS_SECRET_NAME" >/dev/null 2>&1; then
+  echo "Error: missing Secret '$CREDENTIALS_SECRET_NAME' in namespace '$K8S_NAMESPACE'." >&2
+  echo "It must contain credentials.json for tunnel id '$TUNNEL_ID'." >&2
+  exit 1
+fi
 
-kubectl create secret generic "$CREDENTIALS_SECRET_NAME" \
-    --from-file=credentials.json="$CRED_FILE" \
-    -n "$K8S_NAMESPACE" \
-    --dry-run=client -o yaml | kubectl apply -f -
-
-# 5. Generate ConfigMap
-echo "Generating ConfigMap from template..."
+echo "Rendering ConfigMap from template..."
 sed -e "s/\${TUNNEL_ID}/$TUNNEL_ID/g" \
-    -e "s/\${TUNNEL_HOSTNAME}/$TUNNEL_HOSTNAME/g" \
-    -e "s/\${K8S_NAMESPACE}/$K8S_NAMESPACE/g" \
-    "$TEMPLATE_FILE" > "$CONFIG_FILE"
+  -e "s/\${TUNNEL_HOSTNAME}/$TUNNEL_HOSTNAME/g" \
+  -e "s/\${K8S_NAMESPACE}/$K8S_NAMESPACE/g" \
+  "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
-# 6. Deploy
-echo "Deploying to Kubernetes..."
-kubectl apply -f "$CONFIG_FILE"
-kubectl apply -f "$DEPLOYMENT_FILE"
+echo "Applying ConfigMap and Deployment..."
+kubectl apply -f "$CONFIG_FILE" >/dev/null
+kubectl apply -f "$DEPLOYMENT_FILE" >/dev/null
 
-# 7. Restart
-echo "Restarting cloudflared..."
-kubectl rollout restart deployment cloudflared -n "$K8S_NAMESPACE"
+echo "Restarting deployment/cloudflared..."
+kubectl rollout restart deployment cloudflared -n "$K8S_NAMESPACE" >/dev/null
 
 echo "------------------------------------------------"
 echo "Tunnel setup complete!"

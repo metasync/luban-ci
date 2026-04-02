@@ -90,7 +90,7 @@ spec:
         INFRA_PROJECT="luban-infra"
         
         BASE_URL="${GIT_BASE_URL:-https://${GIT_SERVER}}"
-        if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
+        if [ "{{inputs.parameters.git_provider}}" = "azure" ] || [ "{{inputs.parameters.git_provider}}" = "ado" ]; then
             REPO_URL="${BASE_URL}/{{inputs.parameters.git_organization}}/${INFRA_PROJECT}/_git/${REPO_NAME}"
         else
             REPO_URL="${BASE_URL}/{{inputs.parameters.git_organization}}/${REPO_NAME}.git"
@@ -127,6 +127,13 @@ spec:
                 - /stringData
             - group: ""
               kind: Secret
+              name: ado-ssh-creds
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+                - /stringData
+            - group: ""
+              kind: Secret
               name: github-creds
               namespace: ${NAMESPACE}
               jsonPointers:
@@ -135,6 +142,13 @@ spec:
             - group: ""
               kind: Secret
               name: azure-creds
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+                - /stringData
+            - group: ""
+              kind: Secret
+              name: ado-creds
               namespace: ${NAMESPACE}
               jsonPointers:
                 - /data

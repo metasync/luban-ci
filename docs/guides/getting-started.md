@@ -21,6 +21,8 @@ Create a `secrets/` directory and add the following files (these are ignored by 
 
 #### Git Provider Credentials (Required)
 
+Configure the provider(s) you use. The secrets setup script creates provider secrets only when the corresponding token env vars are set.
+
 **Option A: GitHub (Default)**
 Create `secrets/github.env`:
 ```bash
@@ -34,32 +36,64 @@ Notes:
 - Luban CI uses clean HTTPS repo URLs and relies on git's credential mechanism for authentication (no PATs embedded in remote URLs).
 - `GITHUB_USERNAME` is used as the Basic auth username; the PAT is used as the password.
 
-**Option B: Azure DevOps**
+**Option B: Azure DevOps Services (cloud, `git_provider=azure`)**
+
 Create `secrets/azure.env`:
 ```bash
 # Personal Access Token (PAT) with Code (Read & Write) scope
 AZURE_DEVOPS_TOKEN=xxxxxxxxxxxx
 AZURE_ORGANIZATION=your_org
-
-# Optional (Azure DevOps Server / on-prem)
-# Hostname used for SSH clones in kpack (kpack.io/git annotation)
-# AZURE_SSH_HOST=ado.example.com
 ```
 
 Notes:
-- For Azure DevOps Server (on-prem), set `azure_server` in `manifests/config/luban-config.yaml` to your server hostname.
-- Luban CI uses git's credential mechanism for HTTPS auth for both Azure DevOps cloud and on-prem.
+- `AZURE_ORGANIZATION` is the cloud org name used for ArgoCD repo-creds and some URL construction.
 
-**Azure SSH Keys (Required for kpack builds on Azure)**:
+**Option C: Azure DevOps Server (on-prem, `git_provider=ado`)**
+
+Create `secrets/ado.env`:
+
+```bash
+# Personal Access Token (PAT) for Azure DevOps Server
+ADO_DEVOPS_TOKEN=xxxxxxxxxxxx
+
+# Collection name (for ArgoCD repo-creds URL allowlisting)
+ADO_COLLECTION=DefaultCollection
+
+# Optional: SSH clone host used by kpack (kpack.io/git annotation)
+# Defaults to ADO_SERVER when set.
+ADO_SSH_HOST=ado.example.com
+
+# Optional: server host (used as a fallback for ADO_SSH_HOST)
+ADO_SERVER=ado.example.com
+```
+
+Notes:
+- Set `ado_server` (and optionally `ado_base_url`) in `manifests/config/luban-config.yaml`.
+- For on-prem, Luban commonly uses `extraheader_basic` for git HTTPS auth; see `ado_https_auth_mode` and `ado_basic_auth_username` in `luban-config`.
+
+**SSH Keys for kpack (only if you use SSH clones)**
+
+Luban supports SSH clones for both Azure DevOps Services (`git_provider=azure`) and Azure DevOps Server (`git_provider=ado`), but the keypair files are separate:
+
+- Azure DevOps Services: `secrets/azure_id_rsa`
+- Azure DevOps Server: `secrets/ado_id_rsa`
+
+**Azure DevOps Services (cloud, `git_provider=azure`)**
 1. Generate an SSH key pair: `ssh-keygen -t rsa -b 4096 -f secrets/azure_id_rsa`
-2. Add the public key (`secrets/azure_id_rsa.pub`) to your Azure DevOps user settings (SSH Public Keys).
+2. Add the public key (`secrets/azure_id_rsa.pub`) to Azure DevOps user settings (SSH Public Keys).
 3. Add Azure's host key to `secrets/known_hosts`:
    ```bash
-   # Azure DevOps Services (cloud)
-   ssh-keyscan -t rsa ssh.dev.azure.com > secrets/known_hosts
+   touch secrets/known_hosts
+   ssh-keyscan -t rsa ssh.dev.azure.com >> secrets/known_hosts
+   ```
 
-   # Azure DevOps Server (on-prem)
-   # ssh-keyscan -t rsa <your_azure_server_host> > secrets/known_hosts
+**Azure DevOps Server (on-prem, `git_provider=ado`)**
+1. Generate an SSH key pair: `ssh-keygen -t rsa -b 4096 -f secrets/ado_id_rsa`
+2. Add the public key (`secrets/ado_id_rsa.pub`) to your Azure DevOps Server user settings (SSH Public Keys).
+3. Add your server host key to `secrets/known_hosts`:
+   ```bash
+   touch secrets/known_hosts
+   ssh-keyscan -t rsa <your_ado_server_host> >> secrets/known_hosts
    ```
 
 **uv/Python Mirrors (HTTP Basic Auth via netrc, Optional)**

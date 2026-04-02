@@ -194,7 +194,16 @@ spec:
                 PATH_PART=$(printf "%s" "$REPO_URL" | sed -E 's|^https?://([^@/]+@)?[^/]+\.visualstudio\.com/||; s|/_git/|/|')
                 REPO_URL="git@ssh.dev.azure.com:v3/${ORG}/${PATH_PART}"
                 echo "Converted URL: $REPO_URL"
-              elif printf "%s" "$REPO_URL" | grep -q '/_git/'; then
+              fi
+              ;;
+          esac
+        fi
+
+        if [ "${GIT_PROVIDER:-}" = "ado" ]; then
+          case "$REPO_URL" in
+            git@*|ssh://*) ;;
+            *)
+              if printf "%s" "$REPO_URL" | grep -q '/_git/'; then
                 echo "Detected Azure DevOps Server URL. Converting to SSH format..."
                 HOST=$(printf "%s" "$REPO_URL" | sed -E 's|^https?://([^@/]+@)?([^/:]+)(:[0-9]+)?/.*$|\2|')
                 PATH_PART=$(printf "%s" "$REPO_URL" | sed -E 's|^https?://([^@/]+@)?[^/]+||')
@@ -207,7 +216,7 @@ spec:
           esac
         fi
 
-        if [ "${GIT_PROVIDER:-}" = "azure" ]; then
+        if [ "${GIT_PROVIDER:-}" = "azure" ] || [ "${GIT_PROVIDER:-}" = "ado" ]; then
           case "$REPO_URL" in
             git@*:*|ssh://git@*) IS_AZURE_SSH=1 ;;
             *) IS_AZURE_SSH=0 ;;
@@ -223,29 +232,31 @@ spec:
             git@*:* ) EXPECTED_GIT_HOST=$(printf "%s" "$REPO_URL" | sed -E 's|^git@([^:]+):.*|\1|') ;;
           esac
 
-          SECRET_GIT_HOST=$($KUBECTL -n "$TARGET_NAMESPACE" get secret azure-ssh-creds -o jsonpath='{.metadata.annotations.kpack\.io/git}' 2>/dev/null || true)
+          SSH_CREDS_SECRET="${GIT_PROVIDER}-ssh-creds"
+
+          SECRET_GIT_HOST=$($KUBECTL -n "$TARGET_NAMESPACE" get secret "$SSH_CREDS_SECRET" -o jsonpath='{.metadata.annotations.kpack\.io/git}' 2>/dev/null || true)
           if [ -n "$EXPECTED_GIT_HOST" ] && [ -n "$SECRET_GIT_HOST" ] && [ "$EXPECTED_GIT_HOST" != "$SECRET_GIT_HOST" ]; then
             echo "Error: kpack git host mismatch for Azure SSH clone."
             echo "- Repo URL host:      $EXPECTED_GIT_HOST"
-            echo "- azure-ssh-creds kpack.io/git: $SECRET_GIT_HOST"
-            echo "Fix: set azure-ssh-creds annotation kpack.io/git to '$EXPECTED_GIT_HOST' in namespace '$TARGET_NAMESPACE' (via CI infra repo), and ensure known_hosts includes that host key."
+            echo "- ${SSH_CREDS_SECRET} kpack.io/git: $SECRET_GIT_HOST"
+            echo "Fix: set ${SSH_CREDS_SECRET} annotation kpack.io/git to '$EXPECTED_GIT_HOST' in namespace '$TARGET_NAMESPACE' (via CI infra repo), and ensure known_hosts includes that host key."
             exit 1
           fi
 
           KEY_B64=""
           for _ in $(seq 1 60); do
-            KEY_B64=$($KUBECTL -n "$TARGET_NAMESPACE" get secret azure-ssh-creds -o jsonpath='{.data.ssh-privatekey}' 2>/dev/null || true)
+            KEY_B64=$($KUBECTL -n "$TARGET_NAMESPACE" get secret "$SSH_CREDS_SECRET" -o jsonpath='{.data.ssh-privatekey}' 2>/dev/null || true)
             if [ -n "$KEY_B64" ] && [ "$KEY_B64" != "cGxhY2Vob2xkZXI=" ]; then
               break
             fi
             sleep 2
           done
           if [ -z "$KEY_B64" ]; then
-            echo "Error: Secret azure-ssh-creds is missing or does not contain ssh-privatekey."
+            echo "Error: Secret ${SSH_CREDS_SECRET} is missing or does not contain ssh-privatekey."
             exit 1
           fi
           if [ "$KEY_B64" = "cGxhY2Vob2xkZXI=" ]; then
-            echo "Error: Secret azure-ssh-creds still contains placeholder data after waiting."
+            echo "Error: Secret ${SSH_CREDS_SECRET} still contains placeholder data after waiting."
             exit 1
           fi
         fi
@@ -466,7 +477,7 @@ spec:
 
         # Calculate derived parameters in shell for robustness.
         # Determine GitOps Repo URL
-        if [ "$GIT_PROVIDER" = "azure" ]; then
+        if [ "$GIT_PROVIDER" = "azure" ] || [ "$GIT_PROVIDER" = "ado" ]; then
           if echo "$REPO_URL" | grep -q "ssh.dev.azure.com"; then
             BASE_PATH=$(echo "$REPO_URL" | sed -E 's|.*v3/||')
             ORG_PROJ=$(echo "$BASE_PATH" | cut -d/ -f1,2)
@@ -485,28 +496,60 @@ spec:
           GITOPS_REPO_URL="https://${GIT_PROVIDER}.com/${REGISTRY_NAMESPACE}/${APP_NAME}-gitops.git"
         fi
 
-        git config --global credential.helper store
-        # Extract domain from GITOPS_REPO_URL
-        DOMAIN=$(echo "$GITOPS_REPO_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
-        echo "https://${GIT_USERNAME}:${GIT_TOKEN}@${DOMAIN}" > ~/.git-credentials
+        AUTH_MODE="${GIT_HTTPS_AUTH_MODE:-credential_store}"
+        BASIC_USER="${GIT_BASIC_AUTH_USERNAME:-$GIT_USERNAME}"
+
+        run_git() {
+          if [ "$AUTH_MODE" = "extraheader_basic" ]; then
+            git -c http.extraHeader="$LUBAN_GIT_AUTH_HEADER" "$@"
+          else
+            git "$@"
+          fi
+        }
+
+        configure_git_auth() {
+          # Extract domain from GITOPS_REPO_URL
+          DOMAIN=$(echo "$GITOPS_REPO_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+
+          case "$AUTH_MODE" in
+            credential_store)
+              git config --global credential.helper store
+              echo "https://${BASIC_USER}:${GIT_TOKEN}@${DOMAIN}" > ~/.git-credentials
+              ;;
+            extraheader_basic)
+              if ! command -v base64 >/dev/null 2>&1; then
+                die "Error: missing 'base64' binary required for extraheader_basic auth"
+              fi
+              AUTH_B64=$(printf '%s' "${BASIC_USER}:${GIT_TOKEN}" | base64 | tr -d '\n')
+              LUBAN_GIT_AUTH_HEADER="Authorization: Basic ${AUTH_B64}"
+              export LUBAN_GIT_AUTH_HEADER
+              ;;
+            *)
+              die "Error: invalid GIT_HTTPS_AUTH_MODE: ${AUTH_MODE}"
+              ;;
+          esac
+        }
+
+        configure_git_auth
+
         git config --global user.email "ci@luban.com"
         git config --global user.name "Luban CI"
 
         echo "Cloning ${GITOPS_REPO_URL}..."
-        git clone "$GITOPS_REPO_URL" /workdir/gitops
+        run_git clone "$GITOPS_REPO_URL" /workdir/gitops
         cd /workdir/gitops
 
         # Configure safe directory to avoid "fatal: detected dubious ownership"
         git config --global --add safe.directory /workdir/gitops
 
-        if git show-ref --verify --quiet "refs/heads/${GITOPS_BRANCH}"; then \
-          git checkout "${GITOPS_BRANCH}"; \
+        if run_git show-ref --verify --quiet "refs/heads/${GITOPS_BRANCH}"; then \
+          run_git checkout "${GITOPS_BRANCH}"; \
         else \
-          if git ls-remote --exit-code --heads origin "${GITOPS_BRANCH}" >/dev/null 2>&1; then \
-            git checkout -b "${GITOPS_BRANCH}" "origin/${GITOPS_BRANCH}"; \
+          if run_git ls-remote --exit-code --heads origin "${GITOPS_BRANCH}" >/dev/null 2>&1; then \
+            run_git checkout -b "${GITOPS_BRANCH}" "origin/${GITOPS_BRANCH}"; \
           else \
-            git checkout -b "${GITOPS_BRANCH}"; \
-            git push -u origin "${GITOPS_BRANCH}"; \
+            run_git checkout -b "${GITOPS_BRANCH}"; \
+            run_git push -u origin "${GITOPS_BRANCH}"; \
           fi; \
         fi
         
@@ -543,12 +586,12 @@ spec:
             exit 1
          fi
         
-        if git diff --quiet; then
+        if run_git diff --quiet; then
           echo "No changes to commit."
         else
-          git add .
-          git commit -m "Update ${APP_NAME} ${DEPLOY_ENV} image tag to ${IMAGE_TAG}"
-          git push
+          run_git add .
+          run_git commit -m "Update ${APP_NAME} ${DEPLOY_ENV} image tag to ${IMAGE_TAG}"
+          run_git push
         fi
       env:
       - name: REGISTRY_NAMESPACE
@@ -581,6 +624,18 @@ spec:
         value: "{{workflow.parameters.deploy_env}}"
       - name: registry_server
         value: "{{workflow.parameters.registry_server}}"
+      - name: GIT_HTTPS_AUTH_MODE
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: "{{workflow.parameters.git_provider}}_https_auth_mode"
+            optional: true
+      - name: GIT_BASIC_AUTH_USERNAME
+        valueFrom:
+          configMapKeyRef:
+            name: luban-config
+            key: "{{workflow.parameters.git_provider}}_basic_auth_username"
+            optional: true
       volumeMounts:
       - name: workdir
         mountPath: /workdir

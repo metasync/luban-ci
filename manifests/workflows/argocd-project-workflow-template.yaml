@@ -17,11 +17,12 @@ spec:
         description: "Git Organization/User (defaults to project_name if empty)"
         value: ""
       - name: git_provider
-        description: "Git Provider (e.g., 'github', 'azure')"
+        description: "Git Provider (e.g., 'github', 'azure', 'ado')"
         value: "azure"
         enum:
           - "github"
           - "azure"
+          - "ado"
       - name: developer_group
         description: "OIDC group for developer access (Single Group)"
         value: ""
@@ -125,6 +126,12 @@ spec:
               name: luban-config
               key: azure_server
               optional: true
+        - name: ADO_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: ado_server
+              optional: true
         - name: CLUSTER_MAP
           valueFrom:
             configMapKeyRef:
@@ -183,6 +190,11 @@ spec:
         GIT_SERVER="github.com" # Default fallback
         if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
            GIT_SERVER="${AZURE_SERVER:-dev.azure.com}"
+        elif [ "{{inputs.parameters.git_provider}}" = "ado" ]; then
+           if [ -z "${ADO_SERVER:-}" ]; then
+             die "Error: missing ado_server in luban-config"
+           fi
+           GIT_SERVER="${ADO_SERVER}"
         elif [ "{{inputs.parameters.git_provider}}" = "github" ]; then
            GIT_SERVER="${GITHUB_SERVER:-github.com}"
         else
@@ -190,7 +202,7 @@ spec:
         fi
 
         # Repo Whitelist Construction
-        if [ "{{inputs.parameters.git_provider}}" = "azure" ] && [ -n "{{inputs.parameters.git_organization}}" ]; then
+        if { [ "{{inputs.parameters.git_provider}}" = "azure" ] || [ "{{inputs.parameters.git_provider}}" = "ado" ]; } && [ -n "{{inputs.parameters.git_organization}}" ]; then
             # Azure DevOps with Organization
             # URL: https://dev.azure.com/{ORG}/{PROJECT}/_git/*
             GITOPS_REPOS_WHITELIST="https://${GIT_SERVER}/${ORG}/${PROJECT_NAME_RAW}/_git/*"

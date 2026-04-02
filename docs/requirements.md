@@ -82,6 +82,10 @@ For application runtime secrets, the recommended naming convention is:
 - `luban-ci/azure-ssh-creds` contains the real key material.
 - `ci-*/azure-ssh-creds` is created by the infra repo templates and uses `replicate-from` so the GitOps source owns required annotations like `kpack.io/git`.
 
+### 5.4.1 ADO SSH Credential Semantics
+- `luban-ci/ado-ssh-creds` contains the real key material.
+- `ci-*/ado-ssh-creds` is created by the infra repo templates and uses `replicate-from` so the GitOps source owns required annotations like `kpack.io/git`.
+
 ### 5.5 uv/Python Mirror netrc Semantics
 - `luban-ci/uv-mirror-netrc` contains the real netrc content (type `service.binding/netrc`).
 - `ci-*/uv-mirror-netrc` is created by the infra repo templates and uses `replicate-from` so the GitOps source owns required metadata.

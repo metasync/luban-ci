@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-04-02
+
+### Added
+
+- **Azure DevOps**: Added `git_provider=ado` for Azure DevOps Server (on-prem).
+- **Argo Events**: Added `ado-event-source` and `ado-sensor` and exposed `/ado/push`.
+
 ### Changed
+
+- **kpack CI (GitOps update)**: Git HTTPS auth now honors provider-scoped `*_https_auth_mode` and supports `extraheader_basic`.
+- **Secrets**: Git provider secrets are now optional in `make secrets` (only created when token env vars are set).
+- **Tunnel**: Cloudflare tunnel setup is now Kubernetes-only and routes `/ado/push`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.10`.
+- **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.39`.
+
+### Docs
+
+- Updated guides and requirements to document `ado_*` configuration, SSH key naming, and API version keys.
 
 ## [v1.0.10] - 2026-04-01
 

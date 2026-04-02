@@ -219,11 +219,6 @@ require HARBOR_USERNAME
 require HARBOR_PASSWORD
 require HARBOR_RO_USERNAME
 require HARBOR_RO_PASSWORD
-require GITHUB_USERNAME
-require GITHUB_TOKEN
-require AZURE_DEVOPS_TOKEN
-require AZURE_ORGANIZATION
-require GITHUB_ORGANIZATION
 
 REGISTRY_SERVER=${REGISTRY_SERVER:-quay.io}
 
@@ -265,15 +260,38 @@ create_dockerconfigjson_secret harbor-ro-creds "$K8S_NAMESPACE" "$HARBOR_SERVER"
 
 apply_template harbor-api-creds.yaml.tmpl
 strip_last_applied secret harbor-api-creds "$K8S_NAMESPACE"
-apply_template github-creds.yaml.tmpl
-strip_last_applied secret github-creds "$K8S_NAMESPACE"
-apply_template azure-creds.yaml.tmpl
-strip_last_applied secret azure-creds "$K8S_NAMESPACE"
 
-AZURE_SSH_HOST=${AZURE_SSH_HOST:-${AZURE_SERVER:-ssh.dev.azure.com}}
-AZURE_SSH_HOST=$(printf "%s" "$AZURE_SSH_HOST" | sed -E 's|^https?://||; s|/.*$||; s|:.*$||')
-create_ssh_auth_secret azure-ssh-creds "$K8S_NAMESPACE" "${ROOT_DIR}/secrets/azure_id_rsa" "${ROOT_DIR}/secrets/known_hosts" "$AZURE_SSH_HOST"
-strip_last_applied secret azure-ssh-creds "$K8S_NAMESPACE"
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  require GITHUB_USERNAME
+  require GITHUB_ORGANIZATION
+  apply_template github-creds.yaml.tmpl
+  strip_last_applied secret github-creds "$K8S_NAMESPACE"
+fi
+
+if [ -n "${AZURE_DEVOPS_TOKEN:-}" ]; then
+  require AZURE_ORGANIZATION
+  apply_template azure-creds.yaml.tmpl
+  strip_last_applied secret azure-creds "$K8S_NAMESPACE"
+fi
+
+if [ -n "${ADO_DEVOPS_TOKEN:-}" ]; then
+  apply_template ado-creds.yaml.tmpl
+  strip_last_applied secret ado-creds "$K8S_NAMESPACE"
+fi
+
+if [ -n "${AZURE_DEVOPS_TOKEN:-}" ]; then
+  AZURE_SSH_HOST=${AZURE_SSH_HOST:-${AZURE_SERVER:-ssh.dev.azure.com}}
+  AZURE_SSH_HOST=$(printf "%s" "$AZURE_SSH_HOST" | sed -E 's|^https?://||; s|/.*$||; s|:.*$||')
+  create_ssh_auth_secret azure-ssh-creds "$K8S_NAMESPACE" "${ROOT_DIR}/secrets/azure_id_rsa" "${ROOT_DIR}/secrets/known_hosts" "$AZURE_SSH_HOST"
+  strip_last_applied secret azure-ssh-creds "$K8S_NAMESPACE"
+fi
+
+if [ -n "${ADO_SSH_HOST:-${ADO_SERVER:-}}" ] && [ -f "${ROOT_DIR}/secrets/ado_id_rsa" ]; then
+  ADO_SSH_HOST=${ADO_SSH_HOST:-${ADO_SERVER}}
+  ADO_SSH_HOST=$(printf "%s" "$ADO_SSH_HOST" | sed -E 's|^https?://||; s|/.*$||; s|:.*$||')
+  create_ssh_auth_secret ado-ssh-creds "$K8S_NAMESPACE" "${ROOT_DIR}/secrets/ado_id_rsa" "${ROOT_DIR}/secrets/known_hosts" "$ADO_SSH_HOST"
+  strip_last_applied secret ado-ssh-creds "$K8S_NAMESPACE"
+fi
 
 normalize_host() {
   printf "%s" "$1" | sed -E 's|^https?://||; s|/.*$||; s|:.*$||'
@@ -321,9 +339,27 @@ if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
   strip_last_applied secret cloudflare-api-token "$CERT_MANAGER_NAMESPACE"
 fi
 
-create_argocd_repo_creds_secret argocd-repo-creds-azure "$ARGOCD_NAMESPACE" "https://dev.azure.com/${AZURE_ORGANIZATION}" "git" "${AZURE_DEVOPS_TOKEN}"
-strip_last_applied secret argocd-repo-creds-azure "$ARGOCD_NAMESPACE"
-create_argocd_repo_creds_secret argocd-repo-creds-github "$ARGOCD_NAMESPACE" "https://github.com/${GITHUB_ORGANIZATION}" "luban-ci" "${GITHUB_TOKEN}"
-strip_last_applied secret argocd-repo-creds-github "$ARGOCD_NAMESPACE"
+if [ -n "${AZURE_DEVOPS_TOKEN:-}" ]; then
+  require AZURE_ORGANIZATION
+  create_argocd_repo_creds_secret argocd-repo-creds-azure "$ARGOCD_NAMESPACE" "https://dev.azure.com/${AZURE_ORGANIZATION}" "git" "${AZURE_DEVOPS_TOKEN}"
+  strip_last_applied secret argocd-repo-creds-azure "$ARGOCD_NAMESPACE"
+fi
+
+if [ -n "${ADO_DEVOPS_TOKEN:-}" ] && [ -n "${ADO_COLLECTION:-}" ]; then
+  ADO_BASE_URL=${ADO_BASE_URL:-}
+  if [ -z "$ADO_BASE_URL" ] && [ -n "${ADO_SERVER:-}" ]; then
+    ADO_BASE_URL="https://${ADO_SERVER}"
+  fi
+  ADO_BASE_URL=$(printf "%s" "$ADO_BASE_URL" | sed -E 's|/*$||')
+  if [ -n "$ADO_BASE_URL" ]; then
+    create_argocd_repo_creds_secret argocd-repo-creds-ado "$ARGOCD_NAMESPACE" "${ADO_BASE_URL}/${ADO_COLLECTION}" "git" "${ADO_DEVOPS_TOKEN}"
+    strip_last_applied secret argocd-repo-creds-ado "$ARGOCD_NAMESPACE"
+  fi
+fi
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  require GITHUB_ORGANIZATION
+  create_argocd_repo_creds_secret argocd-repo-creds-github "$ARGOCD_NAMESPACE" "https://github.com/${GITHUB_ORGANIZATION}" "luban-ci" "${GITHUB_TOKEN}"
+  strip_last_applied secret argocd-repo-creds-github "$ARGOCD_NAMESPACE"
+fi
 
 echo "Secrets setup complete."

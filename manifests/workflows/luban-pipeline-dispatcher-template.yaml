@@ -90,7 +90,7 @@ spec:
             ORG="$SEG1"
             NAMESPACE_SCOPE="$ORG"
           fi
-        elif [ "{{inputs.parameters.git_provider}}" = "azure" ] && printf '%s' "$PATH_PART" | grep -q '/_git/'; then
+        elif { [ "{{inputs.parameters.git_provider}}" = "azure" ] || [ "{{inputs.parameters.git_provider}}" = "ado" ]; } && printf '%s' "$PATH_PART" | grep -q '/_git/'; then
           PROJECT=$(printf '%s' "$PATH_PART" | awk -F/ '{for(i=1;i<=NF;i++) if($i=="_git") {print $(i-1); exit}}')
           if [ -z "$PROJECT" ]; then
             echo "Error: Failed to derive Azure project from repo_url" >&2

@@ -13,8 +13,10 @@ This guide covers the administration and configuration of the Luban CI platform.
     - `webhook_url`: Public webhook endpoint for the event gateway.
     - `cluster_map`: JSON map of `deploy_env` -> Kubernetes cluster URL (e.g., `snd`/`prd`).
     - `github_server`: GitHub server hostname (default: `github.com`).
-    - `azure_server`: Azure DevOps host used for REST API calls (default: `dev.azure.com`; for Azure DevOps Server set your server hostname).
-    - `azure_devops_api_version`: Azure DevOps REST API version (default: `7.1`).
+    - `azure_server`: Azure DevOps Services (cloud) host used for REST API calls (default: `dev.azure.com`).
+    - `ado_server`: Azure DevOps Server (on-prem) host used for REST API calls (required when `git_provider=ado`).
+    - `azure_devops_api_version`: Azure DevOps Services REST API version (default: `7.1`).
+    - `ado_devops_api_version`: Azure DevOps Server REST API version (default: `7.1`).
     - `luban_provisioner_image`: Container image for `luban-provisioner`.
     - `gitops_utils_image`: Container image for GitOps utility tools.
     - `python_index_url`: (Optional) Custom Python Package Index URL for project scaffolding.
@@ -104,16 +106,24 @@ The `luban-ci-kpack` pipeline updates the application GitOps repo on `gitops_bra
 - If it does not exist, it creates the branch and pushes it (requires write access).
 
 ### Git Provider Configuration (Azure DevOps)
-If you are using Azure DevOps instead of GitHub:
-1.  **Organization & Project**: Ensure your Azure DevOps Organization exists. The `luban-project-workflow` will create the Project for you.
-2.  **Personal Access Token (PAT)**:
-    - Scopes required: `Code (Read & Write)`, `Project and Team (Read & Write)`, `Work Items (Read & Write)`.
-    - Configure in `secrets/*.env` (exporting `AZURE_DEVOPS_TOKEN` and `AZURE_ORGANIZATION`, mapped to the `azure-creds` secret).
-3.  **Environment Variables**:
-    - For a self-hosted Azure DevOps Server, set `azure_server` in `manifests/config/luban-config.yaml`.
-    - Set `azure_devops_api_version` in `manifests/config/luban-config.yaml`.
 
-For kpack builds using SSH on Azure DevOps Server, ensure `azure-ssh-creds` in each `ci-*` namespace has `kpack.io/git` set to the SSH clone host (for example `ado.example.com`).
+Luban supports two Azure DevOps providers:
+
+- `git_provider=azure`: Azure DevOps Services (cloud)
+- `git_provider=ado`: Azure DevOps Server (on-prem)
+
+If you are using Azure DevOps instead of GitHub:
+1. **Organization & Project**: Ensure your Azure DevOps Organization exists. The `luban-project-workflow` will create the Project for you.
+2. **Personal Access Token (PAT)**:
+   - Scopes required: `Code (Read & Write)`, `Project and Team (Read & Write)`, `Work Items (Read & Write)`.
+   - Configure in `secrets/*.env` (exporting `AZURE_DEVOPS_TOKEN` and `AZURE_ORGANIZATION`, mapped to the `azure-creds` secret).
+3. **Environment Variables**:
+   - For Azure DevOps Server (on-prem), set `ado_server` (and optionally `ado_base_url`) in `manifests/config/luban-config.yaml`, and provide `ado-creds` (`ADO_DEVOPS_TOKEN`).
+   - Set `azure_devops_api_version` (cloud) and/or `ado_devops_api_version` (on-prem) in `manifests/config/luban-config.yaml`.
+   - For ArgoCD repo credentials on ADO Server, also set `ADO_COLLECTION` (used to build the repo-creds URL).
+
+For kpack builds using SSH on Azure DevOps Server, ensure `ado-ssh-creds` in each `ci-*` namespace has `kpack.io/git` set to the SSH clone host.
+This is typically the same host as `ado_server`, and can be overridden during infra init via `ADO_SSH_HOST` / `--ado-ssh-host`.
 
 ### Argo CD Destinations (Multi-Cluster)
 
@@ -153,7 +163,7 @@ This avoids coupling namespace routing to the Azure DevOps Server collection nam
 
 **GitOps repo URL derivation (kpack `git-update`)**
 
-When `git_provider=azure`, the CI pipeline updates the application GitOps repository by rewriting the repository portion of the URL:
+When `git_provider` is `azure` (cloud) or `ado` (on-prem), the CI pipeline updates the application GitOps repository by rewriting the repository portion of the URL:
 
 - Input: application repo URL `.../_git/<repo>`
 - Output: GitOps repo URL `.../_git/<app_name>-gitops`
@@ -163,9 +173,9 @@ For Azure DevOps Server (on-prem), this preserves the original host/collection/p
 Notes:
 
 - The convention assumes the GitOps repo is named `<app_name>-gitops`.
-- The `build-push` step uses `git_provider=azure` to normalize Azure `repo_url` to an SSH clone URL:
-  - Azure DevOps Services: `git@ssh.dev.azure.com:v3/<org>/<project>/<repo>`
-  - Azure DevOps Server: `git@<host>:/<collection>/<project>/_git/<repo>` (preserves any path prefix like `/tfs`)
+- The `build-push` step normalizes `repo_url` to an SSH clone URL:
+  - `git_provider=azure` (Azure DevOps Services): `git@ssh.dev.azure.com:v3/<org>/<project>/<repo>`
+  - `git_provider=ado` (Azure DevOps Server): `git@<host>:/<collection>/<project>/_git/<repo>`
   - If you pass an SSH URL already, it is used as-is.
 - Azure DevOps Server requires SSH to be enabled on the server side.
 
@@ -183,9 +193,14 @@ For Azure DevOps Server (on-prem), you may need to send an explicit HTTP `Author
 **Config keys (in `luban-config`)**
 
 - `github_https_auth_mode`: recommended `credential_store`.
-- `azure_https_auth_mode`: `credential_store` (Azure DevOps Services) or `extraheader_basic` (Azure DevOps Server on-prem).
-- `azure_basic_auth_username`: optional username to use when building the Basic auth header.
-- `azure_base_url`: optional base URL (scheme + optional path prefix), used for Azure DevOps Server.
+- `azure_https_auth_mode`: recommended `credential_store` for Azure DevOps Services (cloud).
+- `ado_https_auth_mode`: recommended `extraheader_basic` for Azure DevOps Server (on-prem).
+- `ado_basic_auth_username`: optional username to use when building the Basic auth header.
+- `ado_base_url`: optional base URL (scheme + optional path prefix), used for Azure DevOps Server.
+
+Notes:
+
+- Workflows that perform git operations (including the kpack GitOps update step) use the provider-scoped `*_https_auth_mode` settings.
 - Git credentials come from `*-creds` Secrets (for example `github-creds` and `azure-creds`) and include:
   - `username`
   - `token`

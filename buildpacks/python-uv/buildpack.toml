@@ -2,7 +2,7 @@ api = "0.10"
 
 [buildpack]
 id = "luban-ci/python-uv"
-version = "0.0.38"
+version = "0.0.39"
 name = "Python uv Buildpack"
 homepage = "https://github.com/metasync/luban-ci"
 

@@ -14,7 +14,7 @@ spec:
       - name: git_provider
         description: "Git Provider"
         value: "azure"
-        enum: ["github", "azure"]
+        enum: ["github", "azure", "ado"]
       - name: project_name
         description: "Project Name (Azure DevOps Only)"
         value: "luban-infra"
@@ -134,7 +134,7 @@ spec:
         valueFrom:
           configMapKeyRef:
             name: luban-config
-            key: azure_devops_api_version
+            key: "{{inputs.parameters.git_provider}}_devops_api_version"
             optional: true
       volumeMounts:
       - name: workdir

@@ -168,8 +168,18 @@ def update_ci(repo_name, project_name, git_organization, git_provider, git_serve
 @click.option('--project-name', default='luban-infra')
 @click.option('--image-pull-secret', default='harbor-creds', envvar='IMAGE_PULL_SECRET', help='Image Pull Secret Name (env: IMAGE_PULL_SECRET)')
 @click.option('--azure-ssh-host', envvar='AZURE_SSH_HOST', default='', help='Host for Azure Repos SSH (kpack.io/git annotation)')
-def init_ci(repo_name, git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name, image_pull_secret, azure_ssh_host):
+@click.option('--ado-ssh-host', envvar='ADO_SSH_HOST', default='', help='Host for ADO Server SSH (kpack.io/git annotation)')
+def init_ci(repo_name, git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name, image_pull_secret, azure_ssh_host, ado_ssh_host):
     """Initialize CI infra repo with base structure."""
+
+    def _normalize_host(host):
+        if not host:
+            return ""
+        host = host.strip()
+        host = host.removeprefix('https://').removeprefix('http://')
+        host = host.split('/', 1)[0]
+        host = host.split(':', 1)[0]
+        return host
 
     if not azure_ssh_host and git_provider == 'azure':
         if git_server and git_server not in ('dev.azure.com', 'ssh.dev.azure.com'):
@@ -177,15 +187,16 @@ def init_ci(repo_name, git_organization, git_provider, git_server, git_base_url,
         else:
             azure_ssh_host = 'ssh.dev.azure.com'
 
-    if azure_ssh_host:
-        azure_ssh_host = azure_ssh_host.strip()
-        azure_ssh_host = azure_ssh_host.removeprefix('https://').removeprefix('http://')
-        azure_ssh_host = azure_ssh_host.split('/', 1)[0]
-        azure_ssh_host = azure_ssh_host.split(':', 1)[0]
+    if not ado_ssh_host and git_provider == 'ado':
+        ado_ssh_host = git_base_url or git_server
+
+    azure_ssh_host = _normalize_host(azure_ssh_host)
+    ado_ssh_host = _normalize_host(ado_ssh_host)
 
     context = {
         "image_pull_secret": image_pull_secret,
-        "azure_ssh_host": azure_ssh_host
+        "azure_ssh_host": azure_ssh_host,
+        "ado_ssh_host": ado_ssh_host
     }
     _init_impl("/app/templates/infra-ci-base", context, repo_name, "ci", git_organization, git_provider, git_server, git_base_url, git_username, git_token, output_dir, project_name)
 

@@ -16,6 +16,7 @@ spec:
         enum:
           - "github"
           - "azure"
+          - "ado"
       - name: gitops_utils_image
         valueFrom:
           configMapKeyRef:
@@ -96,7 +97,7 @@ spec:
         INFRA_PROJECT="luban-infra"
 
         BASE_URL="${GIT_BASE_URL:-https://${GIT_SERVER}}"
-        if [ "{{inputs.parameters.git_provider}}" = "azure" ]; then
+        if [ "{{inputs.parameters.git_provider}}" = "azure" ] || [ "{{inputs.parameters.git_provider}}" = "ado" ]; then
             REPO_URL="${BASE_URL}/{{inputs.parameters.git_organization}}/${INFRA_PROJECT}/_git/${REPO_NAME}"
         else
             REPO_URL="${BASE_URL}/{{inputs.parameters.git_organization}}/${REPO_NAME}.git"

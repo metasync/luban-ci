@@ -106,7 +106,7 @@ spec:
         valueFrom:
           configMapKeyRef:
             name: luban-config
-            key: azure_devops_api_version
+            key: "{{inputs.parameters.git_provider}}_devops_api_version"
             optional: true
       volumeMounts:
       - name: workdir
@@ -192,7 +192,7 @@ spec:
         valueFrom:
           configMapKeyRef:
             name: luban-config
-            key: azure_devops_api_version
+            key: "{{inputs.parameters.git_provider}}_devops_api_version"
             optional: true
       volumeMounts:
       - name: workdir

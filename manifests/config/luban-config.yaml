@@ -30,6 +30,9 @@ data:
   # Git providers
   github_server: "github.com"
   azure_server: "dev.azure.com"
+  # Azure DevOps Server (on-prem) host used for REST API calls.
+  # Required when `git_provider=ado`.
+  ado_server: ""
 
   # Git HTTPS authentication (provider-scoped)
   # Values:
@@ -37,22 +40,29 @@ data:
   # - "extraheader_basic": do not write credential files; send `Authorization: Basic <base64(username:PAT)>` via `http.extraHeader` per git command.
   github_https_auth_mode: "credential_store"
   azure_https_auth_mode: "credential_store"
+  ado_https_auth_mode: "extraheader_basic"
+  
   # Optional provider base URL overrides (scheme + optional path prefix)
   # github_base_url: "https://github.mycorp.com"
   
   # Azure DevOps Server base URL (scheme + optional path prefix)
   # azure_base_url: "https://ado.example.com/tfs"
+  # ado_base_url: "https://ado.example.com/tfs"
 
-  # Optional username used to build the Basic auth header for git HTTPS when using `extraheader_basic`
-  # (default: `username` from the `azure-creds` secret)
+  # Optional username used to build the Basic auth header for git HTTPS when using `extraheader_basic`.
+  # Defaults to `username` from the `*-creds` Secret (for example `ado-creds.username`).
   # azure_basic_auth_username: "git"
+  ado_basic_auth_username: "git"
   
 
   # Azure DevOps REST API version
   azure_devops_api_version: "7.1"
 
+  # Azure DevOps Server REST API version
+  ado_devops_api_version: "7.1"
+
   # Tooling Images
-  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.3.8"
+  luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.3.10"
   gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.3.7"
 
   # Python Package Index (Optional)

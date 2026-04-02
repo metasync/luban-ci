@@ -13,4 +13,6 @@ resources:
   - secrets/azure-ssh-creds.yaml
   - secrets/github-creds.yaml
   - secrets/azure-creds.yaml
+  - secrets/ado-ssh-creds.yaml
+  - secrets/ado-creds.yaml
   - workflow-semaphores.yaml

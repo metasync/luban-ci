@@ -26,3 +26,10 @@ spec:
     backendRefs:
     - name: azure-event-source-eventsource-svc
       port: 13000
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ado/push
+    backendRefs:
+    - name: ado-event-source-eventsource-svc
+      port: 13100

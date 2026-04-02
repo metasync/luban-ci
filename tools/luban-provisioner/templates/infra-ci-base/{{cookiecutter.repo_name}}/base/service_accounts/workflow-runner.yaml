@@ -8,3 +8,4 @@ secrets:
 - name: quay-creds
 - name: harbor-creds
 - name: azure-ssh-creds
+- name: ado-ssh-creds

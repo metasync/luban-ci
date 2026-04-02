@@ -12,6 +12,8 @@ deploy: ## Deploy Argo Events (EventBus, EventSource, Sensor)
 	@kubectl apply -f github-sensor.yaml
 	@kubectl apply -f azure-event-source.yaml
 	@kubectl apply -f azure-sensor.yaml
+	@kubectl apply -f ado-event-source.yaml
+	@kubectl apply -f ado-sensor.yaml
 	@kubectl apply -f gateway.yaml
 	@echo "Argo Events deployed."
 

@@ -24,11 +24,12 @@ spec:
         description: "Git Organization/User"
         value: "metasync"
       - name: git_provider
-        description: "Git Provider (github, azure)"
+        description: "Git Provider (github, azure, ado)"
         value: "azure"
         enum:
           - "github"
           - "azure"
+          - "ado"
       - name: config_file
         description: "Path to configuration file"
         value: ""
@@ -125,7 +126,7 @@ spec:
             valueFrom:
               configMapKeyRef:
                 name: luban-config
-                key: azure_devops_api_version
+                key: "{{inputs.parameters.git_provider}}_devops_api_version"
                 optional: true
           - name: GIT_TOKEN
             valueFrom:

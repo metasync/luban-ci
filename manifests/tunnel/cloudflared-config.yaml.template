@@ -16,4 +16,7 @@ data:
       - hostname: ${TUNNEL_HOSTNAME}
         service: http://azure-event-source-eventsource-svc:13000
         path: /azure/push
+      - hostname: ${TUNNEL_HOSTNAME}
+        service: http://ado-event-source-eventsource-svc:13100
+        path: /ado/push
       - service: http_status:404

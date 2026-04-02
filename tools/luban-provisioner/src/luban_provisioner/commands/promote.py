@@ -31,7 +31,7 @@ def _select_image(images, app_name):
 @click.command()
 @click.option('--app-name', required=True, help='Application name')
 @click.option('--git-organization', required=True, help='Git Organization')
-@click.option('--git-provider', required=True, type=click.Choice(['github', 'azure']), help='Git Provider')
+@click.option('--git-provider', required=True, type=click.Choice(['github', 'azure', 'ado']), help='Git Provider')
 @click.option('--git-username', required=False, envvar='GIT_USERNAME', default='git', help='Git Username (env: GIT_USERNAME)')
 @click.option('--git-token', required=True, envvar='GIT_TOKEN', help='Git Token (env: GIT_TOKEN)')
 @click.option('--git-server', required=True, envvar='GIT_SERVER', help='Git Server (env: GIT_SERVER)')

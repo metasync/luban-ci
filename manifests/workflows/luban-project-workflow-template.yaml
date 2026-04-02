@@ -17,11 +17,12 @@ spec:
       description: "Git Organization/User (defaults to project_name if empty)"
       value: ""
     - name: git_provider
-      description: "Git Provider (e.g., 'github', 'azure')"
+      description: "Git Provider (e.g., 'github', 'azure', 'ado')"
       value: "azure"
       enum:
         - "github"
         - "azure"
+        - "ado"
     - name: developer_group
       description: "OIDC group for developer access (Single Group)"
       value: ""
@@ -175,7 +176,7 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: luban-config
-              key: azure_devops_api_version
+              key: "{{inputs.parameters.git_provider}}_devops_api_version"
               optional: true
         - name: GIT_SERVER
           valueFrom:

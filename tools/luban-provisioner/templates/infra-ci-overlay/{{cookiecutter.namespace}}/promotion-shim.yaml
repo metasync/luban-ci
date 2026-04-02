@@ -13,11 +13,12 @@ spec:
       description: "Git Organization/User"
       value: "{{ cookiecutter.git_organization }}"
     - name: git_provider
-      description: "Git Provider (e.g., 'github', 'azure')"
+      description: "Git Provider (e.g., 'github', 'azure', 'ado')"
       value: "{{ cookiecutter.git_provider }}"
       enum:
         - "github"
         - "azure"
+        - "ado"
     - name: luban_provisioner_image
       description: "Image for the promotion tool"
       valueFrom:

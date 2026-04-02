@@ -27,6 +27,7 @@ spec:
         enum:
           - "github"
           - "azure"
+          - "ado"
       - name: gitops_utils_image
         description: "Image for GitOps utility tools"
         valueFrom:
@@ -174,7 +175,7 @@ spec:
         BASE_URL="${GIT_BASE_URL:-https://${GIT_SERVER}}"
 
         # Repo URL Construction
-        if [ "{{inputs.parameters.git_provider}}" = "azure" ] && [ -n "{{inputs.parameters.git_organization}}" ]; then
+        if { [ "{{inputs.parameters.git_provider}}" = "azure" ] || [ "{{inputs.parameters.git_provider}}" = "ado" ]; } && [ -n "{{inputs.parameters.git_organization}}" ]; then
             # Azure DevOps with Organization
             # URL: https://dev.azure.com/{ORG}/{PROJECT}/_git/{REPO}
             REPO_URL="${BASE_URL}/${ORG}/${PROJECT_NAME}/_git/${APP_NAME_RAW}-gitops"
