@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.1] - 2026-04-03
+
 ### Added
 
-- **Cilium Egress Gateway (CI)**: Added opt-in namespace labeling via Argo CD `managedNamespaceMetadata` using `luban-config.cilium_egress_gateway_policy`.
+- **Cilium Egress Gateway (CI)**: Added opt-in CI namespace labeling via Argo CD `managedNamespaceMetadata` using `luban-config.cilium_egress_gateway_policy`.
+- **Workflows (UI)**: Added `luban-config.default_git_provider` and `make update-default-git-provider` to standardize `git_provider` default values across templates.
 
 ### Docs
 

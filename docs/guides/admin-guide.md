@@ -12,6 +12,7 @@ This guide covers the administration and configuration of the Luban CI platform.
     - `image_pull_secret`: Name of the secret for pulling images (e.g., `harbor-ro-creds`).
     - `webhook_url`: Public webhook endpoint for the event gateway.
     - `cluster_map`: JSON map of `deploy_env` -> Kubernetes cluster URL (e.g., `snd`/`prd`).
+    - `default_git_provider`: Default UI value for `git_provider` parameters in WorkflowTemplates.
     - `cilium_egress_gateway_policy`: (Optional) Shared `CiliumEgressGatewayPolicy` name for CI egress IP control.
     - `github_server`: GitHub server hostname (default: `github.com`).
     - `azure_server`: Azure DevOps Services (cloud) host used for REST API calls (default: `dev.azure.com`).
@@ -105,6 +106,16 @@ This patches CoreDNS `NodeHosts` to map the ingress domains to the Gateway LoadB
 The `luban-ci-kpack` pipeline updates the application GitOps repo on `gitops_branch` (default: `develop`).
 - If the branch exists remotely, it checks it out.
 - If it does not exist, it creates the branch and pushes it (requires write access).
+
+### Default Git Provider (UI)
+
+Argo Workflows parameter defaults are static in the YAML, so Luban provides a small helper to keep the default `git_provider` selection consistent across WorkflowTemplates.
+
+- Configure `default_git_provider` in `manifests/config/luban-config.yaml`.
+- Run `make update-default-git-provider` to rewrite `git_provider` default values across workflow/template YAMLs.
+- Deploy the updated templates (for example `make pipeline-deploy`).
+
+This only affects the UI default value; users can still override `git_provider` per workflow run.
 
 ### Cilium Egress Gateway (Optional)
 

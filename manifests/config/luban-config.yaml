@@ -33,6 +33,10 @@ data:
     }
 
   # Git providers
+  # Default git provider used as the UI default in WorkflowTemplates (set by `make update-default-git-provider`).
+  # Allowed values: "github", "azure", "ado".
+  default_git_provider: "azure"
+
   github_server: "github.com"
   azure_server: "dev.azure.com"
   # Azure DevOps Server (on-prem) host used for REST API calls.

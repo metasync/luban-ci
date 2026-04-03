@@ -9,6 +9,7 @@ export
         secrets-dry-run \
         stack-build stack-push \
         builder-build builder-push \
+        update-default-git-provider \
         pipeline-deploy pipeline-clean pipeline-logs \
         events-deploy events-webhook-secret \
         test-ci-pipeline test-events-webhook test-events-webhook-py \
@@ -59,6 +60,9 @@ builder-build: ## Create the CNB Builder
 
 builder-push: ## Check remote, build (if needed), tag and push Builder Image
 	@$(MAKE) -C builder push
+
+update-default-git-provider: ## Update workflow git_provider defaults from luban-config
+	@python3 scripts/update-default-git-provider.py
 
 tools-image-build: ## Build gitops-utils tooling image
 	@$(MAKE) -C tools/gitops-utils build
