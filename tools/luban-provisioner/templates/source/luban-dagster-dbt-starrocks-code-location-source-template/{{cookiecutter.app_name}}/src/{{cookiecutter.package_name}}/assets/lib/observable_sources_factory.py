@@ -23,10 +23,21 @@ def build_observable_source_assets(
     dbt_assets_seq = dbt_assets if isinstance(dbt_assets, list) else [dbt_assets]
 
     source_names = {spec["source"] for spec in source_specs}
-    keys_by_source_table = {}
+    keys_by_source_table: dict[str, dict[str, dg.AssetKey]] = {}
+
     for source in source_names:
-        keys_by_table = get_asset_keys_by_output_name_for_source(dbt_assets_seq, source)
-        keys_by_source_table[source] = keys_by_table
+        merged: dict[str, dg.AssetKey] = {}
+        for assets_def in dbt_assets_seq:
+            keys_by_table = get_asset_keys_by_output_name_for_source([assets_def], source)
+            for output_name, asset_key in keys_by_table.items():
+                existing = merged.get(output_name)
+                if existing is not None and existing != asset_key:
+                    raise ValueError(
+                        f"Conflicting dbt source asset keys for source={source} output_name={output_name}: "
+                        f"{existing.to_user_string()} vs {asset_key.to_user_string()}"
+                    )
+                merged[output_name] = asset_key
+        keys_by_source_table[source] = merged
 
     def resolve_source_asset_key(source_name: str, table_name: str) -> dg.AssetKey:
         keys_by_table = keys_by_source_table[source_name]

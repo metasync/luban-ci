@@ -8,6 +8,9 @@ from dagster_dbt import DagsterDbtTranslator
 from ..automation_config import AUTOMATION_OBSERVABLE_SOURCES
 
 
+DYNAMIC_TAG_PREFIX = "dynamic__"
+
+
 class LubanDagsterDbtTranslator(DagsterDbtTranslator):
     def __init__(self, daily_partitions_def: dg.PartitionsDefinition):
         super().__init__()
@@ -51,9 +54,13 @@ class LubanDagsterDbtTranslator(DagsterDbtTranslator):
 
     def get_partitions_def(self, dbt_resource_props: Mapping[str, Any]) -> Optional[dg.PartitionsDefinition]:
         tags = set(dbt_resource_props.get("tags", []))
-        
-        # Check for daily partition definition (tags only)
+
         if "daily" in tags:
             return self.daily_partitions_def
-            
+
+        dynamic_tags = sorted([t for t in tags if isinstance(t, str) and t.startswith(DYNAMIC_TAG_PREFIX)])
+        if dynamic_tags:
+            tag = dynamic_tags[0]
+            return dg.DynamicPartitionsDefinition(name=f"{tag}__partitions")
+
         return None

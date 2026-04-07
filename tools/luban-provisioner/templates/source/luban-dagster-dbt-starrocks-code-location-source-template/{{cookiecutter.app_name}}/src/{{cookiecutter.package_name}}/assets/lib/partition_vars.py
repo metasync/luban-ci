@@ -18,11 +18,18 @@ def _dbt_partition_vars_from_time_window(start: datetime, end: datetime) -> dict
 def _get_dbt_vars_for_context(context) -> dict[str, str] | None:
     try:
         time_window = context.partition_time_window
+        if time_window is not None:
+            return _dbt_partition_vars_from_time_window(time_window.start, time_window.end)
+    except Exception:
+        pass
+
+    try:
+        partition_key = context.partition_key
     except Exception:
         return None
 
-    if time_window is None:
+    if not partition_key:
         return None
 
-    return _dbt_partition_vars_from_time_window(time_window.start, time_window.end)
+    return {"partition_key": str(partition_key)}
 
