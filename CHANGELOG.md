@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Secrets**: Git provider secrets are now optional in `make secrets` (only created when token env vars are set).
 - **Tunnel**: Cloudflare tunnel setup is now Kubernetes-only and routes `/ado/push`.
 - **Provisioner**: Bumped `luban-provisioner` to `0.3.10`.
-- **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.39`.
+- **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.40`.
 
 ### Docs
 
