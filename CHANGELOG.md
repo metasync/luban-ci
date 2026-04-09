@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- **Cilium**: Ensure new namespaces are labeled with `luban-ci.io/cilium-egress-gateway-policy` during provisioning.
-
 ## [v1.1.2] - 2026-04-09
 
 ### Changed
@@ -24,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Buildpack (python-uv)**: Fixed uv downloads by removing invalid `wget --netrc-file` usage; the buildpack now uses `wget --netrc` (via `$HOME/.netrc`) for `uv-mirror-netrc`.
 - **Provisioner (ADO)**: `AdoProvider` now creates webhooks pointing at `/ado/push` (instead of `/azure/push`).
+- **Cilium**: Ensure new namespaces are labeled with `luban-ci.io/cilium-egress-gateway-policy` during provisioning.
 
 ## [v1.1.1] - 2026-04-03
 
