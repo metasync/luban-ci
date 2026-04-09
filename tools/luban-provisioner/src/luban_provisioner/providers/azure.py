@@ -143,9 +143,8 @@ class AzureProvider(GitProvider):
         url = f"{self.base_url}/_apis/hooks/subscriptions?api-version=7.1"
         project_id = self._get_project_id()
         
-        consumer_inputs = {
-            "url": f"{webhook_url}/azure/push"
-        }
+        target_url = self.get_webhook_target_url(webhook_url)
+        consumer_inputs = {"url": target_url}
         
         if secret:
             consumer_inputs["httpHeaders"] = f"Authorization: {secret}"
@@ -170,7 +169,7 @@ class AzureProvider(GitProvider):
         if list_resp.status_code == 200:
             subs = list_resp.json().get("value", [])
             for sub in subs:
-                if (sub.get("consumerInputs", {}).get("url") == f"{webhook_url}/azure/push" and 
+                if (sub.get("consumerInputs", {}).get("url") == target_url and 
                     sub.get("publisherInputs", {}).get("repository") == repo_id):
                     click.echo("Webhook already exists.")
                     return sub
@@ -183,6 +182,13 @@ class AzureProvider(GitProvider):
             
         click.echo(f"Failed to create webhook. Status: {resp.status_code}, Body: {resp.text}", err=True)
         return None
+
+    def webhook_push_path(self) -> str:
+        return "/azure/push"
+
+    def get_webhook_target_url(self, webhook_url: str) -> str:
+        base = str(webhook_url or "").rstrip("/")
+        return f"{base}{self.webhook_push_path()}"
 
     def set_default_branch(self, repo_identifier, branch_name):
         """Set the default branch."""

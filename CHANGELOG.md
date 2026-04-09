@@ -14,10 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Manifests**: `make deploy` now applies `ci-infra-provision-workflow-template.yaml`.
 - **Argo CD**: AppProject `sourceRepos` allowlist now honors provider `*_base_url` for Azure DevOps Server path prefixes (for example `/tfs`).
 - **CI Infra**: Argo CD `ignoreDifferences` now includes `uv-mirror-netrc` to avoid drift when uv mirror credentials are managed via secrets.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.11`.
 
 ### Fixed
 
 - **Buildpack (python-uv)**: Fixed uv downloads by removing invalid `wget --netrc-file` usage; the buildpack now uses `wget --netrc` (via `$HOME/.netrc`) for `uv-mirror-netrc`.
+- **Provisioner (ADO)**: `AdoProvider` now creates webhooks pointing at `/ado/push` (instead of `/azure/push`).
 
 ## [v1.1.1] - 2026-04-03
 
@@ -42,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **kpack CI (GitOps update)**: Git HTTPS auth now honors provider-scoped `*_https_auth_mode` and supports `extraheader_basic`.
 - **Secrets**: Git provider secrets are now optional in `make secrets` (only created when token env vars are set).
 - **Tunnel**: Cloudflare tunnel setup is now Kubernetes-only and routes `/ado/push`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.3.10`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.11`.
 - **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.40`.
 
 ### Docs

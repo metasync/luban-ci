@@ -10,3 +10,6 @@ class AdoProvider(AzureProvider):
 
     def __init__(self, token, organization, project, git_server=None, git_base_url=None):
         super().__init__(token, organization, project, git_server=git_server or "", git_base_url=git_base_url)
+
+    def webhook_push_path(self) -> str:
+        return "/ado/push"
