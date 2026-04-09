@@ -117,6 +117,13 @@ spec:
         fi
         
         echo "Creating CI Infra App $APP_NAME..."
+
+        if [ -n "${CILIUM_EGRESS_GATEWAY_POLICY:-}" ]; then
+          if ! kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; then
+            kubectl create namespace "${NAMESPACE}"
+          fi
+          kubectl label namespace "${NAMESPACE}" "luban-ci.io/cilium-egress-gateway-policy=${CILIUM_EGRESS_GATEWAY_POLICY}" --overwrite
+        fi
         
         cat <<EOF | kubectl apply -f -
         apiVersion: argoproj.io/v1alpha1
