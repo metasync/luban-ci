@@ -5,7 +5,7 @@ This guide describes how Luban can integrate with a shared `CiliumEgressGatewayP
 ## Overview
 
 - The cluster admin provisions a cluster-scoped `CiliumEgressGatewayPolicy` that selects CI workloads by **namespace label**.
-- Luban labels each newly created `ci-<project>` namespace at creation time via Argo CD `managedNamespaceMetadata`.
+- Luban labels each newly created `ci-<project>` namespace during provisioning.
 - The setup is opt-in. If the Luban config key is unset, nothing changes.
 
 ## Luban Configuration
@@ -19,21 +19,9 @@ When non-empty, Luban adds a label to each newly created CI namespace:
 - Label key: `luban-ci.io/cilium-egress-gateway-policy`
 - Label value: the policy name from `cilium_egress_gateway_policy`
 
-## Argo CD Namespace Labeling
+## Namespace Labeling
 
-Luban creates the CI infra Argo CD Application with `CreateNamespace=true`. When `cilium_egress_gateway_policy` is set, the generated Application includes:
-
-```yaml
-spec:
-  syncPolicy:
-    syncOptions:
-      - CreateNamespace=true
-    managedNamespaceMetadata:
-      labels:
-        luban-ci.io/cilium-egress-gateway-policy: "<policy-name>"
-```
-
-This ensures the namespace is labeled at creation time and stays reconciled by Argo CD.
+Luban applies the label explicitly during provisioning (and uses `--overwrite`), which ensures the label is present even if the namespace already exists.
 
 ## Sample `CiliumEgressGatewayPolicy`
 

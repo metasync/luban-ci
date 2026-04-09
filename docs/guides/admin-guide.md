@@ -121,7 +121,7 @@ This only affects the UI default value; users can still override `git_provider` 
 
 If the cluster uses Cilium Egress Gateway and CI egress IPs are controlled by a shared `CiliumEgressGatewayPolicy`, set `cilium_egress_gateway_policy` in `luban-config`.
 
-When this key is set, Luban labels each newly created `ci-*` namespace via Argo CD `managedNamespaceMetadata` with:
+When this key is set, Luban labels each newly created namespace during provisioning with:
 
 - `luban-ci.io/cilium-egress-gateway-policy=<policy-name>`
 
