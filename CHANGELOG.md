@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.4] - 2026-04-09
+
+### Fixed
+
+- **Buildpack (python-uv)**: Fixed uv downloads by removing invalid `wget --netrc-file` usage; the buildpack now uses `wget --netrc` (via `$HOME/.netrc`) for `uv-mirror-netrc`.
+
 ## [v1.1.3] - 2026-04-09
 
 ### Fixed

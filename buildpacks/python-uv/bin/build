@@ -30,15 +30,6 @@ download() {
     url="$1"
     out="$2"
 
-    if command -v curl >/dev/null 2>&1; then
-        CURL_ARGS=(-fsSL)
-        if [ -n "$NETRC_FILE" ]; then
-            CURL_ARGS+=(--netrc-file "$NETRC_FILE")
-        fi
-        curl "${CURL_ARGS[@]}" -o "$out" "$url"
-        return
-    fi
-
     WGET_ARGS=()
     if [ -n "$NETRC_FILE" ]; then
         HOME="${HOME:-/tmp}"
