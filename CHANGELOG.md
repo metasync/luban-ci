@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.2] - 2026-04-09
+
+### Changed
+
+- **Manifests**: `make deploy` now applies `ci-infra-provision-workflow-template.yaml`.
+- **Argo CD**: AppProject `sourceRepos` allowlist now honors provider `*_base_url` for Azure DevOps Server path prefixes (for example `/tfs`).
+- **CI Infra**: Argo CD `ignoreDifferences` now includes `uv-mirror-netrc` to avoid drift when uv mirror credentials are managed via secrets.
+
 ## [v1.1.1] - 2026-04-03
 
 ### Added

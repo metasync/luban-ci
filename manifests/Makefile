@@ -30,6 +30,7 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f workflows/luban-ci-kpack-workflow-template.yaml
 	@kubectl apply -f workflows/argocd-project-workflow-template.yaml
 	@kubectl apply -f workflows/argocd-app-workflow-template.yaml
+	@kubectl apply -f workflows/ci-infra-provision-workflow-template.yaml
 	@kubectl apply -f workflows/harbor-project-workflow-template.yaml
 	@kubectl apply -f workflows/namespace-provision-workflow-template.yaml
 	@kubectl apply -f workflows/infra-repo-update-workflow-template.yaml

@@ -119,6 +119,11 @@ spec:
             configMapKeyRef:
               name: luban-config
               key: github_server
+        - name: GIT_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: luban-config
+              key: "{{inputs.parameters.git_provider}}_base_url"
               optional: true
         - name: AZURE_SERVER
           valueFrom:
@@ -202,13 +207,14 @@ spec:
         fi
 
         # Repo Whitelist Construction
+        BASE_URL="${GIT_BASE_URL:-https://${GIT_SERVER}}"
         if { [ "{{inputs.parameters.git_provider}}" = "azure" ] || [ "{{inputs.parameters.git_provider}}" = "ado" ]; } && [ -n "{{inputs.parameters.git_organization}}" ]; then
             # Azure DevOps with Organization
             # URL: https://dev.azure.com/{ORG}/{PROJECT}/_git/*
-            GITOPS_REPOS_WHITELIST="https://${GIT_SERVER}/${ORG}/${PROJECT_NAME_RAW}/_git/*"
+            GITOPS_REPOS_WHITELIST="${BASE_URL}/${ORG}/${PROJECT_NAME_RAW}/_git/*"
         else
             # Standard GitHub or Azure without Org (Org=Project)
-            GITOPS_REPOS_WHITELIST="https://${GIT_SERVER}/${ORG}/*"
+            GITOPS_REPOS_WHITELIST="${BASE_URL}/${ORG}/*"
         fi
         
         echo "Creating AppProject ${PROJECT_NAME}..."

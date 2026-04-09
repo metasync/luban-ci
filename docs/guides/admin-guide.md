@@ -141,6 +141,7 @@ If you are using Azure DevOps instead of GitHub:
    - Configure in `secrets/*.env` (exporting `AZURE_DEVOPS_TOKEN` and `AZURE_ORGANIZATION`, mapped to the `azure-creds` secret).
 3. **Environment Variables**:
    - For Azure DevOps Server (on-prem), set `ado_server` (and optionally `ado_base_url`) in `manifests/config/luban-config.yaml`, and provide `ado-creds` (`ADO_DEVOPS_TOKEN`).
+   - For on-prem instances with path prefixes (for example `/tfs`), set `ado_base_url`; Argo CD repo allowlists and workflows will use it when constructing repo URLs.
    - Set `azure_devops_api_version` (cloud) and/or `ado_devops_api_version` (on-prem) in `manifests/config/luban-config.yaml`.
    - For ArgoCD repo credentials on ADO Server, also set `ADO_COLLECTION` (used to build the repo-creds URL).
 
