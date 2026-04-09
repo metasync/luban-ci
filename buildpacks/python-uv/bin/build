@@ -25,10 +25,31 @@ if [ -d "$binding_root" ]; then
     done
 fi
 
-WGET_ARGS=()
-if [ -n "$NETRC_FILE" ]; then
-    WGET_ARGS+=(--netrc-file "$NETRC_FILE")
-fi
+download() {
+    local url out
+    url="$1"
+    out="$2"
+
+    if command -v curl >/dev/null 2>&1; then
+        CURL_ARGS=(-fsSL)
+        if [ -n "$NETRC_FILE" ]; then
+            CURL_ARGS+=(--netrc-file "$NETRC_FILE")
+        fi
+        curl "${CURL_ARGS[@]}" -o "$out" "$url"
+        return
+    fi
+
+    WGET_ARGS=()
+    if [ -n "$NETRC_FILE" ]; then
+        HOME="${HOME:-/tmp}"
+        mkdir -p "$HOME"
+        cp "$NETRC_FILE" "$HOME/.netrc"
+        chmod 600 "$HOME/.netrc"
+        WGET_ARGS+=(--netrc)
+    fi
+
+    wget -q -O "$out" "${WGET_ARGS[@]}" "$url"
+}
 
 # Determine uv version
 DEFAULT_UV_VERSION="0.10.4"
@@ -76,12 +97,12 @@ if [[ "$CACHED_VERSION" != "$UV_VERSION" ]] || [[ ! -f "$uv_layer/bin/uv" ]]; th
     
     # Download
     echo "Downloading uv from $UV_URL..."
-    wget -q -O uv.tar.gz "${WGET_ARGS[@]}" "$UV_URL" || { echo "Error: Failed to download uv from $UV_URL"; exit 1; }
+    download "$UV_URL" uv.tar.gz || { echo "Error: Failed to download uv from $UV_URL"; exit 1; }
 
     # Verify Checksum
     echo "Verifying checksum..."
     CHECKSUM_URL="${UV_URL}.sha256"
-    wget -q -O uv.tar.gz.sha256 "${WGET_ARGS[@]}" "$CHECKSUM_URL" || { echo "Error: Failed to download checksum from $CHECKSUM_URL"; exit 1; }
+    download "$CHECKSUM_URL" uv.tar.gz.sha256 || { echo "Error: Failed to download checksum from $CHECKSUM_URL"; exit 1; }
     
     EXPECTED_SHA256=$(cat uv.tar.gz.sha256 | cut -d' ' -f1)
     ACTUAL_SHA256=$(sha256sum uv.tar.gz | cut -d' ' -f1)
