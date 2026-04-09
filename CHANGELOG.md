@@ -7,18 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [v1.1.4] - 2026-04-09
-
-### Fixed
-
-- **Buildpack (python-uv)**: Fixed uv downloads by removing invalid `wget --netrc-file` usage; the buildpack now uses `wget --netrc` (via `$HOME/.netrc`) for `uv-mirror-netrc`.
-
-## [v1.1.3] - 2026-04-09
-
-### Fixed
-
-- **Buildpack (python-uv)**: Fixed uv downloads by removing invalid `wget --netrc-file` usage; the buildpack now uses `curl --netrc-file` when available or `wget --netrc` (via `$HOME/.netrc`) for `uv-mirror-netrc`.
-
 ## [v1.1.2] - 2026-04-09
 
 ### Changed
@@ -26,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Manifests**: `make deploy` now applies `ci-infra-provision-workflow-template.yaml`.
 - **Argo CD**: AppProject `sourceRepos` allowlist now honors provider `*_base_url` for Azure DevOps Server path prefixes (for example `/tfs`).
 - **CI Infra**: Argo CD `ignoreDifferences` now includes `uv-mirror-netrc` to avoid drift when uv mirror credentials are managed via secrets.
+
+### Fixed
+
+- **Buildpack (python-uv)**: Fixed uv downloads by removing invalid `wget --netrc-file` usage; the buildpack now uses `wget --netrc` (via `$HOME/.netrc`) for `uv-mirror-netrc`.
 
 ## [v1.1.1] - 2026-04-03
 
