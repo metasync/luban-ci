@@ -14,10 +14,10 @@ class StarRocksClient:
     password: str
     connect_timeout: int = 10
 
-    def query_scalar(self, sql: str) -> Any:
+    def _connect(self):
         import pymysql
 
-        connection = pymysql.connect(
+        return pymysql.connect(
             host=self.host,
             port=self.port,
             user=self.user,
@@ -27,11 +27,24 @@ class StarRocksClient:
             write_timeout=self.connect_timeout,
             autocommit=True,
         )
+
+    def query_scalar(self, sql: str) -> Any:
+        connection = self._connect()
         try:
             with connection.cursor() as cursor:
                 cursor.execute(sql)
                 row = cursor.fetchone()
                 return row[0] if row else None
+        finally:
+            connection.close()
+
+    def query_column(self, sql: str) -> list[Any]:
+        connection = self._connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(sql)
+                rows = cursor.fetchall()
+                return [row[0] for row in rows]
         finally:
             connection.close()
 
