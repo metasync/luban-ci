@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- **Templates (Dagster+dbt+StarRocks)**: Fixed a bad relative import in the partition-change detector manifest helper that could break `make dev` with `attempted relative import beyond top-level package`.
-
 ## [v1.1.3] - 2026-04-12
 
 ### Added
@@ -30,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Templates (Partition-change)**: Detector and propagation wiring is declarative in dbt meta (`meta.luban.partition_change.detector` / `.propagate`) with Python config as an override.
 - **Templates (Defaults)**: Job preset helpers now default `include_upstream` to `false` to avoid unexpected selection expansion.
 - **Provisioner (Dev tooling)**: Added Ruff configuration and dev dependency group (`ruff`, `pytest`) in `tools/luban-provisioner/pyproject.toml`.
+
+### Fixed
+
+- **Templates (Dagster+dbt+StarRocks)**: Fixed a bad relative import in the partition-change detector manifest helper that could break `make dev` with `attempted relative import beyond top-level package`.
 
 ### Docs
 
