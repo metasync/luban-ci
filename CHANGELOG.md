@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Templates (Dagster+dbt+StarRocks)**: Fixed a bad relative import in the partition-change detector manifest helper that could break `make dev` with `attempted relative import beyond top-level package`.
+
 ## [v1.1.3] - 2026-04-12
 
 ### Added
@@ -30,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 
 - **Docs (Dagster)**: Updated `docs/dagster/templates/dagster-dbt-starrocks-code-location/template_usage.md` to reflect `meta.luban.*`, auto-generated jobs/schedules/sensors, and current override behavior.
+- **Docs (Dagster)**: Expanded the template developer workflow with dbt/Dagster philosophy and conventions.
 - **Templates (Docs)**: Rendered projects no longer ship a `docs/` directory; the template `README.md` links to canonical root docs.
 - **Docs (Dagster)**: Added `docs/dagster/handbook.md` as the primary Dagster development entry point.
 

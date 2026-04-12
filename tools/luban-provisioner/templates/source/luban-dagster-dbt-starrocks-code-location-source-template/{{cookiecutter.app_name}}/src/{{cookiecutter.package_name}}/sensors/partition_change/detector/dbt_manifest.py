@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ......resources.dbt import get_dbt_project_dir
+from ....resources.dbt import get_dbt_project_dir
 
 
 @dataclass(frozen=True)
