@@ -165,7 +165,9 @@ Declare propagation on the upstream model.
 Notes:
 
 - `enabled: false` still registers the sensor definition but defaults it to STOPPED.
+- The template enables propagation by default on the `orders` model; set `enabled: false` if you want to onboard gradually.
 - `LUBAN_PARTITION_CHANGE_PROPAGATOR_MODE=eager` disables propagation sensors entirely.
+- Propagation sensors only react to **new** upstream materializations by default. To replay recent upstream partitions after enabling a sensor, set `LUBAN_PARTITION_CHANGE_PROPAGATOR_CATCHUP_DAYS` (for example `7`) before the first time the sensor runs (or after resetting its cursor).
 
 ## Source observation (DataVersion)
 

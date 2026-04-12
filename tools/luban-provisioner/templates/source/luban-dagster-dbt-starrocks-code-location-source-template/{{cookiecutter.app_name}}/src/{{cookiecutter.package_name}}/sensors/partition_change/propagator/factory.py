@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import os
+import time
+
 import dagster as dg
+from dagster._core.event_api import EventRecordsFilter
 
 
 def build_partition_propagation_sensors(*, specs: list[dict], jobs_by_name: dict) -> list[dg.SensorDefinition]:
@@ -21,28 +25,77 @@ def build_partition_propagation_sensors(*, specs: list[dict], jobs_by_name: dict
         job = jobs_by_name[job_name]
         upstream_asset_key = dg.AssetKey(["dbt", upstream_dbt_model])
 
-        @dg.asset_sensor(
+        catchup_days = int(os.getenv("LUBAN_PARTITION_CHANGE_PROPAGATOR_CATCHUP_DAYS", "0"))
+        if catchup_days < 0:
+            raise ValueError("LUBAN_PARTITION_CHANGE_PROPAGATOR_CATCHUP_DAYS must be >= 0")
+
+        @dg.sensor(
             name=name,
-            asset_key=upstream_asset_key,
             job=job,
             default_status=default_status,
             minimum_interval_seconds=minimum_interval_seconds,
         )
-        def _sensor(context: dg.SensorEvaluationContext, asset_event):
-            dagster_event = getattr(asset_event, "dagster_event", None)
-            if dagster_event is None:
-                yield dg.SkipReason("Missing dagster_event")
+        def _sensor(context: dg.SensorEvaluationContext):
+            cursor = (context.cursor or "").strip()
+            now = time.time()
+
+            after_cursor = None
+            after_timestamp = None
+
+            if cursor:
+                try:
+                    after_cursor = int(cursor)
+                except Exception:
+                    context.update_cursor("")
+                    cursor = ""
+            elif catchup_days > 0:
+                after_timestamp = now - (catchup_days * 86400)
+            else:
+                latest = context.instance.get_event_records(
+                    EventRecordsFilter(
+                        event_type=dg.DagsterEventType.ASSET_MATERIALIZATION,
+                        asset_key=upstream_asset_key,
+                    ),
+                    limit=1,
+                    ascending=False,
+                )
+                if latest:
+                    context.update_cursor(str(latest[0].storage_id))
+                yield dg.SkipReason(
+                    "Initialized propagation cursor (set LUBAN_PARTITION_CHANGE_PROPAGATOR_CATCHUP_DAYS to backfill)"
+                )
                 return
 
-            partition_key = (dagster_event.logging_tags or {}).get("dagster/partition")
-            if not partition_key:
-                yield dg.SkipReason("Upstream event had no partition tag")
+            records = context.instance.get_event_records(
+                EventRecordsFilter(
+                    event_type=dg.DagsterEventType.ASSET_MATERIALIZATION,
+                    asset_key=upstream_asset_key,
+                    after_cursor=after_cursor,
+                    after_timestamp=after_timestamp,
+                ),
+                limit=1000,
+                ascending=True,
+            )
+
+            latest_by_partition: dict[str, object] = {}
+            for r in records:
+                entry = r.event_log_entry
+                mat = getattr(entry, "asset_materialization", None)
+                partition_key = getattr(mat, "partition", None)
+                if not partition_key:
+                    continue
+                latest_by_partition[str(partition_key)] = r
+
+            if not latest_by_partition:
+                yield dg.SkipReason(f"No new materialization events found for asset key {upstream_asset_key}")
                 return
 
-            run_id = getattr(dagster_event, "run_id", "")
-            run_key = f"{name}:{partition_key}:{run_id}"
+            max_storage_id = max([r.storage_id for r in latest_by_partition.values()])
+            for partition_key, r in sorted(latest_by_partition.items()):
+                run_key = f"{name}:{partition_key}:{r.run_id}:{r.storage_id}"
+                yield dg.RunRequest(partition_key=partition_key, run_key=run_key)
 
-            yield dg.RunRequest(partition_key=partition_key, run_key=run_key)
+            context.update_cursor(str(max_storage_id))
 
         return _sensor
 

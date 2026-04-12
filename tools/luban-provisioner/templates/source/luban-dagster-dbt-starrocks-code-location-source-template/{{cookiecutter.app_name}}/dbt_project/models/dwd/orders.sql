@@ -31,7 +31,7 @@
                         'updated_at_expr': 'updated_at'
                     },
                     'propagate': {
-                        'enabled': False,
+                        'enabled': True,
                         'name': 'facts_from_orders_partitions_sensor',
                         'minimum_interval_seconds': 30,
                         'targets': [

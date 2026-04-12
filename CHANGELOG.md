@@ -24,17 +24,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Templates (Jobs)**: `asset_job` tag now drives per-model asset job generation (`dbt_<model>_asset_job`); grouped jobs are declared via `meta.luban.job` (recommended in `schema.yml`).
 - **Templates (Schedules)**: Asset schedules are declared via `meta.luban.asset_schedule` and target the model’s derived asset job.
 - **Templates (Partition-change)**: Detector and propagation wiring is declarative in dbt meta (`meta.luban.partition_change.detector` / `.propagate`) with Python config as an override.
+- **Templates (Partition-change)**: Enabled partition-change propagation by default in the example `orders` model.
 - **Templates (Defaults)**: Job preset helpers now default `include_upstream` to `false` to avoid unexpected selection expansion.
 - **Provisioner (Dev tooling)**: Added Ruff configuration and dev dependency group (`ruff`, `pytest`) in `tools/luban-provisioner/pyproject.toml`.
 
 ### Fixed
 
 - **Templates (Dagster+dbt+StarRocks)**: Fixed a bad relative import in the partition-change detector manifest helper that could break `make dev` with `attempted relative import beyond top-level package`.
+- **Templates (Dagster+dbt+StarRocks)**: Propagation sensors now read the upstream partition key from the asset materialization event (instead of relying on a logging tag), fixing missed downstream runs.
+- **Templates (Dagster+dbt+StarRocks)**: Propagation sensors support optional catch-up via `LUBAN_PARTITION_CHANGE_PROPAGATOR_CATCHUP_DAYS` to replay recent upstream partitions after enabling.
 
 ### Docs
 
 - **Docs (Dagster)**: Updated `docs/dagster/templates/dagster-dbt-starrocks-code-location/template_usage.md` to reflect `meta.luban.*`, auto-generated jobs/schedules/sensors, and current override behavior.
 - **Docs (Dagster)**: Expanded the template developer workflow with dbt/Dagster philosophy and conventions.
+- **Templates (Dagster+dbt+StarRocks)**: Documented `LUBAN_PARTITION_CHANGE_PROPAGATOR_CATCHUP_DAYS` in the rendered project `.env.example`.
 - **Templates (Docs)**: Rendered projects no longer ship a `docs/` directory; the template `README.md` links to canonical root docs.
 - **Docs (Dagster)**: Added `docs/dagster/handbook.md` as the primary Dagster development entry point.
 
