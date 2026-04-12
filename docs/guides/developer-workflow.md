@@ -55,7 +55,7 @@ Notes:
 
 ## Source template local development
 
-To render and run the Dagster+dbt+StarRocks source template locally, see `docs/dagster/guides/source-template-local-development.md`.
+To render and run the Dagster+dbt+StarRocks source template locally, see `docs/dagster/templates/dagster-dbt-starrocks-code-location/local_development.md`.
 
 ## Simulating Webhook Events
 

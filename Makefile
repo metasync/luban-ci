@@ -13,6 +13,7 @@ export
         pipeline-deploy pipeline-clean pipeline-logs \
         events-deploy events-webhook-secret \
         test-ci-pipeline test-events-webhook test-events-webhook-py \
+        lint format \
         tunnel-setup \
         clean
 
@@ -107,6 +108,12 @@ test-events-webhook: ## Send signed push payload via gateway to trigger Workflow
 
 test-events-webhook-py: ## Send signed push payload via gateway to trigger Workflow (Python)
 	@$(MAKE) -C test test-webhook-py
+
+lint: ## Run lint checks (tools + templates)
+	@$(MAKE) -C tools/luban-provisioner lint
+
+format: ## Auto-fix and format (tools + templates)
+	@$(MAKE) -C tools/luban-provisioner format
 
 tunnel-setup: ## Setup Cloudflare Tunnel for webhook exposure (optional)
 	@$(MAKE) -C manifests tunnel-setup

@@ -1,9 +1,11 @@
 import os
-import sys
-import click
-import tempfile
 import subprocess
+import sys
+import tempfile
+
+import click
 from ruamel.yaml import YAML
+
 from luban_provisioner.provider_factory import get_git_provider, get_remote_url
 from luban_provisioner.utils import configure_git_https_auth, configure_git_identity, run_git
 
@@ -28,25 +30,69 @@ def _select_image(images, app_name):
 
     return images[0]
 
+
 @click.command()
-@click.option('--app-name', required=True, help='Application name')
-@click.option('--git-organization', required=True, help='Git Organization')
-@click.option('--git-provider', required=True, type=click.Choice(['github', 'azure', 'ado']), help='Git Provider')
-@click.option('--git-username', required=False, envvar='GIT_USERNAME', default='git', help='Git Username (env: GIT_USERNAME)')
-@click.option('--git-token', required=True, envvar='GIT_TOKEN', help='Git Token (env: GIT_TOKEN)')
-@click.option('--git-server', required=True, envvar='GIT_SERVER', help='Git Server (env: GIT_SERVER)')
-@click.option('--git-base-url', required=False, envvar='GIT_BASE_URL', default='', help='Git base URL (optional, supports path prefixes)')
-@click.option('--project-name', required=True, help='Project Name (for Azure)')
-def promote(app_name, git_organization, git_provider, git_username, git_token, git_server, git_base_url, project_name):
+@click.option("--app-name", required=True, help="Application name")
+@click.option("--git-organization", required=True, help="Git Organization")
+@click.option(
+    "--git-provider",
+    required=True,
+    type=click.Choice(["github", "azure", "ado"]),
+    help="Git Provider",
+)
+@click.option(
+    "--git-username",
+    required=False,
+    envvar="GIT_USERNAME",
+    default="git",
+    help="Git Username (env: GIT_USERNAME)",
+)
+@click.option("--git-token", required=True, envvar="GIT_TOKEN", help="Git Token (env: GIT_TOKEN)")
+@click.option(
+    "--git-server", required=True, envvar="GIT_SERVER", help="Git Server (env: GIT_SERVER)"
+)
+@click.option(
+    "--git-base-url",
+    required=False,
+    envvar="GIT_BASE_URL",
+    default="",
+    help="Git base URL (optional, supports path prefixes)",
+)
+@click.option("--project-name", required=True, help="Project Name (for Azure)")
+def promote(
+    app_name,
+    git_organization,
+    git_provider,
+    git_username,
+    git_token,
+    git_server,
+    git_base_url,
+    project_name,
+):
     """Promote an application from Sandbox (snd) to Production (prd)."""
     gitops_repo_name = f"{app_name}-gitops"
 
     org = git_organization if git_organization else project_name
-    provider = get_git_provider(git_provider, git_token, server=git_server, organization=org, project=project_name, base_url=git_base_url)
+    provider = get_git_provider(
+        git_provider,
+        git_token,
+        server=git_server,
+        organization=org,
+        project=project_name,
+        base_url=git_base_url,
+    )
     if not provider:
         click.echo(f"Unsupported git provider: {git_provider}", err=True)
         sys.exit(1)
-    repo_url = get_remote_url(git_provider, git_token, git_server, org, project_name, gitops_repo_name, base_url=git_base_url)
+    repo_url = get_remote_url(
+        git_provider,
+        git_token,
+        git_server,
+        org,
+        project_name,
+        gitops_repo_name,
+        base_url=git_base_url,
+    )
 
     configure_git_https_auth(git_username, git_token, git_server)
     configure_git_identity()

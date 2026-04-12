@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.3] - 2026-04-12
+
+### Added
+
+- **Templates (Dagster+dbt+StarRocks)**: Added manifest-driven auto configuration for dbt asset jobs, schedules, and partition-change sensors based on dbt `meta.luban.*` and tags.
+- **Docs (Dagster)**: Added template developer workflow documentation under `docs/dagster/templates/dagster-dbt-starrocks-code-location/developer_workflow.md`.
+- **Linting (Provisioner)**: Added uv-managed Ruff lint/format tooling for `tools/luban-provisioner` and exposed `make lint` / `make format` at repo root.
+- **Docs (Dagster)**: Added centralized template documentation under `docs/dagster/templates/dagster-dbt-starrocks-code-location/`.
+
+### Changed
+
+- **Templates (Layout)**: Refactored template modules to remove `*/lib` packages and use domain subpackages (`assets/dbt`, `assets/sources`, `jobs/dbt`, `jobs/sources`, `schedules/dbt`, `schedules/sources`).
+- **Templates (Resources)**: Flattened `resources/lib/*` into `resources/{dbt,starrocks}.py`.
+- **Templates (dbt meta)**: Consolidated orchestration metadata under `meta.luban.*` (for example `meta.luban.job`, `meta.luban.asset_schedule`, `meta.luban.partition_change`).
+- **Templates (Jobs)**: `asset_job` tag now drives per-model asset job generation (`dbt_<model>_asset_job`); grouped jobs are declared via `meta.luban.job` (recommended in `schema.yml`).
+- **Templates (Schedules)**: Asset schedules are declared via `meta.luban.asset_schedule` and target the model’s derived asset job.
+- **Templates (Partition-change)**: Detector and propagation wiring is declarative in dbt meta (`meta.luban.partition_change.detector` / `.propagate`) with Python config as an override.
+- **Templates (Defaults)**: Job preset helpers now default `include_upstream` to `false` to avoid unexpected selection expansion.
+- **Provisioner (Dev tooling)**: Added Ruff configuration and dev dependency group (`ruff`, `pytest`) in `tools/luban-provisioner/pyproject.toml`.
+
+### Docs
+
+- **Docs (Dagster)**: Updated `docs/dagster/templates/dagster-dbt-starrocks-code-location/template_usage.md` to reflect `meta.luban.*`, auto-generated jobs/schedules/sensors, and current override behavior.
+- **Templates (Docs)**: Rendered projects no longer ship a `docs/` directory; the template `README.md` links to canonical root docs.
+- **Docs (Dagster)**: Added `docs/dagster/handbook.md` as the primary Dagster development entry point.
+
 ## [v1.1.2] - 2026-04-09
 
 ### Changed
@@ -157,7 +183,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Buildpack**: Bumped `python-uv` buildpack to `v0.0.38`.
 - **Provisioner**: Bumped `luban-provisioner` to `0.3.0`.
-- **Docs**: Removed remaining `LUBAN_DBT_PREPARE_IF_DEV` mention in `template_usage.md`.
+- **Docs**: Removed remaining `LUBAN_DBT_PREPARE_IF_DEV` mention from the StarRocks template documentation.
 - **Template**: Added `docker/docker-compose.yml` and Makefile targets to spin up local StarRocks.
 - **Template**: Fixed local startup by auto-preparing dbt manifest when missing (`LUBAN_DBT_PREPARE_ON_LOAD`).
 - **Provisioner**: Added optional ODS test models to generate `ods.customers` and `ods.orders` on demand.

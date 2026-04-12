@@ -23,6 +23,9 @@ def test_definitions_load():
     assert len(defs.schedules) > 0
     assert "starrocks" in defs.resources
 
+    sensor_names = {s.name for s in defs.sensors}
+    assert "default_automation_condition_sensor" in sensor_names
+
 
 def test_dbt_assets_present():
     """Tests that dbt assets are successfully loaded into the definitions."""

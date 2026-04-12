@@ -2,6 +2,7 @@
   config(
     materialized="incremental",
     unique_key="order_date",
+    tags=['daily']
   )
 }}
 
@@ -11,9 +12,8 @@ select
   sum(order_amount) as total_amount
 from {{ ref('orders') }}
 
-{% if is_incremental() %}
-  -- Incremental processing: only process new/updated data
-  where order_date >= (select max(order_date) from {{ this }})
-{% endif %}
+{% set w = luban_partition_window_date() %}
+where order_date >= '{{ w["min_date"] }}'
+  and order_date < '{{ w["max_date"] }}'
 
 group by 1

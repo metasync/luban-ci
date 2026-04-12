@@ -1,5 +1,9 @@
 # Dagster + dbt (StarRocks) Code Location Template
 
+For the end-to-end developer workflow (concepts + templates + local validation), start with:
+
+- `docs/dagster/handbook.md`
+
 Luban CI supports deploying Dagster in two layers:
 
 - **Dagster Platform**: Webserver + Daemon + Dagster instance storage.
@@ -76,25 +80,9 @@ This implies:
 
 ## Local Development
 
-### Install
+For the end-to-end local workflow (render template, start StarRocks, run Dagster), see:
 
-```bash
-uv sync
-```
-
-### Run dbt locally
-
-```bash
-export DBT_PROFILES_DIR=./dbt_project
-uv run dbt deps --project-dir ./dbt_project
-uv run dbt build --project-dir ./dbt_project
-```
-
-### Run Dagster UI locally
-
-```bash
-uv run dagster dev
-```
+- `docs/dagster/templates/dagster-dbt-starrocks-code-location/local_development.md`
 
 ## Production Configuration Guidance
 
@@ -148,6 +136,10 @@ In both local `.env.example` and GitOps overlays, the default StarRocks database
 - **Shared dimensions as a producer**: master data pipelines publish shared dimensions that other code locations consume.
 - **dbt-first transformations**: use Dagster to orchestrate dbt and add non-dbt assets only when necessary.
 - **Stable selection semantics**: define tags/groups in dbt and use them consistently in Dagster jobs/schedules.
+
+For the supported orchestration metadata schema (`meta.luban.*`) and the intended developer workflow, see:
+
+- `docs/dagster/templates/dagster-dbt-starrocks-code-location/developer_workflow.md`
 
 ## Extending the Skeleton
 

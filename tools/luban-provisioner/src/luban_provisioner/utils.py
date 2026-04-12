@@ -1,13 +1,14 @@
-import subprocess
-import click
-import os
-import traceback
-import random
 import base64
-from urllib.parse import urlsplit, urlunsplit
-from ruamel.yaml import YAML
 import json
+import os
+import random
+import subprocess
+import traceback
+from urllib.parse import urlsplit, urlunsplit
+
+import click
 from cookiecutter.main import cookiecutter
+from ruamel.yaml import YAML
 
 
 def configure_git_https_auth(git_username, git_token, git_server):
@@ -46,11 +47,15 @@ def run_git(args, cwd=None, check=True, capture_output=False, text=True):
     env.setdefault("GIT_TERMINAL_PROMPT", "0")
 
     cmd = ["git"]
-    if env.get("LUBAN_GIT_HTTPS_AUTH_MODE") == "extraheader_basic" and env.get("LUBAN_GIT_AUTH_HEADER"):
+    if env.get("LUBAN_GIT_HTTPS_AUTH_MODE") == "extraheader_basic" and env.get(
+        "LUBAN_GIT_AUTH_HEADER"
+    ):
         cmd.extend(["--config-env=http.extraHeader=LUBAN_GIT_AUTH_HEADER"])
 
     cmd.extend(args)
-    return subprocess.run(cmd, cwd=cwd, env=env, check=check, capture_output=capture_output, text=text)
+    return subprocess.run(
+        cmd, cwd=cwd, env=env, check=check, capture_output=capture_output, text=text
+    )
 
 
 def apply_git_https_config(config: dict, git_provider: str, git_server: str):
@@ -100,16 +105,17 @@ def load_config(config_file):
     """
     if not config_file or not os.path.exists(config_file):
         return {}
-        
+
     try:
-        with open(config_file, 'r') as f:
-            if config_file.endswith('.json'):
+        with open(config_file, "r") as f:
+            if config_file.endswith(".json"):
                 return json.load(f)
             else:
-                return YAML(typ='safe').load(f)
+                return YAML(typ="safe").load(f)
     except Exception as e:
         click.echo(f"Error loading config file {config_file}: {e}", err=True)
         return {}
+
 
 def load_config_from_dir(config_dir):
     """
@@ -120,21 +126,22 @@ def load_config_from_dir(config_dir):
     config = {}
     if not os.path.exists(config_dir):
         return config
-        
+
     for filename in os.listdir(config_dir):
-        if filename.startswith('..') or filename.startswith('.'):
+        if filename.startswith("..") or filename.startswith("."):
             continue
-            
+
         file_path = os.path.join(config_dir, filename)
         if os.path.isfile(file_path):
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path, "r") as f:
                     content = f.read().strip()
                     if content:
                         config[filename] = content
             except Exception as e:
                 click.echo(f"Warning: Failed to read config file {file_path}: {e}", err=True)
     return config
+
 
 def render_template(template_path, output_dir, context, overwrite=False):
     """
@@ -147,13 +154,14 @@ def render_template(template_path, output_dir, context, overwrite=False):
             no_input=True,
             output_dir=output_dir,
             extra_context=context,
-            overwrite_if_exists=overwrite
+            overwrite_if_exists=overwrite,
         )
         click.echo(f"Successfully generated template in {output_dir}")
     except Exception as e:
         click.echo(f"Error generating template: {e}", err=True)
         traceback.print_exc()
         raise e
+
 
 def clone_git_repo(repo_url, target_dir, user_name="Luban CI", user_email="ci@luban.com"):
     """Clone a git repository to a target directory."""
@@ -173,6 +181,7 @@ def clone_git_repo(repo_url, target_dir, user_name="Luban CI", user_email="ci@lu
     except subprocess.CalledProcessError as e:
         click.echo(f"Git clone failed: {e}", err=True)
         raise e
+
 
 def commit_and_push(repo_dir, message, branch="main", retries=5):
     """Commit all changes in the repo and push to remote with retry logic."""
@@ -195,7 +204,9 @@ def commit_and_push(repo_dir, message, branch="main", retries=5):
             run_git(["commit", "-m", message], check=True)
 
         # Ensure we are on the target branch
-        current_branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+        current_branch = run_git(
+            ["rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=True
+        ).stdout.strip()
         if current_branch != branch:
             click.echo(f"Renaming branch {current_branch} to {branch}...")
             run_git(["branch", "-M", branch], check=True)
@@ -203,14 +214,14 @@ def commit_and_push(repo_dir, message, branch="main", retries=5):
         # Push with retry
         for i in range(retries):
             try:
-                click.echo(f"Pushing to {branch} (Attempt {i+1}/{retries})...")
+                click.echo(f"Pushing to {branch} (Attempt {i + 1}/{retries})...")
                 run_git(["push", "origin", branch], check=True)
                 click.echo("Push successful.")
                 break
             except subprocess.CalledProcessError:
                 if i < retries - 1:
-                    click.echo(f"Push failed. Pulling rebase and retrying...")
-                    time.sleep(random.uniform(1, 3)) # Random jitter
+                    click.echo("Push failed. Pulling rebase and retrying...")
+                    time.sleep(random.uniform(1, 3))  # Random jitter
                     try:
                         run_git(["pull", "--rebase", "origin", branch], check=True)
                     except subprocess.CalledProcessError as e:
@@ -226,39 +237,47 @@ def commit_and_push(repo_dir, message, branch="main", retries=5):
     finally:
         os.chdir(cwd)
 
-def initialize_git_repo(repo_dir, remote_url, user_name="Luban CI", user_email="luban-ci@metasync.io", initial_branch="main"):
+
+def initialize_git_repo(
+    repo_dir,
+    remote_url,
+    user_name="Luban CI",
+    user_email="luban-ci@metasync.io",
+    initial_branch="main",
+):
     """Initialize a git repository, commit all files, and push to remote."""
     cwd = os.getcwd()
     try:
         os.chdir(repo_dir)
-        
+
         click.echo(f"Initializing git repo in {repo_dir}...")
-        
+
         # Init
         run_git(["init"], check=True)
         run_git(["config", "user.name", user_name], check=True)
         run_git(["config", "user.email", user_email], check=True)
         run_git(["config", "--add", "safe.directory", "*"], check=True)
-        
+
         # Branch
         run_git(["branch", "-M", initial_branch], check=True)
-        
+
         # Add and Commit
         run_git(["add", "."], check=True)
         run_git(["commit", "-m", "Initial provisioning"], check=True)
-        
+
         # Remote
         run_git(["remote", "add", "origin", remote_url], check=True)
-        
+
         # Push
         click.echo(f"Pushing to {initial_branch}...")
         run_git(["push", "-u", "origin", initial_branch, "--force"], check=True)
-        
+
     except subprocess.CalledProcessError as e:
         click.echo(f"Git operation failed: {e}", err=True)
         raise e
     finally:
         os.chdir(cwd)
+
 
 def patch_default_service_account(target_ns, image_pull_secret):
     """
@@ -266,6 +285,7 @@ def patch_default_service_account(target_ns, image_pull_secret):
     Keeping function signature for compatibility if needed, but doing nothing.
     """
     pass
+
 
 def create_and_push_branch(repo_dir, branch_name):
     """Create a new branch and push it."""

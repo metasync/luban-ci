@@ -13,5 +13,11 @@ make dev
 
 ## Documentation
 
-- Local development: `docs/local_development.md`
-- Template usage (automation, jobs/schedules, configuration): `docs/template_usage.md`
+This rendered project does not ship template docs.
+
+Canonical documentation for the template lives in the Luban CI repository:
+
+- `docs/dagster/templates/dagster-dbt-starrocks-code-location/README.md`
+- `docs/dagster/templates/dagster-dbt-starrocks-code-location/template_usage.md`
+- `docs/dagster/templates/dagster-dbt-starrocks-code-location/developer_workflow.md`
+- `docs/dagster/templates/dagster-dbt-starrocks-code-location/local_development.md`

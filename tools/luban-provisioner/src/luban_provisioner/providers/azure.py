@@ -1,11 +1,12 @@
 import os
 import re
+import time
 
 import click
 import requests
-import time
 
 from .base import GitProvider
+
 
 class AzureProvider(GitProvider):
     def __init__(self, token, organization, project, git_server="dev.azure.com", git_base_url=None):
@@ -14,7 +15,7 @@ class AzureProvider(GitProvider):
             self.base_url = f"{git_base_url.rstrip('/')}/{organization}"
         else:
             self.base_url = f"https://{git_server}/{organization}"
-        self.auth = ('', self.token)
+        self.auth = ("", self.token)
 
         api_version = os.getenv("AZURE_DEVOPS_API_VERSION", "").strip()
         self.api_version = api_version or "7.1"
@@ -34,7 +35,7 @@ class AzureProvider(GitProvider):
         url = f"{self.base_url}/_apis/projects/{self.project}?api-version=7.1"
         resp = self._request("GET", url)
         if resp.status_code == 200:
-            return resp.json().get('id')
+            return resp.json().get("id")
         elif resp.status_code == 404:
             click.echo(f"Project '{self.project}' not found (404) at {url}", err=True)
             return None
@@ -70,14 +71,14 @@ class AzureProvider(GitProvider):
     def _get_repo_id(self, repo_identifier):
         """Helper to resolve repo ID from name or dict."""
         if isinstance(repo_identifier, dict):
-            return repo_identifier.get('id')
-        
+            return repo_identifier.get("id")
+
         # If string, assume it's a name or ID. Try to fetch it.
         # GET /_apis/git/repositories/{repositoryId}
         url = f"{self.base_url}/{self.project}/_apis/git/repositories/{repo_identifier}?api-version=7.1"
         resp = self._request("GET", url)
         if resp.status_code == 200:
-            return resp.json().get('id')
+            return resp.json().get("id")
         return None
 
     def _get_policy_type_id(self, display_name):
@@ -101,19 +102,14 @@ class AzureProvider(GitProvider):
     def create_repo(self, name, description=None):
         """Create a repository."""
         url = f"{self.base_url}/{self.project}/_apis/git/repositories?api-version=7.1"
-        
+
         project_id = self._get_project_id()
         if not project_id:
             click.echo(f"Project '{self.project}' not found.", err=True)
             return None
 
-        payload = {
-            "name": name,
-            "project": {
-                "id": project_id
-            }
-        }
-        
+        payload = {"name": name, "project": {"id": project_id}}
+
         click.echo(f"Creating repo '{name}' in project '{self.project}'...")
         for attempt in range(1, 11):
             resp = self._request("POST", url, json=payload)
@@ -127,7 +123,9 @@ class AzureProvider(GitProvider):
                 time.sleep(min(2 * attempt, 10))
                 continue
 
-            click.echo(f"Failed to create repo. Status: {resp.status_code}, Body: {resp.text}", err=True)
+            click.echo(
+                f"Failed to create repo. Status: {resp.status_code}, Body: {resp.text}", err=True
+            )
             return None
 
         click.echo("Failed to create repo after multiple retries.", err=True)
@@ -142,10 +140,10 @@ class AzureProvider(GitProvider):
 
         url = f"{self.base_url}/_apis/hooks/subscriptions?api-version=7.1"
         project_id = self._get_project_id()
-        
+
         target_url = self.get_webhook_target_url(webhook_url)
         consumer_inputs = {"url": target_url}
-        
+
         if secret:
             consumer_inputs["httpHeaders"] = f"Authorization: {secret}"
 
@@ -157,30 +155,34 @@ class AzureProvider(GitProvider):
             "consumerActionId": "httpRequest",
             "publisherInputs": {
                 "repository": repo_id,
-                "branch": "", # All branches
-                "projectId": project_id
+                "branch": "",  # All branches
+                "projectId": project_id,
             },
-            "consumerInputs": consumer_inputs
+            "consumerInputs": consumer_inputs,
         }
-        
+
         # Check existing hooks
         list_url = f"{self.base_url}/_apis/hooks/subscriptions?publisherId=tfs&eventType=git.push&api-version=7.1"
         list_resp = self._request("GET", list_url)
         if list_resp.status_code == 200:
             subs = list_resp.json().get("value", [])
             for sub in subs:
-                if (sub.get("consumerInputs", {}).get("url") == target_url and 
-                    sub.get("publisherInputs", {}).get("repository") == repo_id):
+                if (
+                    sub.get("consumerInputs", {}).get("url") == target_url
+                    and sub.get("publisherInputs", {}).get("repository") == repo_id
+                ):
                     click.echo("Webhook already exists.")
                     return sub
 
         click.echo(f"Creating webhook for repo {repo_id}...")
         resp = self._request("POST", url, json=payload)
-        
-        if resp.status_code == 200: 
+
+        if resp.status_code == 200:
             return resp.json()
-            
-        click.echo(f"Failed to create webhook. Status: {resp.status_code}, Body: {resp.text}", err=True)
+
+        click.echo(
+            f"Failed to create webhook. Status: {resp.status_code}, Body: {resp.text}", err=True
+        )
         return None
 
     def webhook_push_path(self) -> str:
@@ -197,16 +199,17 @@ class AzureProvider(GitProvider):
             return False
 
         url = f"{self.base_url}/{self.project}/_apis/git/repositories/{repo_id}?api-version=7.1"
-        
-        payload = {
-            "defaultBranch": f"refs/heads/{branch_name}"
-        }
-        
+
+        payload = {"defaultBranch": f"refs/heads/{branch_name}"}
+
         click.echo(f"Setting default branch to '{branch_name}'...")
         resp = self._request("PATCH", url, json=payload)
-        
+
         if resp.status_code != 200:
-            click.echo(f"Failed to set default branch. Status: {resp.status_code}, Body: {resp.text}", err=True)
+            click.echo(
+                f"Failed to set default branch. Status: {resp.status_code}, Body: {resp.text}",
+                err=True,
+            )
             return False
         return True
 
@@ -217,19 +220,20 @@ class AzureProvider(GitProvider):
             return False
 
         url = f"{self.base_url}/{self.project}/_apis/policy/configurations?api-version=7.1"
-        
+
         min_reviewer_policy_id = self._get_policy_type_id("Minimum number of reviewers")
-        
+
         if not min_reviewer_policy_id:
-            click.echo("Warning: Could not find policy type 'Minimum number of reviewers'. Using default ID.", err=True)
+            click.echo(
+                "Warning: Could not find policy type 'Minimum number of reviewers'. Using default ID.",
+                err=True,
+            )
             min_reviewer_policy_id = "fa4e907d-9e6b-4f87-9517-005e952ddf48"
-        
+
         payload = {
             "isEnabled": True,
             "isBlocking": True,
-            "type": {
-                "id": min_reviewer_policy_id
-            },
+            "type": {"id": min_reviewer_policy_id},
             "settings": {
                 "minimumApproverCount": min_reviewers,
                 "creatorVoteCounts": True,
@@ -237,19 +241,24 @@ class AzureProvider(GitProvider):
                     {
                         "repositoryId": repo_id,
                         "refName": f"refs/heads/{branch_name}",
-                        "matchKind": "Exact"
+                        "matchKind": "Exact",
                     }
-                ]
-            }
+                ],
+            },
         }
-        
-        click.echo(f"Enabling branch protection (Min Reviewers={min_reviewers}) for '{branch_name}'...")
+
+        click.echo(
+            f"Enabling branch protection (Min Reviewers={min_reviewers}) for '{branch_name}'..."
+        )
         resp = self._request("POST", url, json=payload)
-        
+
         if resp.status_code in [200, 201]:
             return True
-            
-        click.echo(f"Failed to enable branch protection. Status: {resp.status_code}, Body: {resp.text}", err=True)
+
+        click.echo(
+            f"Failed to enable branch protection. Status: {resp.status_code}, Body: {resp.text}",
+            err=True,
+        )
         return False
 
     def create_project(self, project_name, description=None):
@@ -259,29 +268,29 @@ class AzureProvider(GitProvider):
         # Check if project exists
         check_url = f"{self.base_url}/_apis/projects/{project_name}?api-version=7.1"
         check_resp = self._request("GET", check_url)
-        
+
         if check_resp.status_code == 200:
             click.echo(f"Project '{project_name}' already exists.")
             self._wait_for_git_ready(timeout_seconds=120, poll_seconds=2)
             return check_resp.json()
-            
+
         # Create Project
         url = f"{self.base_url}/_apis/projects?api-version=7.1"
-        
+
         payload = {
             "name": project_name,
-            "description": description if description else f"Project {project_name} created by Luban Provisioner",
-            "visibility": "private", 
+            "description": description
+            if description
+            else f"Project {project_name} created by Luban Provisioner",
+            "visibility": "private",
             "capabilities": {
-                "versioncontrol": {
-                    "sourceControlType": "Git"
-                },
+                "versioncontrol": {"sourceControlType": "Git"},
                 "processTemplate": {
-                    "templateTypeId": "6b724908-ef14-45cf-84f8-768b5384da45" # Agile default
-                }
-            }
+                    "templateTypeId": "6b724908-ef14-45cf-84f8-768b5384da45"  # Agile default
+                },
+            },
         }
-        
+
         # Try to find Agile template
         process_url = f"{self.base_url}/_apis/process/processes?api-version=7.1"
         process_resp = self._request("GET", process_url)
@@ -292,53 +301,64 @@ class AzureProvider(GitProvider):
                 payload["capabilities"]["processTemplate"]["templateTypeId"] = agile_template["id"]
             elif processes:
                 payload["capabilities"]["processTemplate"]["templateTypeId"] = processes[0]["id"]
-        
+
         click.echo(f"Creating Azure DevOps Project '{project_name}'...")
         resp = self._request("POST", url, json=payload)
-        
+
         if resp.status_code == 202:
             operation_ref = resp.json()
-            op_id = operation_ref.get('id')
+            op_id = operation_ref.get("id")
             click.echo(f"Project creation queued. Operation ID: {op_id}")
-            
+
             for _ in range(30):
                 time.sleep(2)
                 if self._get_project_id():
                     click.echo(f"Project '{project_name}' created successfully.")
                     self._wait_for_git_ready(timeout_seconds=120, poll_seconds=2)
                     return operation_ref
-                
+
             click.echo(f"Timeout waiting for project '{project_name}' to be ready.", err=True)
             return None
-            
-        click.echo(f"Failed to create project. Status: {resp.status_code}, Body: {resp.text}", err=True)
+
+        click.echo(
+            f"Failed to create project. Status: {resp.status_code}, Body: {resp.text}", err=True
+        )
         return None
 
-    def create_pull_request(self, repo_identifier, title, description, source_ref, target_ref="main"):
+    def create_pull_request(
+        self, repo_identifier, title, description, source_ref, target_ref="main"
+    ):
         """Create a Pull Request."""
         repo_id = self._get_repo_id(repo_identifier)
         if not repo_id:
             return None
 
         url = f"{self.base_url}/{self.project}/_apis/git/repositories/{repo_id}/pullRequests?api-version=7.1"
-        
+
         payload = {
-            "sourceRefName": f"refs/heads/{source_ref}" if not source_ref.startswith("refs/") else source_ref,
-            "targetRefName": f"refs/heads/{target_ref}" if not target_ref.startswith("refs/") else target_ref,
+            "sourceRefName": f"refs/heads/{source_ref}"
+            if not source_ref.startswith("refs/")
+            else source_ref,
+            "targetRefName": f"refs/heads/{target_ref}"
+            if not target_ref.startswith("refs/")
+            else target_ref,
             "title": title,
-            "description": description
+            "description": description,
         }
-        
+
         click.echo(f"Creating PR '{title}' in {self.project} (Repo ID: {repo_id})...")
         resp = self._request("POST", url, json=payload)
-        
+
         if resp.status_code == 201:
             pr = resp.json()
             click.echo(f"✅ Pull Request created successfully! ID: {pr.get('pullRequestId')}")
             return pr
-        elif resp.status_code == 409: 
-             click.echo("⚠️ Pull Request might already exist or conflict.")
-             return None
-             
-        click.echo(f"❌ Error creating Pull Request. Status: {resp.status_code}, Body: {resp.text}", err=True)
+        elif resp.status_code == 409:
+            click.echo("⚠️ Pull Request might already exist or conflict.")
+            return None
+
+        click.echo(
+            f"❌ Error creating Pull Request. Status: {resp.status_code}, Body: {resp.text}",
+            err=True,
+        )
         return None

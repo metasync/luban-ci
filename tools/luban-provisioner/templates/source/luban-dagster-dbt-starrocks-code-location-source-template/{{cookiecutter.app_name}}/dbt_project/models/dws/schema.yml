@@ -20,6 +20,10 @@ models:
 
   - name: fact_customer_orders_daily
     description: "Daily customer order fact aggregated from DWD orders. One row per customer per day."
+    meta:
+      luban:
+        job:
+          name: daily_facts_job
     tests:
       - row_count_greater_than:
           arguments:
@@ -40,6 +44,10 @@ models:
 
   - name: fact_orders_daily
     description: "Daily order fact aggregated from DWD orders. One row per day."
+    meta:
+      luban:
+        job:
+          name: daily_facts_job
     tests:
       - row_count_greater_than:
           arguments:

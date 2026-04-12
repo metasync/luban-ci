@@ -5,6 +5,10 @@ sources:
     schema: "{{ env_var('STARROCKS_ODS_DB', 'ods') }}"
     tables:
       - name: customers
+        meta:
+          luban:
+            observe:
+              watermark_column: ods_updated_at
         columns:
           - name: customer_id
             tests:

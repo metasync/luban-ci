@@ -25,7 +25,9 @@ class TestGitAuth(unittest.TestCase):
         self.assertNotIn(token, github_url)
         self.assertNotIn("@", github_url.split("//", 1)[1].split("/", 1)[0])
 
-        github_url2 = get_remote_url("github", token, "https://github.com/", "acme", "ignored", "repo")
+        github_url2 = get_remote_url(
+            "github", token, "https://github.com/", "acme", "ignored", "repo"
+        )
         self.assertEqual(github_url2, "https://github.com/acme/repo.git")
         self.assertNotIn(token, github_url2)
 
@@ -70,10 +72,16 @@ class TestGitAuth(unittest.TestCase):
             buffer.close = capture_close
             return buffer
 
-        with patch("subprocess.run") as run, patch("os.path.expanduser", return_value="/tmp/.git-credentials"), patch("builtins.open", new=fake_open):
+        with (
+            patch("subprocess.run") as run,
+            patch("os.path.expanduser", return_value="/tmp/.git-credentials"),
+            patch("builtins.open", new=fake_open),
+        ):
             configure_git_https_auth("alice", "TOKEN", "https://dev.azure.com/")
 
-        run.assert_called_once_with(["git", "config", "--global", "credential.helper", "store"], check=True)
+        run.assert_called_once_with(
+            ["git", "config", "--global", "credential.helper", "store"], check=True
+        )
         self.assertEqual(writes["content"], "https://alice:TOKEN@dev.azure.com\n")
 
 

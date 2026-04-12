@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Any
-
-import os
 
 
 @dataclass(frozen=True)
@@ -32,6 +31,27 @@ class StarRocksClient:
                 cursor.execute(sql)
                 row = cursor.fetchone()
                 return row[0] if row else None
+        finally:
+            connection.close()
+
+    def query_first_column(self, sql: str) -> list[Any]:
+        import pymysql
+
+        connection = pymysql.connect(
+            host=self.host,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            connect_timeout=self.connect_timeout,
+            read_timeout=self.connect_timeout,
+            write_timeout=self.connect_timeout,
+            autocommit=True,
+        )
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(sql)
+                rows = cursor.fetchall()
+                return [row[0] for row in rows]
         finally:
             connection.close()
 

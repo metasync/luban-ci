@@ -3,7 +3,7 @@
 include Makefile.env
 export
 
-.PHONY: build push list-templates render-template clean-rendered help
+.PHONY: build push list-templates render-template clean-rendered lint format help
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -59,3 +59,10 @@ render-template: ## Render a template (e.g., make render-template T=luban-python
 clean-rendered: ## Remove all rendered templates
 	@echo "Cleaning $(OUTPUT_DIR)..."
 	@rm -rf $(OUTPUT_DIR)
+
+lint: ## Run python lint checks (ruff)
+	@TMPDIR=/tmp uv run --group dev ruff check src/luban_provisioner tests
+
+format: ## Auto-fix lint and format python (ruff)
+	@TMPDIR=/tmp uv run --group dev ruff check --fix src/luban_provisioner tests
+	@TMPDIR=/tmp uv run --group dev ruff format src/luban_provisioner tests

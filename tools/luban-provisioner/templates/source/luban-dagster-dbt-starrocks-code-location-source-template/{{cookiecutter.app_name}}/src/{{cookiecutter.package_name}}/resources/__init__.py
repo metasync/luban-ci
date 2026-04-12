@@ -5,4 +5,3 @@ resources = {
     "dbt": make_dbt_resource(),
     "starrocks": make_starrocks_resource(),
 }
-

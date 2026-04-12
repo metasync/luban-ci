@@ -12,9 +12,29 @@ dependencies = [
     "ruamel-yaml>=0.19.1",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.12.0",
+]
+
 [project.scripts]
 luban-provisioner = "luban_provisioner.main:cli"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/luban_provisioner/main.py" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

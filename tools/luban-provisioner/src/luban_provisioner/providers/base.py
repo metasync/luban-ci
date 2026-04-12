@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class GitProvider(ABC):
     """
     Abstract Base Class for Git Providers (GitHub, Azure DevOps, etc.)
@@ -42,6 +43,8 @@ class GitProvider(ABC):
         pass
 
     @abstractmethod
-    def create_pull_request(self, repo_identifier, title, description, source_ref, target_ref="main"):
+    def create_pull_request(
+        self, repo_identifier, title, description, source_ref, target_ref="main"
+    ):
         """Create a Pull Request."""
         pass
