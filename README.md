@@ -17,7 +17,7 @@ Luban CI is a GitOps-based Continuous Integration system running on Kubernetes, 
 - [**CI/CD Philosophy**](docs/concepts/cicd-philosophy.md): Understanding Trunk-Based Development and Promotion-Based Releases.
 - [**Environment Promotion**](docs/concepts/environment-promotion.md): How "Build Once, Promote Anywhere" works (SND -> PRD).
 - [**GitOps Architecture**](docs/concepts/gitops-architecture.md): Naming conventions, project structure, and repo organization.
-- [**Dagster Integration**](docs/dagster/concepts/dagster-integration.md): Architecture for Data Platforms and Code Locations.
+- [**Dagster Integration**](docs/guides/dagster-integration.md): Architecture for Data Platforms and Code Locations.
 
 ### User Guides (The "How-To")
 - [**Getting Started**](docs/guides/getting-started.md): Installation, prerequisites, and initial setup.

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 
@@ -33,8 +35,30 @@ def _replace_default_target(text: str, default_env: str) -> str:
     return text.replace(needle, replacement)
 
 
+def _set_env_var(lines: list[str], key: str, value: str) -> list[str]:
+    prefix = f"{key}="
+    replacement = f"{prefix}{value}\n"
+    for i, line in enumerate(lines):
+        if line.startswith(prefix):
+            lines[i] = replacement
+            return lines
+    return lines + [replacement]
+
+
 def main() -> None:
     default_env = "{{ cookiecutter.default_env }}".strip()
+
+    pyproject_in = Path("pyproject.toml.in")
+    pyproject_out = Path("pyproject.toml")
+    if pyproject_in.exists() and not pyproject_out.exists():
+        pyproject_in.rename(pyproject_out)
+
+    env_example = Path(".env.example")
+    if env_example.exists():
+        lines = env_example.read_text(encoding="utf-8").splitlines(keepends=True)
+        lines = _set_env_var(lines, "DAGSTER_HOME", str((Path.cwd() / "dagster_home").resolve()))
+        lines = _set_env_var(lines, "LUBAN_REPO_ROOT", str(Path.cwd().resolve()))
+        env_example.write_text("".join(lines), encoding="utf-8")
 
     profiles_path = Path("dbt_project") / "profiles.yml"
     if not profiles_path.exists():
@@ -53,4 +77,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

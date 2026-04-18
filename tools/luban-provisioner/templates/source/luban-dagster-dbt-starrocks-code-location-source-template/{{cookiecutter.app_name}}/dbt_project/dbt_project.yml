@@ -4,14 +4,7 @@ config-version: 2
 
 profile: "{{cookiecutter.package_name}}"
 
-vars:
-  enable_ods_test: false
-  ods_test_customers_count: 500
-  ods_test_customers_append_count: 0
-  ods_test_orders_per_customer: 20
-  ods_test_orders_append_count: 1000
-  ods_test_days: 30
-  ods_test_base_ts: ""
+vars: {}
 
 model-paths: ["models"]
 analysis-paths: ["analyses"]
@@ -25,10 +18,4 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
-models:
-  "{{cookiecutter.package_name}}_dbt":
-    +on_schema_change: "append_new_columns"
-    dwd:
-      +materialized: table
-    dws:
-      +materialized: table
+models: {}

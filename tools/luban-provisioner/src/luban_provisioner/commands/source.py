@@ -87,7 +87,8 @@ def source(
         click.echo(f"Repository {repo_name} already exists. Skipping.")
         sys.exit(0)
 
-    # Template Selection
+    package_name = application_name.replace("-", "_")
+
     match template_type:
         case "dagster-platform":
             template_path = "/app/templates/source/luban-dagster-platform-source-template"
@@ -96,9 +97,7 @@ def source(
             template_path = "/app/templates/source/luban-dagster-code-location-source-template"
             description = f"Dagster Code Location for {application_name}"
         case "dagster-dbt-starrocks-code-location":
-            template_path = (
-                "/app/templates/source/luban-dagster-dbt-starrocks-code-location-source-template"
-            )
+            template_path = "/app/templates/source/luban-dagster-dbt-starrocks-code-location-source-template"
             description = f"Dagster + dbt (StarRocks) Code Location for {application_name}"
         case "python":
             template_path = "/app/templates/source/luban-python-template"
@@ -107,25 +106,26 @@ def source(
             click.echo(f"Unknown template type: {template_type}", err=True)
             sys.exit(1)
 
-    package_name = application_name.replace("-", "_")
-
     extra_context = {
         "project_name": project_name,
         "app_name": application_name,
         "package_name": package_name,
-        "author_name": "Data Team",  # Default
-        "author_email": "data@luban-ci.io",  # Default
+        "author_name": "Data Team",
+        "author_email": "data@luban-ci.io",
         "description": description,
         "version": "0.1.0",
     }
 
-    # Merge config into extra_context
-    for k, v in config.items():
+    for k, v in (config or {}).items():
         if k not in extra_context:
             extra_context[k] = v
 
-    # Merge CLI extra context (takes precedence)
     extra_context.update(cli_extra_context)
+
+    if template_type == "dagster-dbt-starrocks-code-location":
+        extra_context.setdefault("dagster_version", "1.12.19")
+        extra_context.setdefault("default_env", "development")
+        extra_context.setdefault("code_location_port", "3000")
 
     if "image_tag" not in extra_context:
         extra_context["image_tag"] = "latest"

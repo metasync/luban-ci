@@ -53,10 +53,6 @@ Notes:
 - CI workflows run in `ci-<project>` namespaces (not `snd-<project>`). The test target submits into `ci-<project>`.
 - The workflow updates GitOps (`develop` for `snd`), and ArgoCD deploys into `snd-<project>`.
 
-## Source template local development
-
-To render and run the Dagster+dbt+StarRocks source template locally, see `docs/dagster/templates/dagster-dbt-starrocks-code-location/local_development.md`.
-
 ## Simulating Webhook Events
 
 Send a signed GitHub push event payload to the local Gateway to verify the entire event-to-pipeline flow.

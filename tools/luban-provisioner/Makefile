@@ -42,19 +42,24 @@ push: ## Push luban-provisioner tooling image (build if missing)
 list-templates: ## List available project templates
 	@ls -1 $(TEMPLATES_DIR)
 
+
 render-template: ## Render a template (e.g., make render-template T=luban-python-template)
 	@T=$(T); \
 	TEMPLATE=$${T:-$(DEFAULT_TEMPLATE)}; \
 	echo "Rendering template: $$TEMPLATE to $(OUTPUT_DIR)..."; \
 	mkdir -p $(OUTPUT_DIR); \
+	EXTRA_ARGS=""; \
 	PYTHONWARNINGS="ignore" uv run cookiecutter --no-input -f -o $(OUTPUT_DIR) $(TEMPLATES_DIR)/$$TEMPLATE \
 		project_name="Test Project" \
-		app_name="test_app" \
+		app_name="test-app" \
 		package_name="test_app" \
 		dagster_version="1.12.19" \
+		default_env="development" \
+		code_location_port="3000" \
 		author_name="Luban Team" \
-		author_email="luban@example.com" || exit 1; \
-	echo "Done. Rendered project is at $(OUTPUT_DIR)/test_app"
+		author_email="luban@example.com" \
+		$$EXTRA_ARGS || exit 1; \
+	echo "Done. Rendered project is at $(OUTPUT_DIR)/test-app"
 
 clean-rendered: ## Remove all rendered templates
 	@echo "Cleaning $(OUTPUT_DIR)..."

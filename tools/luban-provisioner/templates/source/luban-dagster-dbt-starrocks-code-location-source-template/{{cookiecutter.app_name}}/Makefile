@@ -1,5 +1,5 @@
 
-.PHONY: help setup install dev test check-db docker-up docker-down docker-ps docker-logs ods-test-bootstrap ods-test-append dbt-deps dbt-parse dbt-build dbt-run clean
+.PHONY: help setup install macros-sync dev test check-db dbt-deps dbt-parse dbt-build dbt-run clean
 
 
 # Load local environment variables (if present) for dbt/Dagster commands.
@@ -10,14 +10,12 @@ export
 DBT_PROJECT_DIR ?= ./dbt_project
 DBT_PROFILES_DIR ?= ./dbt_project
 DBT_VARS ?=
-ODS_TEST_BOOTSTRAP_VARS ?= {"enable_ods_test": true}
-ODS_TEST_APPEND_VARS ?= {"enable_ods_test": true, "ods_test_orders_append_count": 1000}
 
 help: ## Show available targets
 	@echo "Available targets:"
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-setup: install ## Setup local development environment
+setup: ## Setup local development environment
 	@echo "Setting up local development environment..."
 	@if [ ! -f .env ]; then \
 		echo "Copying .env.example to .env..."; \
@@ -26,12 +24,18 @@ setup: install ## Setup local development environment
 	else \
 		echo ".env file already exists. Skipping."; \
 	fi
+	@$(MAKE) install
 	@echo "Setup complete!"
 
 
 install: ## Install or update python dependencies
 	@echo "Installing dependencies..."
 	uv sync
+	$(MAKE) macros-sync
+
+
+macros-sync: ## Sync dbt macros required by this code location
+	uv run dbt-dagsterizer macros sync --dbt-project-dir $(DBT_PROJECT_DIR)
 
 
 dev: ## Run Dagster webserver for local development
@@ -53,30 +57,6 @@ test: ## Run unit tests and dbt tests
 check-db: ## Test connectivity to the StarRocks database
 	@echo "Testing StarRocks connectivity using dbt debug..."
 	uv run dbt debug --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR)
-
-
-docker-up: ## Start local StarRocks via docker compose (local dev only)
-	docker compose -f docker/docker-compose.yml up -d
-
-
-docker-down: ## Stop local StarRocks docker compose stack (local dev only)
-	docker compose -f docker/docker-compose.yml down
-
-
-docker-ps: ## Show docker compose stack status (local dev only)
-	docker compose -f docker/docker-compose.yml ps
-
-
-docker-logs: ## Tail StarRocks logs (local dev only)
-	docker compose -f docker/docker-compose.yml logs -f --tail=200
-
-
-ods-test-bootstrap: dbt-deps ## Bootstrap ODS test tables (customers/orders)
-	uv run dbt run --full-refresh --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR) --select tag:ods_test --vars '$(ODS_TEST_BOOTSTRAP_VARS)'
-
-
-ods-test-append: dbt-deps ## Append into ODS test tables (simulate new arrivals)
-	uv run dbt run --project-dir $(DBT_PROJECT_DIR) --profiles-dir $(DBT_PROFILES_DIR) --select tag:ods_test --vars '$(ODS_TEST_APPEND_VARS)'
 
 
 dbt-deps: ## Install dbt dependencies

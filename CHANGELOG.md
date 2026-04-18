@@ -7,14 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.4] - 2026-04-18
+
+### Changed
+
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.12`.
+- **Templates (Dagster+dbt+StarRocks)**: Replaced the bundled tutorial/sample dbt project with a clean skeleton scaffold.
+- **Templates (Dagster+dbt+StarRocks)**: Removed `include_sample_dbt_project` and `include_docker`; the template always renders a minimal starting point.
+- **Docs (Dagster)**: Consolidated Dagster integration docs into `docs/guides/dagster-integration.md` and removed the old `docs/dagster/` directory.
+
 ## [v1.1.3] - 2026-04-12
 
 ### Added
 
 - **Templates (Dagster+dbt+StarRocks)**: Added manifest-driven auto configuration for dbt asset jobs, schedules, and partition-change sensors based on dbt `meta.luban.*` and tags.
-- **Docs (Dagster)**: Added template developer workflow documentation under `docs/dagster/templates/dagster-dbt-starrocks-code-location/developer_workflow.md`.
+- **Docs (Dagster)**: Added template developer workflow documentation.
 - **Linting (Provisioner)**: Added uv-managed Ruff lint/format tooling for `tools/luban-provisioner` and exposed `make lint` / `make format` at repo root.
-- **Docs (Dagster)**: Added centralized template documentation under `docs/dagster/templates/dagster-dbt-starrocks-code-location/`.
+- **Docs (Dagster)**: Added centralized template documentation.
 
 ### Changed
 
@@ -36,11 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
-- **Docs (Dagster)**: Updated `docs/dagster/templates/dagster-dbt-starrocks-code-location/template_usage.md` to reflect `meta.luban.*`, auto-generated jobs/schedules/sensors, and current override behavior.
+- **Docs (Dagster)**: Updated template usage docs to reflect `meta.luban.*`, auto-generated jobs/schedules/sensors, and current override behavior.
 - **Docs (Dagster)**: Expanded the template developer workflow with dbt/Dagster philosophy and conventions.
 - **Templates (Dagster+dbt+StarRocks)**: Documented `LUBAN_PARTITION_CHANGE_PROPAGATOR_CATCHUP_DAYS` in the rendered project `.env.example`.
 - **Templates (Docs)**: Rendered projects no longer ship a `docs/` directory; the template `README.md` links to canonical root docs.
-- **Docs (Dagster)**: Added `docs/dagster/handbook.md` as the primary Dagster development entry point.
+- **Docs (Dagster)**: Added a Dagster integration guide documenting platform/code-location workflows and runtime wiring.
 
 ## [v1.1.2] - 2026-04-09
 
@@ -186,7 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Provisioner**: Added `luban-dagster-dbt-starrocks-code-location` source template for data transformation teams using dbt + StarRocks + Dagster.
 - **Provisioner**: Added corresponding GitOps and workflow templates (`luban-dagster-dbt-starrocks-code-location-setup-template`).
 - **Buildpack**: Added `dbt manifest.json` pre-generation during the build phase for Dagster + dbt code locations. The buildpack now runs `dbt deps` (if packages detected) and `dbt parse` to produce a pre-baked manifest, eliminating `DagsterDbtManifestNotFoundError` at startup.
-- **Docs**: Added `docs/dagster/concepts/dagster-dbt-code-location-template.md` documenting the dbt/Dagster boundary, runtime contract, and conventions.
+- **Docs**: Added dbt-dagsterizer template documentation (moved to https://github.com/metasync/dbt-dagsterizer).
 
 ### Changed
 
@@ -229,13 +238,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Provisioner**: Improved error message in `gitops.py` `except Exception` handler to include the output directory path.
 - **Provisioner**: Fixed `row_count_greater_than` generic test definitions in `dwd/schema.yml` and `dws/schema.yml` to use dbt v1.11 `arguments:` nesting (was deprecated at top level).
 - **Provisioner**: Fixed `relationships` generic test in `sources.yml` to use dbt v1.11 `arguments:` nesting.
-- **Docs**: Removed stale `source_template_type` parameter reference from `docs/dagster/concepts/dagster-integration.md`.
+- **Docs**: Removed stale `source_template_type` parameter reference from the Dagster integration guide.
 - **Config**: Removed duplicate commented `webhook_url` entry in `luban-config.yaml`.
 - **Template**: Fixed `dbt_cli_build_job` execution failing with `KeyError: 'nodes'` by switching CLI jobs to stream raw dbt events and wait for completion (no manifest-based asset event mapping).
 
 ### Docs
 
-- Documented dbt/Dagster boundary, repository layout, runtime contract, local development workflow, layer conventions, and extension patterns in `docs/dagster/concepts/dagster-dbt-code-location-template.md`.
+- Documented dbt/Dagster boundary, repository layout, runtime contract, local development workflow, layer conventions, and extension patterns in the `dbt-dagsterizer` repository.
 
 ## [v1.0.1] - 2026-03-16
 

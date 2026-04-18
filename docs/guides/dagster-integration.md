@@ -5,9 +5,23 @@ Luban CI provides a GitOps-first way to operate Dagster:
 - A shared **Dagster platform** (daemon, webserver, instance storage).
 - Multiple isolated **code locations** (user code deployments) owned by teams.
 
-If you want the end-to-end developer story (concepts + templates + local validation), start with:
+## Concepts and boundaries
 
-- `docs/dagster/handbook.md`
+### Dagster platform vs code locations
+
+Luban CI deploys Dagster in two layers:
+
+- **Dagster platform**: daemon + webserver + instance storage.
+- **Dagster code locations**: user code served by `dagster code-server` (gRPC).
+
+The platform is shared infrastructure; code locations are application repos owned by teams.
+
+### Dagster vs dbt ownership
+
+Use this rule of thumb:
+
+- **dbt owns**: SQL models, tests, sources, selection semantics (tags/groups).
+- **Dagster owns**: orchestration (when/what runs), scheduling, sensors, observability, retries.
 
 ## What you get
 
@@ -20,13 +34,11 @@ If you want the end-to-end developer story (concepts + templates + local validat
 - **Platform**: Dagster daemon + webserver + instance storage (for example Postgres).
 - **Code location**: a repo containing Dagster user code, served via `dagster code-server` (gRPC).
 
-The platform is shared infrastructure; code locations are team-owned applications.
-
 ## Platform setup workflow
 
 Use this to bootstrap a full Dagster instance for a team.
 
-- Template: [luban-dagster-platform-setup-template.yaml](../../../manifests/workflows/luban-dagster-platform-setup-template.yaml)
+- Template: [luban-dagster-platform-setup-template.yaml](../../manifests/workflows/luban-dagster-platform-setup-template.yaml)
 - What it does:
   - Provisions a GitOps repo `<app_name>-gitops` containing the Dagster platform base (Helm/Kustomize).
   - Creates/updates an Argo CD application to deploy the platform into the target environment (for example `snd-data`).
@@ -39,7 +51,7 @@ Use this to bootstrap a full Dagster instance for a team.
 
 Use this to bootstrap a new code location (user code deployment).
 
-- Template: [luban-dagster-code-location-workflow-template.yaml](../../../manifests/workflows/luban-dagster-code-location-workflow-template.yaml)
+- Template: [luban-dagster-code-location-workflow-template.yaml](../../manifests/workflows/luban-dagster-code-location-workflow-template.yaml)
 - What it does:
   - Provisions a GitOps repo `<app_name>-gitops` containing the code location deployment manifests.
   - Creates/updates an Argo CD application to deploy the code-server.
@@ -59,9 +71,10 @@ The code location deployment wires runtime configuration into the `dagster code-
 
 For secrets, `snd`/`prd` overlays include a stub Secret with `replicate-from` so GitOps owns the object metadata while the replicator controller fills the secret data.
 
-## Dagster + dbt (StarRocks) code location
+## Dagster + dbt (StarRocks) code locations
 
-For dbt-first transformation teams on StarRocks, Luban CI provides a standardized code location skeleton.
+Luban CI scaffolds a minimal Dagster+dbt (StarRocks) code location skeleton.
+All template tutorials, samples, and automation docs live in the external `dbt-dagsterizer` repository:
 
-- Concept: [dagster-dbt-code-location-template.md](dagster-dbt-code-location-template.md)
-- Template docs: `docs/dagster/templates/dagster-dbt-starrocks-code-location/`
+- https://github.com/metasync/dbt-dagsterizer/tree/main/docs/templates/dagster-dbt-starrocks-code-location
+

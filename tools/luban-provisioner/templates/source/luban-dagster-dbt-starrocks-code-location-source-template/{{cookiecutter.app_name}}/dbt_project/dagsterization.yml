@@ -1,0 +1,47 @@
+version: 1
+
+jobs:
+  daily_facts_job:
+    models:
+      - fact_customer_orders_daily
+      - fact_orders_daily
+    include_upstream: false
+    partitions: daily
+
+asset_jobs:
+  - orders
+
+partitions:
+  daily:
+    - orders
+    - fact_customer_orders_daily
+    - fact_orders_daily
+
+schedules:
+  orders_anchor_daily_schedule:
+    type: daily_at
+    job_name: dbt_orders_asset_job
+    hour: 1
+    minute: 0
+    lookback_days: 0
+    enabled: true
+
+partition_change:
+  detectors:
+    - model: orders
+      enabled: true
+      lookback_days: 7
+      offset_days: 1
+      minimum_interval_seconds: 60
+      detect_source:
+        source: ods
+        table: orders
+      partition_date_expr: order_datetime
+      updated_at_expr: updated_at
+  propagators:
+    - upstream_model: orders
+      enabled: true
+      name: facts_from_orders_partitions_sensor
+      minimum_interval_seconds: 30
+      targets:
+        - job_name: daily_facts_job

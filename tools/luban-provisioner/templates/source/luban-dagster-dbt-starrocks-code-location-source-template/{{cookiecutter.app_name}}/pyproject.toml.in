@@ -12,9 +12,11 @@ dependencies = [
     "dagster-dbt",
     "dagster-postgres",
     "dagster-k8s",
+    "dbt-dagsterizer",
     "dbt-core>=1.9,<2",
     "dbt-starrocks>=1.9,<2",
-    "pymysql>=1.1.0"
+    "pymysql>=1.1.0",
+    "ruamel-yaml>=0.19.1"
 ]
 
 [dependency-groups]
