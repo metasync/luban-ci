@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{cookiecutter.app_name}}-metrics-exporter"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "{{cookiecutter.app_name}}-metrics-exporter"
+  template:
+    metadata:
+      labels:
+        app: "{{cookiecutter.app_name}}-metrics-exporter"
+    spec:
+      serviceAccountName: "{{cookiecutter.app_name}}-sa"
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      containers:
+        - name: dagster-metrics-exporter
+          image: "{{cookiecutter.registry_server}}/{{cookiecutter.project_name}}/{{cookiecutter.app_name}}:latest"
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          args: ["python", "-m", "luban_dagster_platform.metrics_exporter"]
+          livenessProbe:
+            exec:
+              command: ["python", "-m", "luban_dagster_platform.healthcheck"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command: ["python", "-m", "luban_dagster_platform.healthcheck"]
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          envFrom:
+            - configMapRef:
+                name: dagster-env
+            - configMapRef:
+                name: dagster-observability
+          env:
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "{{ cookiecutter.otel_resource_attributes ~ ',dagster.component=metrics-exporter' if cookiecutter.otel_resource_attributes else 'dagster.component=metrics-exporter' }}"
+            - name: DAGSTER_PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dagster-postgresql-secret
+                  key: postgresql-password
+          volumeMounts:
+            - name: dagster-home
+              mountPath: /tmp/dagster_home
+            - name: dagster-instance
+              mountPath: /tmp/dagster_home/dagster.yaml
+              subPath: dagster.yaml
+      volumes:
+        - name: dagster-home
+          emptyDir: {}
+        - name: dagster-instance
+          configMap:
+            name: dagster-instance

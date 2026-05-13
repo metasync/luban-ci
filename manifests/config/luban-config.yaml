@@ -81,3 +81,8 @@ data:
   # Air-Gapped Mirrors (Optional)
   # uv_release_base_url: "https://mirror.example.com/uv/releases/download"
   # uv_python_install_mirror: "https://mirror.example.com/python"
+
+  # OpenTelemetry / Elastic APM (OTLP) defaults
+  # Set endpoint to "" to disable export; set protocol to "http/protobuf" or "grpc"
+  otel_exporter_otlp_endpoint: ""
+  otel_exporter_otlp_protocol: ""

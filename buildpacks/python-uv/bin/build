@@ -235,6 +235,8 @@ fi
 # Generate launch.toml
 if [[ "$BP_EXECUTION_MODE" == "direct" ]]; then
     echo "Enabling direct execution mode..."
+
+    mkdir -p "$venv_layer/bin"
     
     cat <<EOF > "$venv_layer/bin/direct_exec"
 #!/bin/sh

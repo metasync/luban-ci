@@ -71,10 +71,83 @@ The code location deployment wires runtime configuration into the `dagster code-
 
 For secrets, `snd`/`prd` overlays include a stub Secret with `replicate-from` so GitOps owns the object metadata while the replicator controller fills the secret data.
 
+### Observability (OpenTelemetry)
+
+The Dagster platform GitOps template provides a `dagster-observability` ConfigMap that is injected into:
+
+- Dagster webserver/daemon pods, and
+- Kubernetes Job pods launched by `K8sRunLauncher`
+
+This standardizes propagation of OTEL environment variables (for example `OTEL_EXPORTER_OTLP_ENDPOINT`) without requiring changes in application repos.
+
+The code location GitOps template also includes an optional `dagster-observability` ConfigMap for the `dagster code-server` pod. This is only useful if the code location image is instrumented (manual OTEL init or auto-instrumentation).
+
+By default, the template sets `OTEL_TRACES_EXPORTER=none` and `OTEL_METRICS_EXPORTER=none` to keep observability non-breaking and opt-in. To enable export, override these values (for example set `OTEL_TRACES_EXPORTER=otlp`) in your GitOps repo overlays.
+
+If your OTLP endpoint requires authentication (for example Elastic APM secret token), set `OTEL_EXPORTER_OTLP_HEADERS` via your GitOps overlay/secret mechanism. The value is a comma-separated list of `key=value` pairs (for example `Authorization=Bearer <token>`).
+
+The Dagster platform bootstrap fails safe: if export is enabled but `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_PROTOCOL` are missing or invalid, it logs a warning and disables export for that signal.
+
+#### Enabling OpenTelemetry export
+
+OTEL configuration is centralized in `luban-config` ConfigMap with empty defaults to disable export when not needed:
+
+```yaml
+# luban-config
+data:
+  otel_exporter_otlp_endpoint: ""  # Empty = disabled
+  otel_exporter_otlp_protocol: ""  # Empty = disabled
+```
+
+When observability is needed, set these values in your environment's luban-config overlay:
+
+```yaml
+data:
+  otel_exporter_otlp_endpoint: "http://elastic-apm-server.monitoring:8200"
+  otel_exporter_otlp_protocol: "http/protobuf"  # or "grpc"
+```
+
+The Dagster platform setup workflow generates `/workdir/config.yaml` from `luban-config` and uses it as the cookiecutter context when provisioning the GitOps repo.
+
+For the Dagster platform, the workflow also composes `otel_service_name` and a base `otel_resource_attributes` (for example `deployment.environment` and `project.name`). Each platform component then appends its own `dagster.component` value at runtime.
+
+#### Example OTEL configuration for Elastic APM
+
+Example values for an in-cluster Elastic APM Server (OTLP/HTTP):
+
+```yaml
+data:
+  OTEL_TRACES_EXPORTER: "otlp"
+  OTEL_METRICS_EXPORTER: "otlp"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://<apm-service>.<apm-namespace>:8200"
+  OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=snd,project.name=<project>,dagster.component=webserver"
+```
+
+To find the APM service name and port:
+
+```bash
+kubectl -n <apm-namespace> get svc | grep -i apm
+kubectl -n <apm-namespace> describe svc <apm-service>
+```
+
+Recommended resource attributes:
+- `deployment.environment` (e.g. snd, prd)
+- `project.name` (your project identifier)
+- `dagster.component` (webserver, daemon, metrics-exporter) for platform pods
+- `dagster.code_location` (app name) for code-location pods
+- `service.name` is already set via `OTEL_SERVICE_NAME`; add `service.version` only if you accept the metric-cardinality impact.
+
+The Dagster platform includes:
+
+- A small Python bootstrap that initializes OTEL (when enabled) and then runs the Dagster webserver and daemon in-process.
+- A `<app_name>-metrics-exporter` Deployment that emits platform metrics via OTLP (run queue depth, in-progress count, and basic sensor/schedule tick freshness).
+
+See [dagster-platform-metrics.md](dagster-platform-metrics.md) for the full metric catalog and alert guidance.
+
 ## Dagster + dbt (StarRocks) code locations
 
 Luban CI scaffolds a minimal Dagster+dbt (StarRocks) code location skeleton.
 All template tutorials, samples, and automation docs live in the external `dbt-dagsterizer` repository:
 
 - https://github.com/metasync/dbt-dagsterizer/tree/main/docs/templates/dagster-dbt-starrocks-code-location
-

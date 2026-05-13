@@ -8,8 +8,20 @@ dependencies = [
     "dagster=={{cookiecutter.dagster_version}}",
     "dagster-webserver",
     "dagster-postgres",
-    "dagster-k8s"
+    "dagster-k8s",
+    "opentelemetry-exporter-otlp>=1.37.0,<2",
+    "opentelemetry-sdk>=1.37.0,<2"
 ]
+
+[tool.luban]
+bp-execution-mode = "direct"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["luban_dagster_platform"]
 
 {% if cookiecutter.python_index_url %}
 [[tool.uv.index]]

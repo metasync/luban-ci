@@ -5,5 +5,9 @@
   "template_type": "dagster-code-location",
   "code_location_port": "3000",
   "registry_server": "",
-  "image_tag": "latest"
+  "image_tag": "latest",
+  "otel_exporter_otlp_endpoint": "",
+  "otel_exporter_otlp_protocol": "",
+  "otel_resource_attributes": "",
+  "otel_service_name": ""
 }

@@ -160,6 +160,10 @@ spec:
           - dagster_component_type=code-location
           - --set
           - template_type=dagster-code-location
+          - --set
+          - otel_service_name={{workflow.parameters.project_name}}-{{workflow.parameters.app_name}}
+          - --set
+          - otel_resource_attributes=deployment.environment={{workflow.parameters.environment}},project.name={{workflow.parameters.project_name}}
 
         volumeMounts:
           - name: workdir

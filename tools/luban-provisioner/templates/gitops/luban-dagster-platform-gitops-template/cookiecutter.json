@@ -6,5 +6,9 @@
   "postgres_version": "",
   "platform_port": "3000",
   "registry_server": "",
-  "image_pull_secret": ""
+  "image_pull_secret": "",
+  "otel_exporter_otlp_endpoint": "",
+  "otel_exporter_otlp_protocol": "",
+  "otel_resource_attributes": "",
+  "otel_service_name": ""
 }

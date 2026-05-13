@@ -132,6 +132,10 @@ spec:
           - /etc/config/app
           - --set
           - template_type=dagster-platform
+          - --set
+          - otel_service_name={{workflow.parameters.project_name}}-{{workflow.parameters.app_name}}
+          - --set
+          - otel_resource_attributes=deployment.environment={{workflow.parameters.environment}},project.name={{workflow.parameters.project_name}}
 
         env:
           - name: AZURE_DEVOPS_API_VERSION

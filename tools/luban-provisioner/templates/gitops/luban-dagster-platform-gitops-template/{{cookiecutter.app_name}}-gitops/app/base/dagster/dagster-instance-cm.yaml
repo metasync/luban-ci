@@ -16,6 +16,7 @@ run_launcher:
     image_pull_policy: Always
     env_config_maps:
       - dagster-env
+      - dagster-observability
     instance_config_map: dagster-instance
     postgres_password_secret: dagster-postgresql-secret
 
