@@ -20,14 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dagster Platform (Runtime)**: Platform webserver/daemon now bootstrap OTEL in-process before starting Dagster.
 - **Dagster Platform (Observability)**: Bootstrap now fails safe when export is enabled but OTLP endpoint/protocol are missing or invalid.
 - **Templates (Dagster Platform source)**: Platform source template is now an installable Python package (wheel build metadata) to support bootstrap modules and version metadata.
+- **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.41`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.13`.
 
 ### Fixed
 
 - **Buildpack (python-uv)**: Fixed `direct_exec` creation in direct execution mode by ensuring the venv `bin/` directory exists.
-
-### Changed
-
-- **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.41`.
 
 ### Docs
 
