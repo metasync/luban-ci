@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Buildpack (python-uv)**: Fixed `direct_exec` creation in direct execution mode by ensuring the venv `bin/` directory exists.
 
+### Changed
+
+- **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.41`.
+
 ### Docs
 
 - **Docs (Dagster)**: Added OTLP/Elastic APM configuration guidance and a dedicated Dagster platform metrics catalog.
