@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## \[Unreleased]
 
+## \[v1.2.1] - 2026-05-14
+
+### Changed
+
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.14`.
+
+### Fixed
+
+- **CI Infra (GitOps)**: Restored `ConfigMap/luban-config` stub in `luban-infra-ci` base so Argo CD can build `overlays/ci-*` successfully.
+
 ## \[v1.2.0] - 2026-05-13
 
 ### Added
