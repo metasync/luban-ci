@@ -46,6 +46,8 @@ spec:
             - configMapRef:
                 name: dagster-observability
           env:
+            - name: OTEL_SERVICE_NAME
+              value: "{{ (cookiecutter.otel_service_name or cookiecutter.project_name ~ '-' ~ cookiecutter.app_name) ~ '-metrics-exporter' }}"
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "{{ cookiecutter.otel_resource_attributes ~ ',dagster.component=metrics-exporter' if cookiecutter.otel_resource_attributes else 'dagster.component=metrics-exporter' }}"
             - name: DAGSTER_PG_PASSWORD

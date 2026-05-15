@@ -39,6 +39,12 @@ spec:
           env:
             - name: DAGSTER_CURRENT_IMAGE
               value: "$(DAGSTER_APP_IMAGE)"
+            - name: LUBAN_RUN_ENV_CONFIGMAP
+              value: "{{cookiecutter.app_name}}-config"
+            - name: LUBAN_RUN_ENV_SECRET
+              value: "{{cookiecutter.app_name}}-secret"
+            - name: OTEL_SERVICE_NAME
+              value: "{{ cookiecutter.otel_service_name or cookiecutter.project_name ~ '-' ~ cookiecutter.app_name }}"
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "{{ cookiecutter.otel_resource_attributes ~ ',dagster.component=code-location,dagster.code_location=' ~ cookiecutter.app_name if cookiecutter.otel_resource_attributes else 'dagster.component=code-location,dagster.code_location=' ~ cookiecutter.app_name }}"
             - name: DAGSTER_PG_PASSWORD

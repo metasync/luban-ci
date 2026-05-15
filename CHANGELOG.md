@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## \[Unreleased]
 
+## \[v1.2.2] - 2026-05-15
+
+### Added
+
+- **Dagster Code Locations (Runtime)**: Code-location templates now set `LUBAN_RUN_ENV_CONFIGMAP` and `LUBAN_RUN_ENV_SECRET` to allow code-location config/secret injection into run pods via `dagster-k8s/config`.
+
+### Changed
+
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.18`.
+- **Dagster Platform (Observability)**: Platform deployments now set `OTEL_SERVICE_NAME` per component (webserver/daemon/metrics-exporter) to avoid collisions and improve trace grouping.
+
+### Fixed
+
+- **Dagster Code Locations (Observability)**: Removed code-location-owned `dagster-observability` ConfigMap to avoid cross-app collisions; code locations consume the platform-owned shared ConfigMap.
+
+### Docs
+
+- **Docs (Dagster)**: Documented run pod env injection behavior, default-on secret injection with opt-out, and the shared `dagster-observability` pattern.
+
 ## \[v1.2.1] - 2026-05-14
 
 ### Changed

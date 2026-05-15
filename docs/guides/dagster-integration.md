@@ -71,6 +71,37 @@ The code location deployment wires runtime configuration into the `dagster code-
 
 For secrets, `snd`/`prd` overlays include a stub Secret with `replicate-from` so GitOps owns the object metadata while the replicator controller fills the secret data.
 
+### Run pods (Dagster jobs)
+
+In Kubernetes, the Dagster platform launches runs as Kubernetes Jobs (run pods) via `K8sRunLauncher`.
+These run pods are not the same pod as the `dagster code-server` Deployment, so they do not automatically inherit `<app_name>-config`.
+
+To make code-location-specific environment variables available in run pods, the code location template sets:
+
+- `LUBAN_RUN_ENV_CONFIGMAP=<app_name>-config`
+- `LUBAN_RUN_ENV_SECRET=<app_name>-secret`
+
+`dbt-dagsterizer` reads these values and attaches a `dagster-k8s/config` tag to jobs so the run pod includes `envFrom` for the ConfigMap/Secret.
+
+To disable secret injection for run pods, remove `LUBAN_RUN_ENV_SECRET` from your code location Deployment (for example via a GitOps overlay patch).
+
+Example Kustomize patch:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: <app_name>
+spec:
+  template:
+    spec:
+      containers:
+        - name: <app_name>
+          env:
+            - name: LUBAN_RUN_ENV_SECRET
+              $patch: delete
+```
+
 ### Observability (OpenTelemetry)
 
 The Dagster platform GitOps template provides a `dagster-observability` ConfigMap that is injected into:
@@ -80,7 +111,9 @@ The Dagster platform GitOps template provides a `dagster-observability` ConfigMa
 
 This standardizes propagation of OTEL environment variables (for example `OTEL_EXPORTER_OTLP_ENDPOINT`) without requiring changes in application repos.
 
-The code location GitOps template also includes an optional `dagster-observability` ConfigMap for the `dagster code-server` pod. This is only useful if the code location image is instrumented (manual OTEL init or auto-instrumentation).
+The `dagster-observability` ConfigMap is platform-owned and shared within a namespace. Code locations consume it but should not define their own copy (to avoid cross-app collisions).
+
+To support distinct service identity per workload, `OTEL_SERVICE_NAME` is set explicitly in each Deployment (platform components and code locations) and overrides the value that may be present in the shared ConfigMap.
 
 By default, the template sets `OTEL_TRACES_EXPORTER=none` and `OTEL_METRICS_EXPORTER=none` to keep observability non-breaking and opt-in. To enable export, override these values (for example set `OTEL_TRACES_EXPORTER=otlp`) in your GitOps repo overlays.
 

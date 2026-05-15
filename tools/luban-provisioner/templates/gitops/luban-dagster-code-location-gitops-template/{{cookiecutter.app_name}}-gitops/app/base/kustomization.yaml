@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   - configmap.yaml
-  - dagster-observability-cm.yaml
   - deployment.yaml
   - secret.yaml
   - service.yaml
