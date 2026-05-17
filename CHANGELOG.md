@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## \[Unreleased]
 
+## \[v1.2.3] - 2026-05-17
+
+### Added
+
+- **Dagster Platform (Run Jobs)**: Added `run_job_ttl_seconds_after_finished` to configure a default `ttlSecondsAfterFinished` for Dagster `K8sRunLauncher` Jobs.
+
+### Changed
+
+- **Workflows (Dagster Code Locations)**: Code location setup now registers the code location immediately after Argo CD app setup; source repo provisioning is optional and runs after registration.
+- **Workflows (Dagster Code Locations)**: Ensure OTEL config (`otel_service_name`, `otel_resource_attributes`) is passed into config generation consistently across code location workflow templates.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.21`.
+- **Templates (Dagster+dbt+StarRocks)**: Reset `dbt_project/dagsterization.yml` to an empty schema skeleton to avoid referencing non-existent dbt models in user projects.
+
+### Fixed
+
+- **Dagster Platform (metrics-exporter)**: Fix liveness probe by running the healthcheck via the CNB launcher; remove readiness probe (metrics-exporter does not serve traffic).
+
+### Docs
+
+- **Docs (Admin Guide)**: Documented `run_job_ttl_seconds_after_finished` under `luban-dagster-config`.
+
 ## \[v1.2.2] - 2026-05-15
 
 ### Added

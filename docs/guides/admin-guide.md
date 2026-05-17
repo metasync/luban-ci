@@ -38,6 +38,7 @@ This guide covers the administration and configuration of the Luban CI platform.
   - Keys:
     - `platform_port`, `code_location_port`
     - `dagster_version`, `postgres_version`
+    - `run_job_ttl_seconds_after_finished` (default Job TTL for Dagster K8sRunLauncher Jobs)
 
 ### Dagster + dbt Partitioning Notes
 

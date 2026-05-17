@@ -109,27 +109,8 @@ spec:
                 - name: git_provider
                   value: "{{workflow.parameters.git_provider}}"
 
-          - name: provision-source-repo
-            dependencies: [setup-argocd-app]
-            when: "'{{workflow.parameters.setup_source_repo}}' == 'yes'"
-            templateRef:
-              name: source-repo-provision-template
-              template: provision-source-repo
-            arguments:
-              parameters:
-                - name: project_name
-                  value: "{{workflow.parameters.project_name}}"
-                - name: application_name
-                  value: "{{workflow.parameters.app_name}}"
-                - name: git_organization
-                  value: "{{workflow.parameters.git_organization}}"
-                - name: git_provider
-                  value: "{{workflow.parameters.git_provider}}"
-                - name: config_file
-                  value: "/workdir/config.yaml"
-
           - name: register-code-location
-            dependencies: [provision-source-repo]
+            dependencies: [setup-argocd-app]
             template: register-code-location
             arguments:
               parameters:
@@ -148,6 +129,25 @@ spec:
                 - name: dagster_platform_app
                   value: "{{workflow.parameters.dagster_platform_app}}"
 
+          - name: provision-source-repo
+            dependencies: [register-code-location]
+            when: "'{{workflow.parameters.setup_source_repo}}' == 'yes'"
+            templateRef:
+              name: source-repo-provision-template
+              template: provision-source-repo
+            arguments:
+              parameters:
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+                - name: application_name
+                  value: "{{workflow.parameters.app_name}}"
+                - name: git_organization
+                  value: "{{workflow.parameters.git_organization}}"
+                - name: git_provider
+                  value: "{{workflow.parameters.git_provider}}"
+                - name: config_file
+                  value: "/workdir/config.yaml"
+
     - name: generate-config
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
@@ -164,6 +164,10 @@ spec:
           - template_type=dagster-dbt-starrocks-code-location
           - --set
           - default_env={{workflow.parameters.default_env}}
+          - --set
+          - otel_service_name={{workflow.parameters.project_name}}-{{workflow.parameters.app_name}}
+          - --set
+          - otel_resource_attributes=deployment.environment={{workflow.parameters.environment}},project.name={{workflow.parameters.project_name}}
 
         volumeMounts:
           - name: workdir
@@ -212,6 +216,13 @@ spec:
             DOMAIN_SUFFIX="svc.cluster.local"
             LOCATION_HOST="${APP}.${ENV}-${PROJECT_NAME}.${DOMAIN_SUFFIX}"
             LOCATION_PORT="3000"
+
+            echo "Registering Code Location:"
+            echo "  Name: $APP"
+            echo "  Host: $LOCATION_HOST"
+            echo "  Port: $LOCATION_PORT"
+            echo "  Env:  $ENV"
+            echo "  Platform: $PLATFORM_PROJECT/$DAGSTER_PLATFORM_APP"
 
             uv run --frozen --no-sync luban-provisioner dagster register-location \
               --platform-project "$PLATFORM_PROJECT" \

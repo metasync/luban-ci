@@ -32,13 +32,9 @@ spec:
           args: ["python", "-m", "luban_dagster_platform.metrics_exporter"]
           livenessProbe:
             exec:
-              command: ["python", "-m", "luban_dagster_platform.healthcheck"]
+              command: ["/cnb/lifecycle/launcher", "python", "-m", "luban_dagster_platform.healthcheck"]
             initialDelaySeconds: 30
-            periodSeconds: 30
-          readinessProbe:
-            exec:
-              command: ["python", "-m", "luban_dagster_platform.healthcheck"]
-            initialDelaySeconds: 5
+            timeoutSeconds: 5
             periodSeconds: 30
           envFrom:
             - configMapRef:

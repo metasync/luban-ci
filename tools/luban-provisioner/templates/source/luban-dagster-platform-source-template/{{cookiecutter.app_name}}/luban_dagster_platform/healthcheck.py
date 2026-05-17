@@ -15,11 +15,6 @@ def main() -> None:
     if not config_path.exists():
         raise SystemExit(f"dagster.yaml not found under DAGSTER_HOME: {config_path}")
 
-    import dagster as _dagster
-    import opentelemetry.sdk as _otel_sdk
-
-    _ = (_dagster, _otel_sdk)
-
 
 if __name__ == "__main__":
     main()

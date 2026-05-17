@@ -105,29 +105,9 @@ spec:
                 - name: git_provider
                   value: "{{workflow.parameters.git_provider}}"
 
-          # 4. Provision Source Code Repository
-          - name: provision-source-repo
-            dependencies: [setup-argocd-app]
-            when: "'{{workflow.parameters.setup_source_repo}}' == 'yes'"
-            templateRef:
-              name: source-repo-provision-template
-              template: provision-source-repo
-            arguments:
-              parameters:
-                - name: project_name
-                  value: "{{workflow.parameters.project_name}}"
-                - name: application_name
-                  value: "{{workflow.parameters.app_name}}"
-                - name: git_organization
-                  value: "{{workflow.parameters.git_organization}}"
-                - name: git_provider
-                  value: "{{workflow.parameters.git_provider}}"
-                - name: config_file
-                  value: "/workdir/config.yaml"
-
-          # 5. Register Code Location in Platform
+          # 4. Register Code Location in Platform
           - name: register-code-location
-            dependencies: [provision-source-repo]
+            dependencies: [setup-argocd-app]
             template: register-code-location
             arguments:
               parameters:
@@ -145,6 +125,26 @@ spec:
                   value: "{{workflow.parameters.dagster_platform_project}}"
                 - name: dagster_platform_app
                   value: "{{workflow.parameters.dagster_platform_app}}"
+
+          # 5. Provision Source Code Repository
+          - name: provision-source-repo
+            dependencies: [register-code-location]
+            when: "'{{workflow.parameters.setup_source_repo}}' == 'yes'"
+            templateRef:
+              name: source-repo-provision-template
+              template: provision-source-repo
+            arguments:
+              parameters:
+                - name: project_name
+                  value: "{{workflow.parameters.project_name}}"
+                - name: application_name
+                  value: "{{workflow.parameters.app_name}}"
+                - name: git_organization
+                  value: "{{workflow.parameters.git_organization}}"
+                - name: git_provider
+                  value: "{{workflow.parameters.git_provider}}"
+                - name: config_file
+                  value: "/workdir/config.yaml"
 
     - name: generate-config
       container:

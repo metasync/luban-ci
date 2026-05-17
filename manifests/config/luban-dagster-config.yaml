@@ -8,3 +8,4 @@ data:
   code_location_port: "3000"
   dagster_version: "1.12.19"
   postgres_version: "18.2"
+  run_job_ttl_seconds_after_finished: "86400" # 1 day

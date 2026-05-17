@@ -19,6 +19,9 @@ run_launcher:
       - dagster-observability
     instance_config_map: dagster-instance
     postgres_password_secret: dagster-postgresql-secret
+    run_k8s_config:
+      job_spec_config:
+        ttl_seconds_after_finished: {{cookiecutter.run_job_ttl_seconds_after_finished}}
 
 compute_logs:
   module: dagster.core.storage.noop_compute_log_manager
