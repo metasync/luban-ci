@@ -219,6 +219,14 @@ spec:
           destination:
             server: "${DEST_SERVER}"
             namespace: ${ENV}-${PROJECT_NAME}
+          ignoreDifferences:
+            - group: ""
+              kind: Secret
+              name: ${APP_NAME_RAW}-secret
+              namespace: ${ENV}-${PROJECT_NAME}
+              jsonPointers:
+                - /data
+                - /stringData
           syncPolicy:
             ${SYNC_POLICY_BLOCK}
             syncOptions:
