@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## \[Unreleased]
 
+### Added
+
+- **Buildpack (python-uv)**: Support optional `ca-certificates` service binding (`uv-mirror-ca-cert`) so build steps can trust private CAs when downloading uv/Python mirror assets.
+
+### Changed
+
+- **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.42`.
+
 ## \[v1.2.3] - 2026-05-17
 
 ### Added

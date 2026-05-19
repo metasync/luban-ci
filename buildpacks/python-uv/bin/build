@@ -12,14 +12,24 @@ mkdir -p "$uv_layer/bin"
 
 binding_root="${SERVICE_BINDING_ROOT:-${CNB_PLATFORM_DIR:-/platform}/bindings}"
 NETRC_FILE=""
+CA_CERT_FILE=""
 if [ -d "$binding_root" ]; then
     for d in "$binding_root"/*; do
         [ -d "$d" ] || continue
-        if [ -f "$d/type" ] && [ "$(cat "$d/type" 2>/dev/null || true)" = "netrc" ] && [ -f "$d/netrc" ]; then
+        BINDING_TYPE="$(cat "$d/type" 2>/dev/null || true)"
+        if [ -z "$NETRC_FILE" ] && [ "$BINDING_TYPE" = "netrc" ] && [ -f "$d/netrc" ]; then
             NETRC_FILE="/tmp/uv-mirror.netrc"
             cp "$d/netrc" "$NETRC_FILE"
             chmod 600 "$NETRC_FILE"
             export NETRC="$NETRC_FILE"
+        fi
+        if [ -z "$CA_CERT_FILE" ] && [ "$BINDING_TYPE" = "ca-certificates" ] && [ -f "$d/ca.crt" ]; then
+            CA_CERT_FILE="/tmp/uv-mirror-ca.crt"
+            cp "$d/ca.crt" "$CA_CERT_FILE"
+            chmod 600 "$CA_CERT_FILE"
+            export SSL_CERT_FILE="$CA_CERT_FILE"
+        fi
+        if [ -n "$NETRC_FILE" ] && [ -n "$CA_CERT_FILE" ]; then
             break
         fi
     done
@@ -37,6 +47,9 @@ download() {
         cp "$NETRC_FILE" "$HOME/.netrc"
         chmod 600 "$HOME/.netrc"
         WGET_ARGS+=(--netrc)
+    fi
+    if [ -n "$CA_CERT_FILE" ]; then
+        WGET_ARGS+=(--ca-certificate "$CA_CERT_FILE")
     fi
 
     wget -q -O "$out" "${WGET_ARGS[@]}" "$url"

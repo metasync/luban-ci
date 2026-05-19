@@ -195,6 +195,27 @@ create_netrc_binding_secret() {
   strip_last_applied secret "$SECRET_NAME" "$NAMESPACE"
 }
 
+create_ca_cert_binding_secret() {
+  local secret_name="$1"
+  local namespace="$2"
+  local allowed_namespaces="$3"
+  local ca_crt_text="$4"
+
+  export SECRET_NAME="$secret_name"
+  export NAMESPACE="$namespace"
+  export REPLICATION_ALLOWED_NAMESPACES="$allowed_namespaces"
+  export BINDING_TYPE_B64
+  export BINDING_PROVIDER_B64
+  export CA_CRT_B64
+
+  BINDING_TYPE_B64=$(printf '%s' 'ca-certificates' | base64 | tr -d '\n')
+  BINDING_PROVIDER_B64=$(printf '%s' 'luban-ci' | base64 | tr -d '\n')
+  CA_CRT_B64=$(printf '%s' "$ca_crt_text" | base64 | tr -d '\n')
+
+  apply_template ca-cert-service-binding-secret.yaml.tmpl
+  strip_last_applied secret "$SECRET_NAME" "$NAMESPACE"
+}
+
 create_argocd_repo_creds_secret() {
   local secret_name="$1"
   local namespace="$2"
@@ -332,6 +353,21 @@ fi
 
 if [ -n "$NETRC_CONTENT" ]; then
   create_netrc_binding_secret uv-mirror-netrc "$K8S_NAMESPACE" "^ci-.*" "$NETRC_CONTENT"
+fi
+
+UV_MIRROR_CA_CERT_TEXT=""
+if [ -n "${UV_MIRROR_CA_CERT_PATH:-}" ]; then
+  if [ ! -f "${UV_MIRROR_CA_CERT_PATH}" ]; then
+    echo "Error: UV_MIRROR_CA_CERT_PATH is set but file does not exist: ${UV_MIRROR_CA_CERT_PATH}" >&2
+    exit 1
+  fi
+  UV_MIRROR_CA_CERT_TEXT=$(cat "${UV_MIRROR_CA_CERT_PATH}")
+elif [ -n "${UV_MIRROR_CA_CERT:-}" ]; then
+  UV_MIRROR_CA_CERT_TEXT="${UV_MIRROR_CA_CERT}"
+fi
+
+if [ -n "$UV_MIRROR_CA_CERT_TEXT" ]; then
+  create_ca_cert_binding_secret uv-mirror-ca-cert "$K8S_NAMESPACE" "^ci-.*" "$UV_MIRROR_CA_CERT_TEXT"
 fi
 
 if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
