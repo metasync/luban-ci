@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.42`.
 
+### Fixed
+
+- **Argo CD (Replicated Secrets)**: Ignore differences for per-app `*-secret` stub Secrets so Mittwald replicator-populated `.data` does not cause drift/OutOfSync.
+
 ## \[v1.2.3] - 2026-05-17
 
 ### Added
