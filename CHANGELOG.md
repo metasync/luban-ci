@@ -11,9 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Dagster Code Locations (GitOps template)**: Add `<app_name>-config-rollout` (kustomize `configMapGenerator` + optional Deployment volume mount) to trigger a Deployment rollout when `app/base/configmap.yaml` or `app/overlays/<env>/configmap.yaml` changes.
-- **Provisioner**: Bumped `luban-provisioner` to `0.3.24`.
-
 ### Fixed
 
 ## \[v1.2.4] - 2026-05-20
@@ -28,11 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.43`.
-- **Provisioner**: Bumped `luban-provisioner` to `0.3.23`.
+- **Dagster Code Locations (GitOps template)**: Add `<app_name>-config-rollout` (kustomize `configMapGenerator` + optional Deployment volume mount) to trigger a Deployment rollout when `app/base/configmap.yaml` or `app/overlays/<env>/configmap.yaml` changes.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.24`.
 
 ### Fixed
 
 - **Argo CD (Replicated Secrets)**: Ignore differences for per-app `*-secret` stub Secrets so Mittwald replicator-populated `.data` does not cause drift/OutOfSync.
+
+### Docs
+
+- **Docs (Dagster)**: Documented code location config rollouts for `<app_name>-config` changes.
 
 ## \[v1.2.3] - 2026-05-17
 
