@@ -10,6 +10,12 @@ images:
   - name: "{{cookiecutter.registry_server}}/{{cookiecutter.project_name}}/{{cookiecutter.app_name}}"
     newTag: "{{cookiecutter.image_tag}}"
 
+configMapGenerator:
+  - name: "{{cookiecutter.app_name}}-config-rollout"
+    files:
+      - base-configmap.yaml=../../base/configmap.yaml
+      - overlay-configmap.yaml=configmap.yaml
+
 patches:
   - path: configmap.yaml
   - path: secret.yaml

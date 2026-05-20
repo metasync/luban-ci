@@ -66,6 +66,13 @@ spec:
           volumeMounts:
             - name: dagster-home
               mountPath: /tmp/dagster_home
+            - name: config-rollout
+              mountPath: /tmp/luban-config-rollout
+              readOnly: true
       volumes:
         - name: dagster-home
           emptyDir: {}
+        - name: config-rollout
+          configMap:
+            name: "{{cookiecutter.app_name}}-config-rollout"
+            optional: true

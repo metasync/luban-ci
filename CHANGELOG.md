@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Dagster Code Locations (GitOps template)**: Add `<app_name>-config-rollout` (kustomize `configMapGenerator` + optional Deployment volume mount) to trigger a Deployment rollout when `app/base/configmap.yaml` or `app/overlays/<env>/configmap.yaml` changes.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.24`.
+
 ### Fixed
 
 ## \[v1.2.4] - 2026-05-20
