@@ -6,6 +6,11 @@ metadata:
 spec:
   entrypoint: setup-project
   serviceAccountName: luban-ci-sa
+  volumes:
+    - name: luban-ca-cert
+      secret:
+        secretName: luban-ca-cert
+        optional: true
   arguments:
     parameters:
     - name: project_name

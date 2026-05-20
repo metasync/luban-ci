@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## \[v1.2.5] - 2026-05-20
+
+### Fixed
+
+- **Workflows (On-Prem TLS)**: Ensure setup workflow templates that use `templateRef` declare the optional `luban-ca-cert` volume so referenced templates can mount it without spec validation errors.
+
+### Docs
+
+- **Changelog**: Corrected the deploy command reference to `make pipeline-deploy`.
+
 ## \[v1.2.4] - 2026-05-20
 
 ### Added
@@ -158,7 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Manifests**: `make deploy` now applies `ci-infra-provision-workflow-template.yaml`.
+- **Manifests**: `make pipeline-deploy` now applies `ci-infra-provision-workflow-template.yaml`.
 - **Argo CD**: AppProject `sourceRepos` allowlist now honors provider `*_base_url` for Azure DevOps Server path prefixes (for example `/tfs`).
 - **CI Infra**: Argo CD `ignoreDifferences` now includes `uv-mirror-netrc` to avoid drift when uv mirror credentials are managed via secrets.
 - **Provisioner**: Bumped `luban-provisioner` to `0.3.11`.
