@@ -9,13 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## \[v1.2.4] - 2026-05-20
+
+### Added
+
 - **Buildpack (python-uv)**: Support optional `ca-certificates` service binding (`luban-ca-cert`) so build steps can trust private CAs when downloading uv/Python mirror assets.
 - **Workflows (On-Prem TLS)**: Support optional `luban-ca-cert` injection for workflows that interact with on-prem endpoints (Harbor API, git provisioner), enabling TLS verification with a centralized CA bundle.
-- **Secrets**: `make secrets` supports `LUBAN_CA_CERT_PATH` / `LUBAN_CA_CERT` to provision `luban-ci/luban-ca-cert` and replicate into `ci-*`.
+- **Secrets**: `make secrets` supports `LUBAN_CA_CERT_PATH` / `LUBAN_CA_CERT` to provision `luban-ci/luban-ca-cert` and replicate via replicator into CI namespaces (e.g. `ci-*`).
+- **Docs**: Added `private-ca.md` guide for enterprise private CA setup.
 
 ### Changed
 
-- **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.42`.
+- **Buildpack (python-uv)**: Bumped `python-uv` buildpack to `v0.0.43`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.23`.
 
 ### Fixed
 

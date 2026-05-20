@@ -30,182 +30,226 @@ spec:
             key: luban_provisioner_image
 
   templates:
-  - name: update-infra-ci-repo
-    inputs:
-      parameters:
-      - name: repo_name
-      - name: project_name
-      - name: git_organization
-      - name: git_provider
-      - name: admin_group
-      - name: developer_group
-    container:
-      image: "{{workflow.parameters.luban_provisioner_image}}"
-      imagePullPolicy: Always
-      command: [sh, -c]
-      args:
-      - |
-        LUBAN_CA_CERT_FILE="/var/run/luban/ca/ca.crt"
-        if [ -f "$LUBAN_CA_CERT_FILE" ] && grep -q "BEGIN CERTIFICATE" "$LUBAN_CA_CERT_FILE"; then
-          export SSL_CERT_FILE="$LUBAN_CA_CERT_FILE"
-          export REQUESTS_CA_BUNDLE="$LUBAN_CA_CERT_FILE"
-          export GIT_SSL_CAINFO="$LUBAN_CA_CERT_FILE"
-        fi
+    - name: update-infra-ci-repo
+      inputs:
+        parameters:
+          - name: repo_name
+          - name: project_name
+          - name: git_organization
+          - name: git_provider
+          - name: admin_group
+          - name: developer_group
+      container:
+        image: "{{workflow.parameters.luban_provisioner_image}}"
+        imagePullPolicy: Always
+        args:
+          - infra
+          - ci
+          - update
+          - --repo-name
+          - "{{inputs.parameters.repo_name}}"
+          - --project-name
+          - "{{inputs.parameters.project_name}}"
+          - --git-organization
+          - "{{inputs.parameters.git_organization}}"
+          - --git-provider
+          - "{{inputs.parameters.git_provider}}"
+          - --admin-group
+          - "{{inputs.parameters.admin_group}}"
+          - --developer-group
+          - "{{inputs.parameters.developer_group}}"
+          - --git-server
+          - "$(GIT_SERVER)"
+          - --git-username
+          - "$(GIT_USERNAME)"
+          - --git-token
+          - "$(GIT_TOKEN)"
+          - --work-dir
+          - "/workdir"
+          - --image-pull-secret
+          - "$(IMAGE_PULL_SECRET)"
+        env:
+          - name: SSL_CERT_FILE
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: ssl_cert_file
+                optional: true
+          - name: REQUESTS_CA_BUNDLE
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: requests_ca_bundle
+                optional: true
+          - name: GIT_SSL_CAINFO
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: git_ssl_cainfo
+                optional: true
+          - name: IMAGE_PULL_SECRET
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: image_pull_secret
+          - name: GIT_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_server"
+          - name: GIT_HTTPS_AUTH_MODE
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_https_auth_mode"
+                optional: true
+          - name: GIT_BASE_URL
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_base_url"
+                optional: true
+          - name: GIT_BASIC_AUTH_USERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_basic_auth_username"
+                optional: true
+          - name: GIT_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: "{{inputs.parameters.git_provider}}-creds"
+                key: token
+          - name: GIT_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: "{{inputs.parameters.git_provider}}-creds"
+                key: username
+          - name: AZURE_DEVOPS_API_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_devops_api_version"
+                optional: true
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+          - name: luban-ca-cert
+            mountPath: /var/run/luban/ca
+            readOnly: true
 
-        exec luban-provisioner infra ci update \
-          --repo-name "{{inputs.parameters.repo_name}}" \
-          --project-name "{{inputs.parameters.project_name}}" \
-          --git-organization "{{inputs.parameters.git_organization}}" \
-          --git-provider "{{inputs.parameters.git_provider}}" \
-          --admin-group "{{inputs.parameters.admin_group}}" \
-          --developer-group "{{inputs.parameters.developer_group}}" \
-          --git-server "$(GIT_SERVER)" \
-          --git-username "$(GIT_USERNAME)" \
-          --git-token "$(GIT_TOKEN)" \
-          --work-dir "/workdir" \
-          --image-pull-secret "$(IMAGE_PULL_SECRET)"
-      env:
-      - name: IMAGE_PULL_SECRET
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: image_pull_secret
-      - name: GIT_SERVER
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_server"
-      - name: GIT_HTTPS_AUTH_MODE
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_https_auth_mode"
-            optional: true
-      - name: GIT_BASE_URL
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_base_url"
-            optional: true
-      - name: GIT_BASIC_AUTH_USERNAME
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_basic_auth_username"
-            optional: true
-      - name: GIT_TOKEN
-        valueFrom:
-          secretKeyRef:
-            name: "{{inputs.parameters.git_provider}}-creds"
-            key: token
-      - name: GIT_USERNAME
-        valueFrom:
-          secretKeyRef:
-            name: "{{inputs.parameters.git_provider}}-creds"
-            key: username
-      - name: AZURE_DEVOPS_API_VERSION
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_devops_api_version"
-            optional: true
-      volumeMounts:
-      - name: workdir
-        mountPath: /workdir
-      - name: luban-ca-cert
-        mountPath: /var/run/luban/ca
-        readOnly: true
-  
-  - name: update-infra-cd-repo
-    inputs:
-      parameters:
-      - name: repo_name
-      - name: project_name
-      - name: git_organization
-      - name: git_provider
-      - name: env
-    container:
-      image: "{{workflow.parameters.luban_provisioner_image}}"
-      imagePullPolicy: Always
-      command: [sh, -c]
-      args:
-      - |
-        LUBAN_CA_CERT_FILE="/var/run/luban/ca/ca.crt"
-        if [ -f "$LUBAN_CA_CERT_FILE" ] && grep -q "BEGIN CERTIFICATE" "$LUBAN_CA_CERT_FILE"; then
-          export SSL_CERT_FILE="$LUBAN_CA_CERT_FILE"
-          export REQUESTS_CA_BUNDLE="$LUBAN_CA_CERT_FILE"
-          export GIT_SSL_CAINFO="$LUBAN_CA_CERT_FILE"
-        fi
-
-        exec luban-provisioner infra cd update \
-          --repo-name "{{inputs.parameters.repo_name}}" \
-          --project-name "{{inputs.parameters.project_name}}" \
-          --env "{{inputs.parameters.env}}" \
-          --local-dir "{{inputs.parameters.repo_name}}-{{inputs.parameters.env}}" \
-          --git-organization "{{inputs.parameters.git_organization}}" \
-          --git-provider "{{inputs.parameters.git_provider}}" \
-          --git-server "$(GIT_SERVER)" \
-          --git-username "$(GIT_USERNAME)" \
-          --git-token "$(GIT_TOKEN)" \
-          --work-dir "/workdir" \
-          --image-pull-secret "$(IMAGE_PULL_SECRET)"
-      env:
-      - name: IMAGE_PULL_SECRET
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: image_pull_secret
-      - name: GIT_SERVER
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_server"
-      - name: GIT_HTTPS_AUTH_MODE
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_https_auth_mode"
-            optional: true
-      - name: GIT_BASE_URL
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_base_url"
-            optional: true
-      - name: GIT_BASIC_AUTH_USERNAME
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_basic_auth_username"
-            optional: true
-      - name: GIT_TOKEN
-        valueFrom:
-          secretKeyRef:
-            name: "{{inputs.parameters.git_provider}}-creds"
-            key: token
-      - name: GIT_USERNAME
-        valueFrom:
-          secretKeyRef:
-            name: "{{inputs.parameters.git_provider}}-creds"
-            key: username
-      - name: AZURE_DEVOPS_API_VERSION
-        valueFrom:
-          configMapKeyRef:
-            name: luban-config
-            key: "{{inputs.parameters.git_provider}}_devops_api_version"
-            optional: true
-      volumeMounts:
-      - name: workdir
-        mountPath: /workdir
-      - name: luban-ca-cert
-        mountPath: /var/run/luban/ca
-        readOnly: true
+    - name: update-infra-cd-repo
+      inputs:
+        parameters:
+          - name: repo_name
+          - name: project_name
+          - name: git_organization
+          - name: git_provider
+          - name: env
+      container:
+        image: "{{workflow.parameters.luban_provisioner_image}}"
+        imagePullPolicy: Always
+        args:
+          - infra
+          - cd
+          - update
+          - --repo-name
+          - "{{inputs.parameters.repo_name}}"
+          - --project-name
+          - "{{inputs.parameters.project_name}}"
+          - --env
+          - "{{inputs.parameters.env}}"
+          - --local-dir
+          - "{{inputs.parameters.repo_name}}-{{inputs.parameters.env}}"
+          - --git-organization
+          - "{{inputs.parameters.git_organization}}"
+          - --git-provider
+          - "{{inputs.parameters.git_provider}}"
+          - --git-server
+          - "$(GIT_SERVER)"
+          - --git-username
+          - "$(GIT_USERNAME)"
+          - --git-token
+          - "$(GIT_TOKEN)"
+          - --work-dir
+          - "/workdir"
+          - --image-pull-secret
+          - "$(IMAGE_PULL_SECRET)"
+        env:
+          - name: SSL_CERT_FILE
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: ssl_cert_file
+                optional: true
+          - name: REQUESTS_CA_BUNDLE
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: requests_ca_bundle
+                optional: true
+          - name: GIT_SSL_CAINFO
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: git_ssl_cainfo
+                optional: true
+          - name: IMAGE_PULL_SECRET
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: image_pull_secret
+          - name: GIT_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_server"
+          - name: GIT_HTTPS_AUTH_MODE
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_https_auth_mode"
+                optional: true
+          - name: GIT_BASE_URL
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_base_url"
+                optional: true
+          - name: GIT_BASIC_AUTH_USERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_basic_auth_username"
+                optional: true
+          - name: GIT_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: "{{inputs.parameters.git_provider}}-creds"
+                key: token
+          - name: GIT_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: "{{inputs.parameters.git_provider}}-creds"
+                key: username
+          - name: AZURE_DEVOPS_API_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: luban-config
+                key: "{{inputs.parameters.git_provider}}_devops_api_version"
+                optional: true
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+          - name: luban-ca-cert
+            mountPath: /var/run/luban/ca
+            readOnly: true
 
   volumeClaimTemplates:
-  - metadata:
-      name: workdir
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 100Mi
+    - metadata:
+        name: workdir
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 100Mi

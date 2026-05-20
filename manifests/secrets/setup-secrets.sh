@@ -204,13 +204,23 @@ create_ca_cert_binding_secret() {
   export SECRET_NAME="$secret_name"
   export NAMESPACE="$namespace"
   export REPLICATION_ALLOWED_NAMESPACES="$allowed_namespaces"
+  export REPLICATE_TO
   export BINDING_TYPE_B64
   export BINDING_PROVIDER_B64
   export CA_CRT_B64
+  export SSL_CERT_FILE_B64
+  export REQUESTS_CA_BUNDLE_B64
+  export GIT_SSL_CAINFO_B64
+  export CURL_CA_BUNDLE_B64
 
   BINDING_TYPE_B64=$(printf '%s' 'ca-certificates' | base64 | tr -d '\n')
   BINDING_PROVIDER_B64=$(printf '%s' 'luban-ci' | base64 | tr -d '\n')
   CA_CRT_B64=$(printf '%s' "$ca_crt_text" | base64 | tr -d '\n')
+  REPLICATE_TO="$allowed_namespaces"
+  SSL_CERT_FILE_B64=$(printf '%s' '/var/run/luban/ca/ca.crt' | base64 | tr -d '\n')
+  REQUESTS_CA_BUNDLE_B64=$(printf '%s' '/var/run/luban/ca/ca.crt' | base64 | tr -d '\n')
+  GIT_SSL_CAINFO_B64=$(printf '%s' '/var/run/luban/ca/ca.crt' | base64 | tr -d '\n')
+  CURL_CA_BUNDLE_B64=$(printf '%s' '/var/run/luban/ca/ca.crt' | base64 | tr -d '\n')
 
   apply_template ca-cert-service-binding-secret.yaml.tmpl
   strip_last_applied secret "$SECRET_NAME" "$NAMESPACE"

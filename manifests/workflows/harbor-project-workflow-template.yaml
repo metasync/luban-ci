@@ -49,12 +49,6 @@ spec:
             PROJECT_NAME="{{inputs.parameters.project_name}}"
             HARBOR_URL="https://${REGISTRY_SERVER}"
             VISIBILITY="{{inputs.parameters.registry_visibility}}"
-
-            LUBAN_CA_CERT_FILE="/var/run/luban/ca/ca.crt"
-            CURL_CA_ARGS=()
-            if [ -f "$LUBAN_CA_CERT_FILE" ] && grep -q "BEGIN CERTIFICATE" "$LUBAN_CA_CERT_FILE"; then
-              CURL_CA_ARGS=(--cacert "$LUBAN_CA_CERT_FILE")
-            fi
             
             if [ "$VISIBILITY" = "public" ]; then
               PUBLIC="true"
@@ -75,7 +69,7 @@ spec:
             EOF
             )
 
-            RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null "${CURL_CA_ARGS[@]}" -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
+            RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
               -X POST "$HARBOR_URL/api/v2.0/projects" \
               -H "Content-Type: application/json" \
               -d "$PAYLOAD")
@@ -87,13 +81,19 @@ spec:
             else
                 echo "Failed to create project. HTTP status: $RESPONSE"
                 # Print body for debugging
-                curl -s "${CURL_CA_ARGS[@]}" -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
+                curl -s -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
                   -X POST "$HARBOR_URL/api/v2.0/projects" \
                   -H "Content-Type: application/json" \
                   -d "$PAYLOAD"
                 exit 1
             fi
         env:
+          - name: CURL_CA_BUNDLE
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: curl_ca_bundle
+                optional: true
           - name: REGISTRY_SERVER
             valueFrom:
               configMapKeyRef:

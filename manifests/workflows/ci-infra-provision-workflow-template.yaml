@@ -188,13 +188,6 @@ spec:
                 - /data
                 - /stringData
             - group: ""
-              kind: Secret
-              name: luban-ca-cert
-              namespace: ${NAMESPACE}
-              jsonPointers:
-                - /data
-                - /stringData
-            - group: ""
               kind: ConfigMap
               name: luban-config
               namespace: ${NAMESPACE}

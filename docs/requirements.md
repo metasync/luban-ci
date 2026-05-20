@@ -64,9 +64,9 @@ Secrets are provided via `secrets/*.env` (gitignored). These files are parsed by
 ### 5.2 Applying Secrets
 - `make secrets` applies secrets using `manifests/secrets/setup-secrets.sh`.
 - Secrets are applied using server-side apply, and the script removes the `kubectl.kubernetes.io/last-applied-configuration` annotation from Secrets to avoid persisting secret payloads in annotations.
-- Source-of-truth secrets live in `luban-ci` and are replicated into target namespaces via the Kubernetes replicator using the opt-in model:
-  - Source secrets set `replication-allowed` and `replication-allowed-namespaces`.
-  - Target namespaces include stub resources with `replicate-from: luban-ci/<name>`.
+- Source-of-truth secrets live in `luban-ci` and are replicated into target namespaces via Mittwald replicator using one of these patterns:
+  - **Target-owned stubs (`replicate-from`)**: GitOps owns the stub Secret (name/type/annotations) in the target namespace; replicator fills `.data`.
+  - **Source-driven fan-out (`replicate-to`)**: The source Secret declares destination namespaces via a regex; no target stubs are required.
 
 For application runtime secrets, the recommended naming convention is:
 
@@ -93,4 +93,5 @@ For application runtime secrets, the recommended naming convention is:
 
 ### 5.6 Central CA Certificates
 - `luban-ci/luban-ca-cert` contains the PEM bundle used to trust internal TLS endpoints (type `service.binding/ca-certificates`).
-- `ci-*/luban-ca-cert` is created by the infra repo templates and uses `replicate-from`.
+- `luban-ci/luban-ca-cert` is annotated for replication to CI namespaces (e.g. `ci-*`) using the source-driven `replicate-to` pattern.
+- Setup guide: `docs/guides/private-ca.md`.

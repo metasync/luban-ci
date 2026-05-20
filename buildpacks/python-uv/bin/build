@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euo pipefail
 
 echo "---> Luban Python uv Buildpack"
 
@@ -14,45 +14,46 @@ binding_root="${SERVICE_BINDING_ROOT:-${CNB_PLATFORM_DIR:-/platform}/bindings}"
 NETRC_FILE=""
 CA_CERT_FILE=""
 if [ -d "$binding_root" ]; then
-    for d in "$binding_root"/*; do
-        [ -d "$d" ] || continue
-        BINDING_TYPE="$(cat "$d/type" 2>/dev/null || true)"
-        if [ -z "$NETRC_FILE" ] && [ "$BINDING_TYPE" = "netrc" ] && [ -f "$d/netrc" ]; then
-            NETRC_FILE="/tmp/uv-mirror.netrc"
-            cp "$d/netrc" "$NETRC_FILE"
-            chmod 600 "$NETRC_FILE"
-            export NETRC="$NETRC_FILE"
-        fi
-        if [ -z "$CA_CERT_FILE" ] && [ "$BINDING_TYPE" = "ca-certificates" ] && [ -f "$d/ca.crt" ]; then
-            CA_CERT_FILE="/tmp/uv-mirror-ca.crt"
-            cp "$d/ca.crt" "$CA_CERT_FILE"
-            chmod 600 "$CA_CERT_FILE"
-            export SSL_CERT_FILE="$CA_CERT_FILE"
-        fi
-        if [ -n "$NETRC_FILE" ] && [ -n "$CA_CERT_FILE" ]; then
-            break
-        fi
-    done
+  for d in "$binding_root"/*; do
+    [ -d "$d" ] || continue
+    BINDING_TYPE="$(cat "$d/type" 2>/dev/null || true)"
+    if [ -z "$NETRC_FILE" ] && [ "$BINDING_TYPE" = "netrc" ] && [ -f "$d/netrc" ]; then
+      NETRC_FILE="/tmp/uv-mirror.netrc"
+      cp "$d/netrc" "$NETRC_FILE"
+      chmod 600 "$NETRC_FILE"
+      export NETRC="$NETRC_FILE"
+    fi
+    if [ -z "$CA_CERT_FILE" ] && [ "$BINDING_TYPE" = "ca-certificates" ] && [ -f "$d/ca.crt" ]; then
+      CA_CERT_FILE="/tmp/uv-mirror-ca.crt"
+      cp "$d/ca.crt" "$CA_CERT_FILE"
+      chmod 600 "$CA_CERT_FILE"
+      export SSL_CERT_FILE="$CA_CERT_FILE"
+    fi
+    if [ -n "$NETRC_FILE" ] && [ -n "$CA_CERT_FILE" ]; then
+      break
+    fi
+  done
 fi
 
 download() {
     local url out
+    local -a wget_args
     url="$1"
     out="$2"
 
-    WGET_ARGS=()
+    wget_args=()
     if [ -n "$NETRC_FILE" ]; then
         HOME="${HOME:-/tmp}"
         mkdir -p "$HOME"
         cp "$NETRC_FILE" "$HOME/.netrc"
         chmod 600 "$HOME/.netrc"
-        WGET_ARGS+=(--netrc)
+        wget_args+=(--netrc)
     fi
     if [ -n "$CA_CERT_FILE" ]; then
-        WGET_ARGS+=(--ca-certificate "$CA_CERT_FILE")
+        wget_args+=(--ca-certificate "$CA_CERT_FILE")
     fi
 
-    wget -q -O "$out" "${WGET_ARGS[@]}" "$url"
+    wget -q -O "$out" "${wget_args[@]}" "$url"
 }
 
 # Determine uv version
