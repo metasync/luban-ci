@@ -355,19 +355,19 @@ if [ -n "$NETRC_CONTENT" ]; then
   create_netrc_binding_secret uv-mirror-netrc "$K8S_NAMESPACE" "^ci-.*" "$NETRC_CONTENT"
 fi
 
-UV_MIRROR_CA_CERT_TEXT=""
-if [ -n "${UV_MIRROR_CA_CERT_PATH:-}" ]; then
-  if [ ! -f "${UV_MIRROR_CA_CERT_PATH}" ]; then
-    echo "Error: UV_MIRROR_CA_CERT_PATH is set but file does not exist: ${UV_MIRROR_CA_CERT_PATH}" >&2
+LUBAN_CA_CERT_TEXT=""
+if [ -n "${LUBAN_CA_CERT_PATH:-}" ]; then
+  if [ ! -f "${LUBAN_CA_CERT_PATH}" ]; then
+    echo "Error: LUBAN_CA_CERT_PATH is set but file does not exist: ${LUBAN_CA_CERT_PATH}" >&2
     exit 1
   fi
-  UV_MIRROR_CA_CERT_TEXT=$(cat "${UV_MIRROR_CA_CERT_PATH}")
-elif [ -n "${UV_MIRROR_CA_CERT:-}" ]; then
-  UV_MIRROR_CA_CERT_TEXT="${UV_MIRROR_CA_CERT}"
+  LUBAN_CA_CERT_TEXT=$(cat "${LUBAN_CA_CERT_PATH}")
+elif [ -n "${LUBAN_CA_CERT:-}" ]; then
+  LUBAN_CA_CERT_TEXT="${LUBAN_CA_CERT}"
 fi
 
-if [ -n "$UV_MIRROR_CA_CERT_TEXT" ]; then
-  create_ca_cert_binding_secret uv-mirror-ca-cert "$K8S_NAMESPACE" "^ci-.*" "$UV_MIRROR_CA_CERT_TEXT"
+if [ -n "$LUBAN_CA_CERT_TEXT" ]; then
+  create_ca_cert_binding_secret luban-ca-cert "$K8S_NAMESPACE" "^ci-.*" "$LUBAN_CA_CERT_TEXT"
 fi
 
 if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then

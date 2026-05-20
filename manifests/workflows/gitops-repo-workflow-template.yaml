@@ -6,6 +6,11 @@ metadata:
 spec:
   entrypoint: provision-gitops-repo
   serviceAccountName: luban-ci-sa
+  volumes:
+    - name: luban-ca-cert
+      secret:
+        secretName: luban-ca-cert
+        optional: true
   arguments:
     parameters:
       - name: project_name
@@ -70,26 +75,26 @@ spec:
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
         imagePullPolicy: Always
+        command: [sh, -c]
         args:
-          - gitops
-          - --project-name
-          - "{{inputs.parameters.project_name}}"
-          - --application-name
-          - "{{inputs.parameters.application_name}}"
-          - --output-dir
-          - "/workdir"
-          - --git-organization
-          - "{{inputs.parameters.git_organization}}"
-          - --git-provider
-          - "{{inputs.parameters.git_provider}}"
-          - --git-server
-          - "$(GIT_SERVER)"
-          - --git-username
-          - "$(GIT_USERNAME)"
-          - --config-file
-          - "{{inputs.parameters.config_file}}"
-          - --git-token
-          - "$(GIT_TOKEN)"
+          - |
+            LUBAN_CA_CERT_FILE="/var/run/luban/ca/ca.crt"
+            if [ -f "$LUBAN_CA_CERT_FILE" ] && grep -q "BEGIN CERTIFICATE" "$LUBAN_CA_CERT_FILE"; then
+              export SSL_CERT_FILE="$LUBAN_CA_CERT_FILE"
+              export REQUESTS_CA_BUNDLE="$LUBAN_CA_CERT_FILE"
+              export GIT_SSL_CAINFO="$LUBAN_CA_CERT_FILE"
+            fi
+
+            exec luban-provisioner gitops \
+              --project-name "{{inputs.parameters.project_name}}" \
+              --application-name "{{inputs.parameters.application_name}}" \
+              --output-dir "/workdir" \
+              --git-organization "{{inputs.parameters.git_organization}}" \
+              --git-provider "{{inputs.parameters.git_provider}}" \
+              --git-server "$(GIT_SERVER)" \
+              --git-username "$(GIT_USERNAME)" \
+              --config-file "{{inputs.parameters.config_file}}" \
+              --git-token "$(GIT_TOKEN)"
         env:
           - name: GIT_SERVER
             valueFrom:
@@ -133,6 +138,9 @@ spec:
         volumeMounts:
           - name: workdir
             mountPath: /workdir
+          - name: luban-ca-cert
+            mountPath: /var/run/luban/ca
+            readOnly: true
   volumeClaimTemplates:
     - metadata:
         name: workdir

@@ -134,7 +134,7 @@ Notes:
 - If all `UV_*` fields are empty, no netrc secret is created and builds run unchanged.
 - If you set `UV_PYTHON_MIRROR_HOST`, you must provide credentials either via `UV_PYTHON_MIRROR_USERNAME/PASSWORD` or `UV_MIRROR_USERNAME/PASSWORD`.
 - Do not put credentials into `BP_UV_RELEASE_BASE_URL` / `BP_UV_PYTHON_INSTALL_MIRROR` URLs; they may be logged.
-- If your uv/Python mirror uses a private CA, set `UV_MIRROR_CA_CERT_PATH` (path to a PEM bundle) or `UV_MIRROR_CA_CERT` (inline PEM) so builds can download assets with TLS verification enabled.
+- If you use on-prem services with a private CA, set `LUBAN_CA_CERT_PATH` (path to a PEM bundle) or `LUBAN_CA_CERT` (inline PEM) so workflows and builds can connect with TLS verification enabled.
 
 #### Container Registry Credentials (Required)
 

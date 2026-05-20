@@ -5,6 +5,11 @@ metadata:
 spec:
   entrypoint: promote-snd-to-prd
   serviceAccountName: workflow-runner
+  volumes:
+    - name: luban-ca-cert
+      secret:
+        secretName: luban-ca-cert
+        optional: true
   arguments:
     parameters:
       - name: project_name
@@ -37,22 +42,24 @@ spec:
           - name: git_provider
       container:
         image: "{{workflow.parameters.luban_provisioner_image}}"
+        command: [sh, -c]
         args:
-          - promote
-          - --app-name
-          - "{{inputs.parameters.app_name}}"
-          - --git-organization
-          - "{{inputs.parameters.git_organization}}"
-          - --git-provider
-          - "{{inputs.parameters.git_provider}}"
-          - --project-name
-          - "{{inputs.parameters.project_name}}"
-          - --git-server
-          - "$(GIT_SERVER)"
-          - --git-username
-          - "$(GIT_USERNAME)"
-          - --git-token
-          - "$(GIT_TOKEN)"
+          - |
+            LUBAN_CA_CERT_FILE="/var/run/luban/ca/ca.crt"
+            if [ -f "$LUBAN_CA_CERT_FILE" ] && grep -q "BEGIN CERTIFICATE" "$LUBAN_CA_CERT_FILE"; then
+              export SSL_CERT_FILE="$LUBAN_CA_CERT_FILE"
+              export REQUESTS_CA_BUNDLE="$LUBAN_CA_CERT_FILE"
+              export GIT_SSL_CAINFO="$LUBAN_CA_CERT_FILE"
+            fi
+
+            exec luban-provisioner promote \
+              --app-name "{{inputs.parameters.app_name}}" \
+              --git-organization "{{inputs.parameters.git_organization}}" \
+              --git-provider "{{inputs.parameters.git_provider}}" \
+              --project-name "{{inputs.parameters.project_name}}" \
+              --git-server "$(GIT_SERVER)" \
+              --git-username "$(GIT_USERNAME)" \
+              --git-token "$(GIT_TOKEN)"
         env:
           - name: GIT_TOKEN
             valueFrom:
@@ -93,3 +100,7 @@ spec:
                 name: luban-config
                 key: "{{inputs.parameters.git_provider}}_basic_auth_username"
                 optional: true
+        volumeMounts:
+          - name: luban-ca-cert
+            mountPath: /var/run/luban/ca
+            readOnly: true

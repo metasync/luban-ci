@@ -10,7 +10,7 @@ resources:
   - secrets/quay-creds.yaml
   - secrets/harbor-creds.yaml
   - secrets/uv-mirror-netrc.yaml
-  - secrets/uv-mirror-ca-cert.yaml
+  - secrets/luban-ca-cert.yaml
   - secrets/azure-ssh-creds.yaml
   - secrets/github-creds.yaml
   - secrets/azure-creds.yaml

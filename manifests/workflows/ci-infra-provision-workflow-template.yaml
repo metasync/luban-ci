@@ -189,7 +189,7 @@ spec:
                 - /stringData
             - group: ""
               kind: Secret
-              name: uv-mirror-ca-cert
+              name: luban-ca-cert
               namespace: ${NAMESPACE}
               jsonPointers:
                 - /data

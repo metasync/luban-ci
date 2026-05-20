@@ -269,11 +269,11 @@ spec:
           fi
         fi
 
-        HAS_UV_CA_CERT=0
-        if $KUBECTL -n "$TARGET_NAMESPACE" get secret uv-mirror-ca-cert >/dev/null 2>&1; then
-          CA_CRT_B64=$($KUBECTL -n "$TARGET_NAMESPACE" get secret uv-mirror-ca-cert -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)
+        HAS_LUBAN_CA_CERT=0
+        if $KUBECTL -n "$TARGET_NAMESPACE" get secret luban-ca-cert >/dev/null 2>&1; then
+          CA_CRT_B64=$($KUBECTL -n "$TARGET_NAMESPACE" get secret luban-ca-cert -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)
           if [ -n "$CA_CRT_B64" ] && [ "$CA_CRT_B64" != "cGxhY2Vob2xkZXI=" ]; then
-            HAS_UV_CA_CERT=1
+            HAS_LUBAN_CA_CERT=1
           fi
         fi
 
@@ -320,7 +320,7 @@ spec:
           build:
         EOF
 
-        if [ "$HAS_UV_NETRC" -eq 1 ] || [ "$HAS_UV_CA_CERT" -eq 1 ]; then
+        if [ "$HAS_UV_NETRC" -eq 1 ] || [ "$HAS_LUBAN_CA_CERT" -eq 1 ]; then
           echo "            services:" >> "$IMAGE_SPEC_FILE"
           if [ "$HAS_UV_NETRC" -eq 1 ]; then
             cat >>"$IMAGE_SPEC_FILE" <<EOF
@@ -329,9 +329,9 @@ spec:
               apiVersion: v1
         EOF
           fi
-          if [ "$HAS_UV_CA_CERT" -eq 1 ]; then
+          if [ "$HAS_LUBAN_CA_CERT" -eq 1 ]; then
             cat >>"$IMAGE_SPEC_FILE" <<EOF
-            - name: uv-mirror-ca-cert
+            - name: luban-ca-cert
               kind: Secret
               apiVersion: v1
         EOF

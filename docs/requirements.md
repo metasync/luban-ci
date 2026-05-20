@@ -91,6 +91,6 @@ For application runtime secrets, the recommended naming convention is:
 - `ci-*/uv-mirror-netrc` is created by the infra repo templates and uses `replicate-from` so the GitOps source owns required metadata.
 - The `netrc` file may contain multiple `machine` entries (for example one host for uv releases and another host for managed Python downloads).
 
-### 5.6 uv/Python Mirror CA Certificates
-- `luban-ci/uv-mirror-ca-cert` contains the PEM bundle used to trust internal TLS endpoints (type `service.binding/ca-certificates`).
-- `ci-*/uv-mirror-ca-cert` is created by the infra repo templates and uses `replicate-from`.
+### 5.6 Central CA Certificates
+- `luban-ci/luban-ca-cert` contains the PEM bundle used to trust internal TLS endpoints (type `service.binding/ca-certificates`).
+- `ci-*/luban-ca-cert` is created by the infra repo templates and uses `replicate-from`.
