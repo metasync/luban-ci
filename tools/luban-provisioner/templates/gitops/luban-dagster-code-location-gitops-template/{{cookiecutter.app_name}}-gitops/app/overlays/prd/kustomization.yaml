@@ -11,10 +11,23 @@ images:
     newTag: "{{cookiecutter.image_tag}}"
 
 configMapGenerator:
-  - name: "{{cookiecutter.app_name}}-config-rollout"
+  # Rollout trigger for app/overlays/prd/configmap.yaml only. This avoids reading ../../base
+  # from configMapGenerator.files (which can trip Argo CD/Kustomize file sandboxing).
+  - name: "{{cookiecutter.app_name}}-overlay-config-rollout"
     files:
-      - base-configmap.yaml=../../base/configmap.yaml
       - overlay-configmap.yaml=configmap.yaml
+
+replacements:
+  - source:
+      kind: Deployment
+      name: "{{cookiecutter.app_name}}"
+      fieldPath: spec.template.spec.containers.[name={{cookiecutter.app_name}}].image
+    targets:
+      - select:
+          kind: Deployment
+          name: "{{cookiecutter.app_name}}"
+        fieldPaths:
+          - spec.template.spec.containers.[name={{cookiecutter.app_name}}].env.[name=DAGSTER_CURRENT_IMAGE].value
 
 patches:
   - path: configmap.yaml

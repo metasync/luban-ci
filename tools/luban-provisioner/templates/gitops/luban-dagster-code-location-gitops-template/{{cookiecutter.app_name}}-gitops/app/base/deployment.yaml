@@ -38,7 +38,7 @@ spec:
                 optional: true
           env:
             - name: DAGSTER_CURRENT_IMAGE
-              value: "$(DAGSTER_APP_IMAGE)"
+              value: ""
             - name: LUBAN_RUN_ENV_CONFIGMAP
               value: "{{cookiecutter.app_name}}-config"
             - name: LUBAN_RUN_ENV_SECRET
@@ -66,13 +66,20 @@ spec:
           volumeMounts:
             - name: dagster-home
               mountPath: /tmp/dagster_home
-            - name: config-rollout
-              mountPath: /tmp/luban-config-rollout
+            - name: base-config-rollout
+              mountPath: /tmp/luban-base-config-rollout
+              readOnly: true
+            - name: overlay-config-rollout
+              mountPath: /tmp/luban-overlay-config-rollout
               readOnly: true
       volumes:
         - name: dagster-home
           emptyDir: {}
-        - name: config-rollout
+        - name: base-config-rollout
           configMap:
-            name: "{{cookiecutter.app_name}}-config-rollout"
+            name: "{{cookiecutter.app_name}}-base-config-rollout"
+            optional: true
+        - name: overlay-config-rollout
+          configMap:
+            name: "{{cookiecutter.app_name}}-overlay-config-rollout"
             optional: true

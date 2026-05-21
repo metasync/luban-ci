@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## \[v1.2.6] - 2026-05-21
+
+### Fixed
+
+- **Dagster Code Locations (GitOps template)**: Fix Argo CD / Kustomize build failures caused by cross-tree `configMapGenerator.files` references by splitting rollout ConfigMaps into base + overlay and mounting both.
+- **Dagster Code Locations (GitOps template)**: Replace deprecated kustomize `vars` with `replacements` for `DAGSTER_CURRENT_IMAGE`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.27`.
+
 ## \[v1.2.5] - 2026-05-20
 
 ### Fixed

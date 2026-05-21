@@ -14,11 +14,9 @@ labels:
     includeSelectors: true
     includeTemplates: true
 
-vars:
-  - name: DAGSTER_APP_IMAGE
-    objref:
-      kind: Deployment
-      name: "{{cookiecutter.app_name}}"
-      apiVersion: apps/v1
-    fieldref:
-      fieldPath: spec.template.spec.containers.0.image
+configMapGenerator:
+  # Rollout trigger for app/base/configmap.yaml. This generator intentionally reads only
+  # in-tree files to avoid cross-tree file load issues when Argo CD builds from an overlay.
+  - name: "{{cookiecutter.app_name}}-base-config-rollout"
+    files:
+      - base-configmap.yaml=configmap.yaml

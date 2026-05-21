@@ -178,7 +178,7 @@ wheels = [
 
 [[package]]
 name = "luban-provisioner"
-version = "0.3.24"
+version = "0.3.27"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
