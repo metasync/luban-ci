@@ -36,6 +36,32 @@ kubectl auth can-i delete workflow --as=system:serviceaccount:snd-payment:projec
 # > no
 ```
 
+### ServiceAccount Token Secrets (Kubernetes v1.24+)
+
+As of Kubernetes v1.24, token Secrets are no longer created automatically for ServiceAccounts. Luban CI provisions long-lived token Secrets explicitly so Argo Workflows can discover them.
+
+For each namespace, the GitOps base includes:
+
+- `project-admin.service-account-token`
+- `project-developer.service-account-token`
+
+To retrieve the token:
+
+```bash
+NS=snd-payment
+kubectl -n "$NS" get secret project-admin.service-account-token \
+  -o jsonpath='{.data.token}' | base64 --decode
+```
+
+Kubernetes may populate the Secret asynchronously after it is applied.
+
+For ad-hoc CLI usage, you can also request a short-lived token (recommended by Kubernetes post-v1.24):
+
+```bash
+NS=snd-payment
+kubectl -n "$NS" create token project-admin
+```
+
 ## Testing CI Pipeline
 
 Manually trigger the kpack CI workflow (via Argo CLI) with custom parameters.
