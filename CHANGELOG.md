@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Workflows (kpack)**: Fix YAML indentation for `spec.build.services` and `spec.build.env` in `luban-ci-kpack-template` so generated `/tmp/kpack-image.yaml` applies cleanly.
+
 ## \[v1.2.6] - 2026-05-21
 
 ### Fixed

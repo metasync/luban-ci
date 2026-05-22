@@ -324,40 +324,40 @@ spec:
           echo "            services:" >> "$IMAGE_SPEC_FILE"
           if [ "$HAS_UV_NETRC" -eq 1 ]; then
             cat >>"$IMAGE_SPEC_FILE" <<EOF
-            - name: uv-mirror-netrc
-              kind: Secret
-              apiVersion: v1
+              - name: uv-mirror-netrc
+                kind: Secret
+                apiVersion: v1
         EOF
           fi
           if [ "$HAS_LUBAN_CA_CERT" -eq 1 ]; then
             cat >>"$IMAGE_SPEC_FILE" <<EOF
-            - name: luban-ca-cert
-              kind: Secret
-              apiVersion: v1
+              - name: luban-ca-cert
+                kind: Secret
+                apiVersion: v1
         EOF
           fi
         fi
 
         cat >>"$IMAGE_SPEC_FILE" <<EOF
             env:
-            - name: BP_UV_RELEASE_BASE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: luban-config
-                  key: uv_release_base_url
-                  optional: true
-            - name: BP_UV_PYTHON_INSTALL_MIRROR
-              valueFrom:
-                configMapKeyRef:
-                  name: luban-config
-                  key: uv_python_install_mirror
-                  optional: true
+              - name: BP_UV_RELEASE_BASE_URL
+                valueFrom:
+                  configMapKeyRef:
+                    name: luban-config
+                    key: uv_release_base_url
+                    optional: true
+              - name: BP_UV_PYTHON_INSTALL_MIRROR
+                valueFrom:
+                  configMapKeyRef:
+                    name: luban-config
+                    key: uv_python_install_mirror
+                    optional: true
         EOF
 
         if [ "$MODE" = "tag" ]; then
           cat >>"$IMAGE_SPEC_FILE" <<EOF
-            - name: CI_TAG_UPDATE
-              value: "${IMAGE_TAG}"
+              - name: CI_TAG_UPDATE
+                value: "${IMAGE_TAG}"
         EOF
         fi
 
