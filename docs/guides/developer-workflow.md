@@ -42,7 +42,7 @@ kubectl auth can-i delete workflow --as=system:serviceaccount:${NS}:project-deve
 
 As of Kubernetes v1.24, token Secrets are no longer created automatically for ServiceAccounts. Luban CI provisions long-lived token Secrets explicitly so Argo Workflows can discover them.
 
-For each namespace, the GitOps base includes:
+For each `ci-<project>` namespace, the GitOps base includes:
 
 - `project-admin.service-account-token`
 - `project-developer.service-account-token`
