@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Workflows (kpack)**: Fix YAML indentation for `spec.build.services` and `spec.build.env` in `luban-ci-kpack-template` so generated `/tmp/kpack-image.yaml` applies cleanly.
+- **Workflows (kpack)**: Fix YAML indentation for `spec.build.services` in `luban-ci-kpack-template` so generated `/tmp/kpack-image.yaml` applies cleanly.
+- **Workflows (promotion)**: Fix `volume 'luban-ca-cert' not found in workflow spec` by declaring the optional `luban-ca-cert` volume in the referenced template (works with `templateRef`).
 
 ### Changed
 

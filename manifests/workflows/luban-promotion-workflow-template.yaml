@@ -5,11 +5,6 @@ metadata:
 spec:
   entrypoint: promote-snd-to-prd
   serviceAccountName: workflow-runner
-  volumes:
-    - name: luban-ca-cert
-      secret:
-        secretName: luban-ca-cert
-        optional: true
   arguments:
     parameters:
       - name: project_name
@@ -34,6 +29,11 @@ spec:
 
   templates:
     - name: promote-snd-to-prd
+      volumes:
+        - name: luban-ca-cert
+          secret:
+            secretName: luban-ca-cert
+            optional: true
       inputs:
         parameters:
           - name: project_name

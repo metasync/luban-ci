@@ -321,7 +321,7 @@ spec:
         EOF
 
         if [ "$HAS_UV_NETRC" -eq 1 ] || [ "$HAS_LUBAN_CA_CERT" -eq 1 ]; then
-          echo "            services:" >> "$IMAGE_SPEC_FILE"
+          echo "    services:" >> "$IMAGE_SPEC_FILE"
           if [ "$HAS_UV_NETRC" -eq 1 ]; then
             cat >>"$IMAGE_SPEC_FILE" <<EOF
               - name: uv-mirror-netrc
