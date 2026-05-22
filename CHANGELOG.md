@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## \[v1.2.7] - 2026-05-22
+
+### Fixed
+
+- **Workflows (kpack)**: Fix YAML indentation for `spec.build.services` and `spec.build.env` in `luban-ci-kpack-template` so generated `/tmp/kpack-image.yaml` applies cleanly.
+
+### Changed
+
 - **CI Infra**: Provision discoverable ServiceAccount token Secrets for `project-admin` and `project-developer` on Kubernetes v1.24+ and ignore controller-managed drift in Argo CD.
 - **Provisioner**: Bumped `luban-provisioner` to `0.3.28`.
 
@@ -20,12 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Observability**: Consolidated OpenTelemetry + Elastic APM integration docs into a dedicated guide and merged Dagster platform metrics into it.
 - **Developer Workflow**: Clarified that `project-admin` / `project-developer` ServiceAccounts are provisioned by CI GitOps templates in `ci-<project>` namespaces.
-
-## \[v1.2.7] - 2026-05-22
-
-### Fixed
-
-- **Workflows (kpack)**: Fix YAML indentation for `spec.build.services` and `spec.build.env` in `luban-ci-kpack-template` so generated `/tmp/kpack-image.yaml` applies cleanly.
 
 ## \[v1.2.6] - 2026-05-21
 
