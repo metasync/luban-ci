@@ -19,7 +19,7 @@ Luban CI automatically configures RBAC for your project namespaces to enable OID
 
 ### Service Accounts
 
-The system provisions two permanent ServiceAccounts per project namespace (e.g., `ci-payment`, `snd-payment`, `prd-payment`) which are used by Argo Workflows and the UI SSO mapping:
+The CI GitOps templates provision two permanent ServiceAccounts in each `ci-<project>` namespace (e.g., `ci-payment`) which are used by Argo Workflows and the UI SSO mapping:
 
 1. `project-admin`: Used by users in the `admin_group`.
 2. `project-developer`: Used by users in the `developer_group`.

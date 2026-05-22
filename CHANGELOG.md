@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 
 - **Observability**: Consolidated OpenTelemetry + Elastic APM integration docs into a dedicated guide and merged Dagster platform metrics into it.
+- **Developer Workflow**: Clarified that `project-admin` / `project-developer` ServiceAccounts are provisioned by CI GitOps templates in `ci-<project>` namespaces.
 
 ## \[v1.2.7] - 2026-05-22
 
