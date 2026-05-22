@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+### Changed
+
+- **CI Infra**: Provision discoverable ServiceAccount token Secrets for `project-admin` and `project-developer` on Kubernetes v1.24+ and ignore controller-managed drift in Argo CD.
+
 ### Docs
 
 - **Observability**: Consolidated OpenTelemetry + Elastic APM integration docs into a dedicated guide and merged Dagster platform metrics into it.

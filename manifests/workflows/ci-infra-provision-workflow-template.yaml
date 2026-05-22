@@ -188,6 +188,22 @@ spec:
                 - /data
                 - /stringData
             - group: ""
+              kind: Secret
+              name: project-admin.service-account-token
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+                - /metadata/annotations/kubernetes.io~1service-account.uid
+                - /metadata/ownerReferences
+            - group: ""
+              kind: Secret
+              name: project-developer.service-account-token
+              namespace: ${NAMESPACE}
+              jsonPointers:
+                - /data
+                - /metadata/annotations/kubernetes.io~1service-account.uid
+                - /metadata/ownerReferences
+            - group: ""
               kind: ConfigMap
               name: luban-config
               namespace: ${NAMESPACE}

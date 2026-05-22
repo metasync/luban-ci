@@ -19,7 +19,7 @@ Luban CI automatically configures RBAC for your project namespaces to enable OID
 
 ### Service Accounts
 
-The system provisions two permanent ServiceAccounts in each runtime environment namespace (e.g., `snd-payment`) which are used by Argo Workflows to execute actions on behalf of the user:
+The system provisions two permanent ServiceAccounts per project namespace (e.g., `ci-payment`, `snd-payment`, `prd-payment`) which are used by Argo Workflows and the UI SSO mapping:
 
 1. `project-admin`: Used by users in the `admin_group`.
 2. `project-developer`: Used by users in the `developer_group`.
@@ -27,12 +27,14 @@ The system provisions two permanent ServiceAccounts in each runtime environment 
 You can use these accounts to verify permissions using `kubectl auth can-i`:
 
 ```bash
+NS=ci-payment
+
 # Verify Admin Access
-kubectl auth can-i delete workflow --as=system:serviceaccount:snd-payment:project-admin -n snd-payment
+kubectl auth can-i delete workflow --as=system:serviceaccount:${NS}:project-admin -n "${NS}"
 # > yes
 
 # Verify Developer Access (cannot delete)
-kubectl auth can-i delete workflow --as=system:serviceaccount:snd-payment:project-developer -n snd-payment
+kubectl auth can-i delete workflow --as=system:serviceaccount:${NS}:project-developer -n "${NS}"
 # > no
 ```
 
@@ -48,7 +50,7 @@ For each namespace, the GitOps base includes:
 To retrieve the token:
 
 ```bash
-NS=snd-payment
+NS=ci-payment
 kubectl -n "$NS" get secret project-admin.service-account-token \
   -o jsonpath='{.data.token}' | base64 --decode
 ```
@@ -58,7 +60,7 @@ Kubernetes may populate the Secret asynchronously after it is applied.
 For ad-hoc CLI usage, you can also request a short-lived token (recommended by Kubernetes post-v1.24):
 
 ```bash
-NS=snd-payment
+NS=ci-payment
 kubectl -n "$NS" create token project-admin
 ```
 
