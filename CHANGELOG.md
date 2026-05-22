@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **CI Infra**: Provision discoverable ServiceAccount token Secrets for `project-admin` and `project-developer` on Kubernetes v1.24+ and ignore controller-managed drift in Argo CD.
+- **Provisioner**: Bumped `luban-provisioner` to `0.3.28`.
 
 ### Docs
 
