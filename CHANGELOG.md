@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Makefiles**: Added `pipeline-verify` / `events-verify` targets and decomposed manifest deployment into composable sub-targets for safer operations.
 - **Makefiles**: Removed app-specific defaults from `Makefile.env`; `make pipeline-logs` now requires `APP_NAME` to be provided explicitly.
 - **Makefiles**: Subdirectory Makefiles now include the repo root `Makefile.env` so targets work consistently when invoked standalone (e.g. `make -C manifests ...`).
+- **Scripts**: Secrets and tunnel setup scripts now require core namespace/registry settings to be provided via `Makefile.env` (fail fast instead of silently defaulting).
 
 ### Docs
 

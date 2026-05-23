@@ -5,7 +5,7 @@ set -euo pipefail
 # It does NOT create tunnels or route DNS. Those are assumed to be already done.
 
 # Namespace where cloudflared runs and where the ConfigMap/Secret live.
-K8S_NAMESPACE=${K8S_NAMESPACE:-"luban-ci"}
+: "${K8S_NAMESPACE:?K8S_NAMESPACE is required (set in Makefile.env)}"
 
 # Hostname for incoming webhook traffic (optional). If unset, derive from the existing ConfigMap.
 TUNNEL_HOSTNAME=${TUNNEL_HOSTNAME:-""}

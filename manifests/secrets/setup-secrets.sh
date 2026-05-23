@@ -58,18 +58,6 @@ load_env_files() {
   done
 }
 
-DRY_RUN=0
-if [ "${1:-}" = "--dry-run" ]; then
-  DRY_RUN=1
-fi
-
-load_env_files "${ROOT_DIR}/secrets"
-K8S_NAMESPACE=${K8S_NAMESPACE:-luban-ci}
-ARGOCD_NAMESPACE=${ARGOCD_NAMESPACE:-argocd}
-CERT_MANAGER_NAMESPACE=${CERT_MANAGER_NAMESPACE:-cert-manager}
-
-export K8S_NAMESPACE ARGOCD_NAMESPACE CERT_MANAGER_NAMESPACE
-
 require() {
   local name="$1"
   if [ -z "${!name:-}" ]; then
@@ -77,6 +65,19 @@ require() {
     exit 1
   fi
 }
+
+DRY_RUN=0
+if [ "${1:-}" = "--dry-run" ]; then
+  DRY_RUN=1
+fi
+
+load_env_files "${ROOT_DIR}/secrets"
+require K8S_NAMESPACE
+require ARGOCD_NAMESPACE
+require CERT_MANAGER_NAMESPACE
+require REGISTRY_SERVER
+
+export K8S_NAMESPACE ARGOCD_NAMESPACE CERT_MANAGER_NAMESPACE REGISTRY_SERVER
 
 if ! command -v kubectl >/dev/null 2>&1; then
   echo "Error: kubectl is required" >&2
@@ -250,8 +251,6 @@ require HARBOR_USERNAME
 require HARBOR_PASSWORD
 require HARBOR_RO_USERNAME
 require HARBOR_RO_PASSWORD
-
-REGISTRY_SERVER=${REGISTRY_SERVER:-quay.io}
 
 apply_yaml() {
   if [ "$DRY_RUN" = "1" ]; then
