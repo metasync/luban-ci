@@ -9,9 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Docs (DevOps)**: Added an operator-first documentation set under `docs/ops/` (day-0 install/verify, day-2 operations, upgrades, and troubleshooting runbooks).
+- **Docs (Reference)**: Added `docs/reference/make-targets.md` as a curated operator map of Make targets.
+
 ### Fixed
 
 ### Changed
+
+### Docs
+
+- **Docs (Entry points)**: Linked DevOps ops docs from README and cross-linked ops guidance from existing guides.
 
 ## \[v1.2.7] - 2026-05-22
 

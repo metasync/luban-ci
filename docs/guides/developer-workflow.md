@@ -129,6 +129,9 @@ make tunnel-setup
 make tunnel-setup TUNNEL_HOSTNAME=my-webhook.metasync.cc
 ```
 
+Notes:
+- If the tunnel stops relaying traffic after local cluster restarts or network changes, restarting the `cloudflared` deployment is often required. See: [../ops/runbooks/webhook-not-triggering.md](../ops/runbooks/webhook-not-triggering.md)
+
 ## Check Build Logs
 
 View the logs of the latest kpack build for a specific application:

@@ -198,3 +198,8 @@ Set up ServiceAccounts and RBAC for Argo Workflows:
 ```bash
 make pipeline-deploy
 ```
+
+## Next: Verify and Operate
+
+- Verification checklist: [../ops/day-0-verify.md](../ops/day-0-verify.md)
+- Operator entrypoint and runbooks: [../ops/README.md](../ops/README.md)

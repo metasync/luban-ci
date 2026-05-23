@@ -13,6 +13,11 @@ Luban CI is a GitOps-based Continuous Integration system running on Kubernetes, 
 
 ## Documentation
 
+### Operations (DevOps)
+
+- [**Operations (DevOps)**](docs/ops/README.md): Day-0 install/verify, day-2 operations, upgrades, and troubleshooting runbooks.
+- [**Make Targets Reference**](docs/reference/make-targets.md): Operator-oriented map of Make targets and what they do.
+
 ### Core Concepts (The "Why")
 - [**CI/CD Philosophy**](docs/concepts/cicd-philosophy.md): Understanding Trunk-Based Development and Promotion-Based Releases.
 - [**Environment Promotion**](docs/concepts/environment-promotion.md): How "Build Once, Promote Anywhere" works (SND -> PRD).

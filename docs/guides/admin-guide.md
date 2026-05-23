@@ -2,6 +2,8 @@
 
 This guide covers the administration and configuration of the Luban CI platform.
 
+For day-0 install/verification, upgrades, and troubleshooting runbooks, use: [../ops/README.md](../ops/README.md)
+
 ## Configuration Management
 
 - **`luban-config` ConfigMap**: Central configuration for all workflows.
