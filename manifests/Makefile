@@ -1,6 +1,8 @@
 # Manifests Deployment Makefile
 
-include Makefile.env
+ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+include $(ROOT_DIR)/Makefile.env
+-include Makefile.env
 export
 
 .PHONY: deploy deploy-rbac deploy-kpack deploy-global-argo-config deploy-config deploy-workflows verify clean logs tunnel-setup secrets secrets-dry-run

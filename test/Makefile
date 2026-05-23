@@ -1,6 +1,8 @@
 # Test Management Makefile
 
-include Makefile.env
+ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+include $(ROOT_DIR)/Makefile.env
+-include Makefile.env
 export
 
 .PHONY: test-ci-pipeline test-webhook test-webhook-py
