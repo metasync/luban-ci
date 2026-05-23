@@ -3,7 +3,7 @@
 include Makefile.env
 export
 
-.PHONY: deploy webhook-secret webhook-secret-rotate
+.PHONY: deploy verify webhook-secret webhook-secret-rotate
 
 deploy: ## Deploy Argo Events (EventBus, EventSource, Sensor)
 	@echo "Deploying Argo Events..."
@@ -16,6 +16,13 @@ deploy: ## Deploy Argo Events (EventBus, EventSource, Sensor)
 	@kubectl apply -f ado-sensor.yaml
 	@kubectl apply -f gateway.yaml
 	@echo "Argo Events deployed."
+
+verify:
+	@kubectl -n $(K8S_NAMESPACE) get eventbus default >/dev/null
+	@kubectl -n $(K8S_NAMESPACE) get eventsources github-event-source azure-event-source ado-event-source >/dev/null
+	@kubectl -n $(K8S_NAMESPACE) get sensors github-sensor azure-sensor ado-sensor >/dev/null
+	@kubectl -n $(K8S_NAMESPACE) get httproute webhook-route >/dev/null
+	@echo "OK: events resources present"
 
 webhook-secret: ## Ensure webhook secret exists (skip if present)
 	@if kubectl get secret webhook-secret -n $(K8S_NAMESPACE) >/dev/null 2>&1; then \

@@ -10,8 +10,8 @@ export
         stack-build stack-push \
         builder-build builder-push \
         update-default-git-provider \
-        pipeline-deploy pipeline-clean pipeline-logs \
-        events-deploy events-webhook-secret \
+        pipeline-deploy pipeline-verify pipeline-clean pipeline-logs \
+        events-deploy events-verify events-webhook-secret \
         test-ci-pipeline test-events-webhook test-events-webhook-py \
         lint format \
         tunnel-setup \
@@ -78,6 +78,9 @@ tools-image-push: ## Push gitops-utils tooling image (build if missing)
 pipeline-deploy: ## Deploy Argo Workflow Template and RBAC
 	@$(MAKE) -C manifests deploy
 
+pipeline-verify:
+	@$(MAKE) -C manifests verify
+
 pipeline-clean: ## Delete all workflows
 	@echo "Cleaning up workflows..."
 	@$(MAKE) -C manifests clean
@@ -89,6 +92,9 @@ pipeline-logs: ## Show logs for the latest kpack build of the app. Usage: make p
 
 events-deploy: ## Deploy Argo Events (EventBus, EventSource, Sensor)
 	@$(MAKE) -C events deploy
+
+events-verify:
+	@$(MAKE) -C events verify
 
 events-webhook-secret: ## Ensure GitHub webhook secret exists (skip if present)
 	@$(MAKE) -C events webhook-secret

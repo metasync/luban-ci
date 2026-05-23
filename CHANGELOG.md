@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Makefiles**: Added `pipeline-verify` / `events-verify` targets and decomposed manifest deployment into composable sub-targets for safer operations.
+
 ### Docs
 
 - **Docs (Entry points)**: Linked DevOps ops docs from README and cross-linked ops guidance from existing guides.

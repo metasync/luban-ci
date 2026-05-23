@@ -3,18 +3,30 @@
 include Makefile.env
 export
 
-.PHONY: deploy clean logs tunnel-setup secrets secrets-dry-run
+.PHONY: deploy deploy-rbac deploy-kpack deploy-global-argo-config deploy-config deploy-workflows verify clean logs tunnel-setup secrets secrets-dry-run
 
 deploy: ## Deploy Argo Workflow Template and RBAC
+	@$(MAKE) deploy-rbac
+	@$(MAKE) deploy-kpack
+	@$(MAKE) deploy-global-argo-config
+	@$(MAKE) deploy-config
+	@$(MAKE) deploy-workflows
+	@echo "Pipeline deployed."
+
+deploy-rbac:
 	@echo "Deploying Workflow RBAC..."
 	@kubectl apply -f rbac/pipeline-sa.yaml
 	@kubectl apply -f rbac/kpack-admin-role.yaml
 	@kubectl apply -f rbac/argo-controller-role.yaml
 	@kubectl apply -f rbac/luban-view-templates-clusterrole.yaml
+
+deploy-kpack:
 	@echo "Deploying kpack Stack and Builder..."
 	@kubectl apply -f kpack/kpack-lifecycle.yaml
 	@kubectl apply -f kpack/kpack-stack.yaml
 	@kubectl apply -f kpack/kpack-builder.yaml
+
+deploy-global-argo-config:
 	@echo "Applying Global Workflow Restrictions (argo namespace)..."
 	@# Check for legacy config conflict
 	@if [ -n "$$(kubectl get cm argo-workflows-workflow-controller-configmap -n argo -o jsonpath='{.data.config}' 2>/dev/null)" ]; then \
@@ -22,10 +34,14 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 		kubectl patch configmap argo-workflows-workflow-controller-configmap -n argo --type=json -p='[{"op": "remove", "path": "/data/config"}]'; \
 	fi
 	@kubectl apply -f config/global-workflow-restrictions.yaml || echo "Warning: Failed to apply global config. Ensure you have admin access to 'argo' namespace."
+
+deploy-config:
 	@echo "Applying Luban Configuration..."
 	@kubectl apply -f config/luban-config.yaml
 	@kubectl apply -f config/luban-python-config.yaml
 	@kubectl apply -f config/luban-dagster-config.yaml
+
+deploy-workflows:
 	@echo "Deploying Workflow Templates..."
 	@kubectl apply -f workflows/luban-ci-kpack-workflow-template.yaml
 	@kubectl apply -f workflows/argocd-project-workflow-template.yaml
@@ -44,7 +60,17 @@ deploy: ## Deploy Argo Workflow Template and RBAC
 	@kubectl apply -f workflows/luban-dagster-platform-setup-template.yaml
 	@kubectl apply -f workflows/luban-promotion-workflow-template.yaml
 	@kubectl apply -f workflows/luban-pipeline-dispatcher-template.yaml
-	@echo "Pipeline deployed."
+
+verify:
+	@kubectl -n $(K8S_NAMESPACE) get sa luban-ci-sa >/dev/null
+	@kubectl -n $(K8S_NAMESPACE) get configmap luban-config >/dev/null
+	@kubectl get clusterworkflowtemplate luban-ci-kpack-template >/dev/null
+	@kubectl get clusterworkflowtemplate luban-promotion-template >/dev/null
+	@kubectl get clusterlifecycle default-lifecycle >/dev/null
+	@kubectl get clusterstack luban-stack >/dev/null
+	@kubectl get clusterstore luban-store >/dev/null
+	@kubectl get clusterbuilder luban-builder >/dev/null
+	@echo "OK: pipeline resources present"
 
 secrets: ## Create/Update Kubernetes secrets from env files
 	@./secrets/setup-secrets.sh

@@ -16,7 +16,9 @@ Source: `Makefile`
 - `make builder-push`: build/tag/push builder image
 - `make tools-image-push`: push tooling images (gitops-utils, luban-provisioner)
 - `make pipeline-deploy`: deploy RBAC, kpack objects, config, workflow templates
+- `make pipeline-verify`: verify pipeline resources are present (RBAC/config/kpack/templates)
 - `make events-deploy`: deploy Argo Events resources
+- `make events-verify`: verify events resources are present (EventBus/EventSource/Sensor/HTTPRoute)
 - `make events-webhook-secret`: ensure webhook secret exists
 
 ### Day-2 / Operations
@@ -37,6 +39,7 @@ Source: `Makefile`
 Source: `manifests/Makefile`
 
 - `make -C manifests deploy`: apply RBAC + kpack objects + config + workflow templates
+- `make -C manifests verify`: verify pipeline resources are present
 - `make -C manifests secrets`: apply secrets via `manifests/secrets/setup-secrets.sh`
 - `make -C manifests secrets-dry-run`: dry-run secret rendering
 - `make -C manifests logs APP_NAME=<app>`: `kp build logs` helper
@@ -46,6 +49,7 @@ Source: `manifests/Makefile`
 Source: `events/Makefile`
 
 - `make -C events deploy`: apply Argo Events manifests
+- `make -C events verify`: verify events resources are present
 - `make -C events webhook-secret`: ensure webhook secret exists
 - `make -C events webhook-secret-rotate`: force rotate webhook secret
 
