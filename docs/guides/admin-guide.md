@@ -116,7 +116,7 @@ Argo Workflows parameter defaults are static in the YAML, so Luban provides a sm
 
 - Configure `default_git_provider` in `manifests/config/luban-config.yaml`.
 - Run `make update-default-git-provider` to rewrite `git_provider` default values across workflow/template YAMLs.
-- Deploy the updated templates (for example `make pipeline-deploy`).
+- Deploy the updated templates (for example `make pipeline-deploy`) and verify (`make pipeline-verify`).
 
 This only affects the UI default value; users can still override `git_provider` per workflow run.
 

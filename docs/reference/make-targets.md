@@ -39,7 +39,7 @@ Source: `Makefile`
 Source: `manifests/Makefile`
 
 - `make -C manifests deploy`: apply RBAC + kpack objects + config + workflow templates
-- `make -C manifests verify`: verify pipeline resources are present
+- `make -C manifests verify`: verify pipeline resources are present (requires `K8S_NAMESPACE` env when running standalone; prefer `make pipeline-verify`)
 - `make -C manifests secrets`: apply secrets via `manifests/secrets/setup-secrets.sh`
 - `make -C manifests secrets-dry-run`: dry-run secret rendering
 - `make -C manifests logs APP_NAME=<app>`: `kp build logs` helper
@@ -49,7 +49,7 @@ Source: `manifests/Makefile`
 Source: `events/Makefile`
 
 - `make -C events deploy`: apply Argo Events manifests
-- `make -C events verify`: verify events resources are present
+- `make -C events verify`: verify events resources are present (requires `K8S_NAMESPACE` env when running standalone; prefer `make events-verify`)
 - `make -C events webhook-secret`: ensure webhook secret exists
 - `make -C events webhook-secret-rotate`: force rotate webhook secret
 

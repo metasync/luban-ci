@@ -53,6 +53,12 @@ make tools-image-push
 make pipeline-deploy
 ```
 
+Verify installed resources:
+
+```bash
+make pipeline-verify
+```
+
 This applies:
 - RBAC objects under `manifests/rbac/`
 - kpack objects under `manifests/kpack/`
@@ -66,7 +72,12 @@ make events-deploy
 make events-webhook-secret
 ```
 
+Verify installed resources:
+
+```bash
+make events-verify
+```
+
 ## Next: Verify
 
 Proceed to: [day-0-verify.md](day-0-verify.md)
-

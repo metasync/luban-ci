@@ -41,7 +41,14 @@ make events-deploy
 
 5. Verify:
 
-- Use: [day-0-verify.md](day-0-verify.md)
+- Quick checks:
+
+```bash
+make pipeline-verify
+make events-verify
+```
+
+- Deeper checks: [day-0-verify.md](day-0-verify.md)
 
 ## Tooling Upgrades (gitops-utils / luban-provisioner)
 

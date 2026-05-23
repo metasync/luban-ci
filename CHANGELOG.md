@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Makefiles**: Added `pipeline-verify` / `events-verify` targets and decomposed manifest deployment into composable sub-targets for safer operations.
+- **Makefiles**: Removed app-specific defaults from `Makefile.env`; `make pipeline-logs` now requires `APP_NAME` to be provided explicitly.
 
 ### Docs
 

@@ -82,6 +82,7 @@ clean: ## Delete all workflows
 	@kubectl delete wf --all -n $(K8S_NAMESPACE)
 
 logs: ## Show logs for the latest kpack build of the app
+	@if [ -z "$(APP_NAME)" ]; then echo "Error: APP_NAME is required. Usage: make pipeline-logs APP_NAME=my-app"; exit 1; fi
 	@echo "Fetching logs for $(APP_NAME) in $(K8S_NAMESPACE)..."
 	@kp build logs $(APP_NAME) -n $(K8S_NAMESPACE)
 
