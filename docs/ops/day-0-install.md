@@ -24,6 +24,8 @@ Create a local `secrets/` directory (ignored by git) and add the provider/regist
 - Follow: [../guides/getting-started.md](../guides/getting-started.md)
 - If using a private CA: [../guides/private-ca.md](../guides/private-ca.md)
 
+Before running `make secrets`, confirm the fundamental platform settings in `Makefile.env` match your cluster and registry (for example `K8S_NAMESPACE`, `ARGOCD_NAMESPACE`, `CERT_MANAGER_NAMESPACE`, `REGISTRY_SERVER`). The secrets setup scripts fail fast if these are missing.
+
 Apply secrets:
 
 ```bash

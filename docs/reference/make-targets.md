@@ -2,6 +2,8 @@
 
 This document describes the Make targets that function as the operator API for installing and operating Luban CI.
 
+Core platform defaults (namespaces, registry settings, versions) live in `Makefile.env`.
+
 ## Root Makefile
 
 Source: `Makefile`

@@ -19,6 +19,8 @@
 ### 1. Credentials Setup
 Create a `secrets/` directory and add the following files (these are ignored by git). The `make secrets` command reads `secrets/*.env` and applies the Kubernetes Secrets.
 
+Before running `make secrets`, review `Makefile.env` and update the fundamental platform defaults if needed (for example `K8S_NAMESPACE`, `ARGOCD_NAMESPACE`, `CERT_MANAGER_NAMESPACE`, `REGISTRY_SERVER`). Luban CI treats these as source-of-truth configuration, not ad-hoc runtime overrides.
+
 #### Git Provider Credentials (Required)
 
 Configure the provider(s) you use. The secrets setup script creates provider secrets only when the corresponding token env vars are set.
