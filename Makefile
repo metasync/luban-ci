@@ -116,6 +116,7 @@ test-events-webhook-py: ## Send signed push payload via gateway to trigger Workf
 	@$(MAKE) -C test test-webhook-py
 
 lint: ## Run lint checks (tools + templates)
+	@$(MAKE) -C tools/gitops-utils lint
 	@$(MAKE) -C tools/luban-provisioner lint
 
 format: ## Auto-fix and format (tools + templates)

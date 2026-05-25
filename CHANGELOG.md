@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Docs (DevOps)**: Added an operator-first documentation set under `docs/ops/` (day-0 install/verify, day-2 operations, upgrades, and troubleshooting runbooks).
 - **Docs (Reference)**: Added `docs/reference/make-targets.md` as a curated operator map of Make targets.
+- **Tooling (gitops-utils)**: Added reusable workflow helper scripts (kpack apply/wait, GitOps update, Argo CD AppProject/Application provisioning, infra apps) to reduce workflow shell/YAML fragility.
 
 ### Fixed
 
@@ -19,7 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Makefiles**: Added `pipeline-verify` / `events-verify` targets and decomposed manifest deployment into composable sub-targets for safer operations.
 - **Makefiles**: Removed app-specific defaults from `Makefile.env`; `make pipeline-logs` now requires `APP_NAME` to be provided explicitly.
 - **Makefiles**: Subdirectory Makefiles now include the repo root `Makefile.env` so targets work consistently when invoked standalone (e.g. `make -C manifests ...`).
+- **Makefiles**: Root `make lint` now includes recursive shell syntax checks for `tools/gitops-utils/scripts/**/*.sh`.
 - **Scripts**: Secrets and tunnel setup scripts now require core namespace/registry settings to be provided via `Makefile.env` (fail fast instead of silently defaulting).
+- **Workflows (kpack/argocd/provisioning/harbor/dispatcher)**: Templates now invoke versioned `gitops-utils` helper scripts instead of embedding large inline shell programs.
+- **Tooling Images**: Bumped `gitops-utils` to `0.4.0`.
 
 ### Docs
 

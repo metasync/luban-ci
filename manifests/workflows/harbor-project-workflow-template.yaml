@@ -43,50 +43,10 @@ spec:
           - name: registry_visibility
       container:
         image: "{{workflow.parameters.gitops_utils_image}}"
-        command: [sh, -c]
+        command: [/usr/local/bin/harbor_create_project.sh]
         args:
-          - |
-            PROJECT_NAME="{{inputs.parameters.project_name}}"
-            HARBOR_URL="https://${REGISTRY_SERVER}"
-            VISIBILITY="{{inputs.parameters.registry_visibility}}"
-            
-            if [ "$VISIBILITY" = "public" ]; then
-              PUBLIC="true"
-            else
-              PUBLIC="false"
-            fi
-
-            echo "Creating project '$PROJECT_NAME' on $HARBOR_URL..."
-            
-            PAYLOAD=$(cat <<EOF
-            {
-              "project_name": "$PROJECT_NAME",
-              "public": $PUBLIC,
-              "metadata": {
-                "public": "$PUBLIC"
-              }
-            }
-            EOF
-            )
-
-            RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
-              -X POST "$HARBOR_URL/api/v2.0/projects" \
-              -H "Content-Type: application/json" \
-              -d "$PAYLOAD")
-
-            if [ "$RESPONSE" -eq 201 ]; then
-                echo "Project created successfully."
-            elif [ "$RESPONSE" -eq 409 ]; then
-                echo "Project already exists."
-            else
-                echo "Failed to create project. HTTP status: $RESPONSE"
-                # Print body for debugging
-                curl -s -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
-                  -X POST "$HARBOR_URL/api/v2.0/projects" \
-                  -H "Content-Type: application/json" \
-                  -d "$PAYLOAD"
-                exit 1
-            fi
+          - "{{inputs.parameters.project_name}}"
+          - "{{inputs.parameters.registry_visibility}}"
         env:
           - name: CURL_CA_BUNDLE
             valueFrom:

@@ -5,7 +5,7 @@ include $(ROOT_DIR)/Makefile.env
 -include Makefile.env
 export
 
-.PHONY: build push
+.PHONY: build push lint
 
 build: ## Build gitops utils tooling image
 	@docker build --platform linux/amd64 \
@@ -23,3 +23,9 @@ push: ## Push gitops-utils tooling image (build if missing)
 		echo "$(QUAY_PASSWORD)" | docker login -u "$(QUAY_USERNAME)" --password-stdin $(REGISTRY_SERVER); \
 		docker push $$IMAGE; \
 	fi
+
+lint: ## Run shell syntax checks for gitops utils scripts
+	@for script in $$(find scripts -type f -name '*.sh' | sort); do \
+		echo "Checking $$script"; \
+		sh -n "$$script" || exit 1; \
+	done

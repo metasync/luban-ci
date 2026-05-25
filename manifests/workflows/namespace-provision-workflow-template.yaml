@@ -94,77 +94,12 @@ spec:
               name: luban-config
               key: cilium_egress_gateway_policy
               optional: true
-      command: [sh, -c]
+      command: [/usr/local/bin/argocd_apply_namespace_infra_app.sh]
       args:
-      - |
-        # Calculate Repo URL
-        REPO_NAME="luban-infra-cd"
-        # Assuming luban-infra project for Azure
-        INFRA_PROJECT="luban-infra"
-
-        BASE_URL="${GIT_BASE_URL:-https://${GIT_SERVER}}"
-        if [ "{{inputs.parameters.git_provider}}" = "azure" ] || [ "{{inputs.parameters.git_provider}}" = "ado" ]; then
-            REPO_URL="${BASE_URL}/{{inputs.parameters.git_organization}}/${INFRA_PROJECT}/_git/${REPO_NAME}"
-        else
-            REPO_URL="${BASE_URL}/{{inputs.parameters.git_organization}}/${REPO_NAME}.git"
-        fi
-
-        APP_NAME="{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}-infra"
-
-        # Get Destination Server from Cluster Map
-        DEST_SERVER=$(echo "$CLUSTER_MAP" | jq -r --arg env "{{inputs.parameters.environment}}" '.[$env]')
-        if [ -z "$DEST_SERVER" ] || [ "$DEST_SERVER" = "null" ]; then
-            echo "Error: Could not find cluster URL for environment {{inputs.parameters.environment}}"
-            exit 1
-        fi
-
-        NAMESPACE="{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}"
-
-        SYNC_POLICY_BLOCK=""
-        if [ "{{inputs.parameters.environment}}" != "prd" ]; then
-            SYNC_POLICY_BLOCK="automated:
-              prune: true
-              selfHeal: true"
-        fi
-
-        echo "Creating Namespace Infra App $APP_NAME..."
-
-        if [ -n "${CILIUM_EGRESS_GATEWAY_POLICY:-}" ]; then
-          if ! kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; then
-            kubectl create namespace "${NAMESPACE}"
-          fi
-          kubectl label namespace "${NAMESPACE}" "luban-ci.io/cilium-egress-gateway-policy=${CILIUM_EGRESS_GATEWAY_POLICY}" --overwrite
-        fi
-
-        cat <<EOF | kubectl apply -f -
-        apiVersion: argoproj.io/v1alpha1
-        kind: Application
-        metadata:
-          name: $APP_NAME
-          namespace: argocd
-        spec:
-          project: default
-          source:
-            repoURL: ${REPO_URL}
-            targetRevision: main
-            path: overlays/{{inputs.parameters.environment}}-{{inputs.parameters.project_name}}
-          destination:
-            server: ${DEST_SERVER}
-            namespace: ${NAMESPACE}
-          ignoreDifferences:
-            - group: ""
-              kind: Secret
-              name: harbor-ro-creds
-              namespace: ${NAMESPACE}
-              jsonPointers:
-                - /data
-                - /stringData
-          syncPolicy:
-            ${SYNC_POLICY_BLOCK}
-            syncOptions:
-              - CreateNamespace=true
-              - ServerSideApply=true
-        EOF
+        - "{{inputs.parameters.environment}}"
+        - "{{inputs.parameters.project_name}}"
+        - "{{inputs.parameters.git_organization}}"
+        - "{{inputs.parameters.git_provider}}"
 
   volumeClaimTemplates:
   - metadata:

@@ -17,5 +17,9 @@ RUN curl -sLO https://github.com/argoproj/argo-workflows/releases/download/${ARG
 RUN curl -L https://github.com/buildpacks-community/kpack-cli/releases/download/v${KP_VERSION}/kp-linux-amd64-${KP_VERSION} -o /usr/local/bin/kp && \
     chmod +x /usr/local/bin/kp
 
+COPY scripts /opt/luban/gitops-utils/scripts
+COPY scripts/bin/*.sh /usr/local/bin/
+RUN find /opt/luban/gitops-utils/scripts -type f -name '*.sh' -exec chmod 0755 {} \; && chmod 0755 /usr/local/bin/*.sh
+
 RUN adduser -D -u 1000 luban
 USER 1000
