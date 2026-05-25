@@ -36,6 +36,11 @@ Source: `Makefile`
 - `make lint`: run lint checks (currently provisioner-focused)
 - `make format`: run auto-format (currently provisioner-focused)
 
+### Provisioner Tips
+
+- `luban-provisioner` supports `--dry-run` on multiple commands to render templates locally without pushing to git or calling provider APIs.
+- Template context logging can be controlled via env vars: `LUBAN_PROVISIONER_LOG_CONTEXT`, `LUBAN_PROVISIONER_LOG_CONTEXT_MODE`, `LUBAN_PROVISIONER_MASK_CONTEXT_SECRETS`.
+
 ## manifests/Makefile
 
 Source: `manifests/Makefile`

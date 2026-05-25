@@ -3,15 +3,13 @@ import sys
 
 import click
 
+from luban_provisioner.cli.common import format_context_for_log, parse_set_overrides
+from luban_provisioner.config.io import load_config
+from luban_provisioner.git.repo import initialize_git_repo
+from luban_provisioner.git.setup import prepare_git_https
 from luban_provisioner.provider_factory import get_git_provider, get_remote_url
-from luban_provisioner.utils import (
-    apply_git_https_config,
-    configure_git_https_auth,
-    configure_git_identity,
-    initialize_git_repo,
-    load_config,
-    render_template,
-)
+from luban_provisioner.templates.paths import resolve_template_path
+from luban_provisioner.templates.render import render_template
 
 
 @click.command(name="source")
@@ -36,6 +34,7 @@ from luban_provisioner.utils import (
 )
 @click.option("--config-file", required=False, help="Path to configuration file (YAML/JSON)")
 @click.option("--set", multiple=True, help="Set extra context values (key=value)")
+@click.option("--dry-run/--no-dry-run", default=False, help="Render only; skip provider operations")
 def source(
     project_name,
     application_name,
@@ -50,6 +49,7 @@ def source(
     template_type,
     config_file,
     set,
+    dry_run,
 ):
     """Provision Source Code Repository"""
 
@@ -57,13 +57,7 @@ def source(
     config = load_config(config_file)
 
     # Parse set options
-    cli_extra_context = {}
-    for item in set:
-        if "=" in item:
-            key, value = item.split("=", 1)
-            cli_extra_context[key] = value
-        else:
-            click.echo(f"Warning: Invalid set option '{item}'. Must be key=value", err=True)
+    cli_extra_context = parse_set_overrides(set)
 
     template_type = (
         template_type if template_type != "python" else config.get("template_type", "python")
@@ -73,19 +67,24 @@ def source(
     org = git_organization if git_organization else project_name
     repo_name = application_name
 
-    git_base_url = apply_git_https_config(config, git_provider, git_server)
-    provider = get_git_provider(
-        git_provider,
-        git_token,
-        server=git_server,
-        organization=org,
-        project=project_name,
-        base_url=git_base_url,
-    )
+    git_base_url = None
+    provider = None
+    if not dry_run:
+        from luban_provisioner.git.auth import apply_git_https_config
 
-    if provider.repo_exists(repo_name):
-        click.echo(f"Repository {repo_name} already exists. Skipping.")
-        sys.exit(0)
+        git_base_url = apply_git_https_config(config, git_provider, git_server)
+        provider = get_git_provider(
+            git_provider,
+            git_token,
+            server=git_server,
+            organization=org,
+            project=project_name,
+            base_url=git_base_url,
+        )
+
+        if provider.repo_exists(repo_name):
+            click.echo(f"Repository {repo_name} already exists. Skipping.")
+            sys.exit(0)
 
     package_name = application_name.replace("-", "_")
 
@@ -97,7 +96,9 @@ def source(
             template_path = "/app/templates/source/luban-dagster-code-location-source-template"
             description = f"Dagster Code Location for {application_name}"
         case "dagster-dbt-starrocks-code-location":
-            template_path = "/app/templates/source/luban-dagster-dbt-starrocks-code-location-source-template"
+            template_path = (
+                "/app/templates/source/luban-dagster-dbt-starrocks-code-location-source-template"
+            )
             description = f"Dagster + dbt (StarRocks) Code Location for {application_name}"
         case "python":
             template_path = "/app/templates/source/luban-python-template"
@@ -105,6 +106,11 @@ def source(
         case _:
             click.echo(f"Unknown template type: {template_type}", err=True)
             sys.exit(1)
+
+    try:
+        template_path = resolve_template_path(template_path)
+    except FileNotFoundError:
+        sys.exit(1)
 
     extra_context = {
         "project_name": project_name,
@@ -135,12 +141,18 @@ def source(
         webhook_url = config.get("webhook_url")
 
     click.echo(f"Provisioning source repo for app {application_name} in project {project_name}...")
-    click.echo(f"Context: {extra_context}")
+    formatted_context = format_context_for_log(extra_context)
+    if formatted_context is not None:
+        click.echo(f"Context: {formatted_context}")
 
     try:
         render_template(template_path, output_dir, extra_context)
     except Exception:
         sys.exit(1)
+
+    if dry_run:
+        click.echo("Dry run: skipping provider operations.")
+        return
 
     # Post-provisioning: Push to Git
     if provider:
@@ -160,7 +172,6 @@ def source(
             git_provider, git_token, git_server, org, project_name, repo_name, base_url=git_base_url
         )
 
-        configure_git_https_auth(git_username, git_token, git_server)
-        configure_git_identity()
+        prepare_git_https(git_username, git_token, git_server)
 
         initialize_git_repo(repo_dir, remote_url)

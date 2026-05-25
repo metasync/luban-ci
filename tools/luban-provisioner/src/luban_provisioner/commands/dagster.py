@@ -6,8 +6,9 @@ import tempfile
 import click
 from ruamel.yaml import YAML
 
+from luban_provisioner.git.exec import run_git
+from luban_provisioner.git.setup import prepare_git_https
 from luban_provisioner.provider_factory import get_git_provider, get_remote_url
-from luban_provisioner.utils import configure_git_https_auth, configure_git_identity, run_git
 
 
 @click.group()
@@ -59,8 +60,7 @@ def register_location(
         f"Registering code location '{location_name}' in platform '{platform_app}' ({environment})..."
     )
 
-    configure_git_https_auth(git_username, git_token, git_server)
-    configure_git_identity()
+    prepare_git_https(git_username, git_token, git_server)
 
     # 2. Clone Platform GitOps Repo
     platform_repo_name = f"{platform_app}-gitops"

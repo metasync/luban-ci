@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+### Changed
+
+### Docs
+
+## \[v1.3.0] - 2026-05-25
+
+### Added
+
 - **Docs (DevOps)**: Added an operator-first documentation set under `docs/ops/` (day-0 install/verify, day-2 operations, upgrades, and troubleshooting runbooks).
 - **Docs (Reference)**: Added `docs/reference/make-targets.md` as a curated operator map of Make targets.
 - **Tooling (gitops-utils)**: Added reusable workflow helper scripts (kpack apply/wait, GitOps update, Argo CD AppProject/Application provisioning, infra apps) to reduce workflow shell/YAML fragility.
@@ -22,12 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Makefiles**: Subdirectory Makefiles now include the repo root `Makefile.env` so targets work consistently when invoked standalone (e.g. `make -C manifests ...`).
 - **Makefiles**: Root `make lint` now includes recursive shell syntax checks for `tools/gitops-utils/scripts/**/*.sh`.
 - **Scripts**: Secrets and tunnel setup scripts now require core namespace/registry settings to be provided via `Makefile.env` (fail fast instead of silently defaulting).
+- **Provisioner**: Refactored internal helpers into domain modules (`git/`, `config/`, `templates/`, `cli/`) and removed legacy `utils.py`.
+- **Provisioner**: Centralized `--set key=value` override parsing, template path resolution, and Git HTTPS preparation (auth + identity).
+- **Provisioner**: Warning suppression for `urllib3` is now controlled via `LUBAN_PROVISIONER_SUPPRESS_URLLIB3_WARNING` (default enabled).
+- **Provisioner**: Print context summary by default and support env-configurable masking/logging modes; add helper unit tests; add `--dry-run` for local render-only runs (including infra templates, project, and promote).
+- **Provisioner**: Bumped `luban-provisioner` to `0.4.0`.
 - **Workflows (kpack/argocd/provisioning/harbor/dispatcher)**: Templates now invoke versioned `gitops-utils` helper scripts instead of embedding large inline shell programs.
 - **Tooling Images**: Bumped `gitops-utils` to `0.4.0`.
 
 ### Docs
 
 - **Docs (Entry points)**: Linked DevOps ops docs from README and cross-linked ops guidance from existing guides.
+- **Provisioner**: Updated `tools/luban-provisioner/README.md` to match the new internal module layout.
 
 ## \[v1.2.7] - 2026-05-22
 

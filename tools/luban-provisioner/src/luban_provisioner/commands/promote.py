@@ -6,8 +6,9 @@ import tempfile
 import click
 from ruamel.yaml import YAML
 
+from luban_provisioner.git.exec import run_git
+from luban_provisioner.git.setup import prepare_git_https
 from luban_provisioner.provider_factory import get_git_provider, get_remote_url
-from luban_provisioner.utils import configure_git_https_auth, configure_git_identity, run_git
 
 
 def _select_image(images, app_name):
@@ -59,6 +60,7 @@ def _select_image(images, app_name):
     help="Git base URL (optional, supports path prefixes)",
 )
 @click.option("--project-name", required=True, help="Project Name (for Azure)")
+@click.option("--dry-run/--no-dry-run", default=False, help="Skip commit/push/PR creation")
 def promote(
     app_name,
     git_organization,
@@ -68,6 +70,7 @@ def promote(
     git_server,
     git_base_url,
     project_name,
+    dry_run,
 ):
     """Promote an application from Sandbox (snd) to Production (prd)."""
     gitops_repo_name = f"{app_name}-gitops"
@@ -94,8 +97,7 @@ def promote(
         base_url=git_base_url,
     )
 
-    configure_git_https_auth(git_username, git_token, git_server)
-    configure_git_identity()
+    prepare_git_https(git_username, git_token, git_server)
 
     yaml = YAML()
     yaml.preserve_quotes = True
@@ -166,6 +168,12 @@ def promote(
                 return
 
             commit_msg = f"Promote {app_name} to prd (tag: {target_tag})"
+            if dry_run:
+                click.echo("Dry run: skipping commit/push/PR creation.")
+                click.echo(f"Would commit: {commit_msg}")
+                click.echo(f"Would PR title: Promote {app_name} to prd ({target_tag})")
+                return
+
             run_git(["add", "."], check=True)
             run_git(["commit", "-m", commit_msg], check=True)
             run_git(["push", "origin", "develop"], check=True)

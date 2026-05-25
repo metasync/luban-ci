@@ -7,8 +7,6 @@ from unittest.mock import patch
 
 class TestGitAuth(unittest.TestCase):
     def test_get_remote_url_never_embeds_token(self):
-        if "click" not in sys.modules:
-            sys.modules["click"] = types.SimpleNamespace(echo=lambda *args, **kwargs: None)
         if "luban_provisioner.providers.github" not in sys.modules:
             github_mod = types.ModuleType("luban_provisioner.providers.github")
             github_mod.GitHubProvider = object
@@ -40,21 +38,7 @@ class TestGitAuth(unittest.TestCase):
         self.assertNotIn(token, azure_url2)
 
     def test_configure_git_https_auth_writes_expected_credentials_line(self):
-        if "click" not in sys.modules:
-            sys.modules["click"] = types.SimpleNamespace(echo=lambda *args, **kwargs: None)
-        if "ruamel" not in sys.modules:
-            sys.modules["ruamel"] = types.ModuleType("ruamel")
-        if "ruamel.yaml" not in sys.modules:
-            ruamel_yaml = types.ModuleType("ruamel.yaml")
-            ruamel_yaml.YAML = lambda *args, **kwargs: None
-            sys.modules["ruamel.yaml"] = ruamel_yaml
-        if "cookiecutter" not in sys.modules:
-            sys.modules["cookiecutter"] = types.ModuleType("cookiecutter")
-        if "cookiecutter.main" not in sys.modules:
-            cookiecutter_main = types.ModuleType("cookiecutter.main")
-            cookiecutter_main.cookiecutter = lambda *args, **kwargs: None
-            sys.modules["cookiecutter.main"] = cookiecutter_main
-        from luban_provisioner.utils import configure_git_https_auth
+        from luban_provisioner.git.auth import configure_git_https_auth
 
         writes = {}
 

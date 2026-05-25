@@ -1,14 +1,17 @@
+import os
 import warnings
 
-warnings.filterwarnings(
-    "ignore",
-    message=r"urllib3 .* doesn't match a supported version!",
-    category=Warning,
-)
+if os.getenv("LUBAN_PROVISIONER_SUPPRESS_URLLIB3_WARNING", "1") == "1":
+    warnings.filterwarnings(
+        "ignore",
+        message=r"urllib3 .* doesn't match a supported version!",
+        category=Warning,
+    )
 import click
 
 from luban_provisioner.commands.config import config
 from luban_provisioner.commands.dagster import dagster
+from luban_provisioner.commands.dryrun import dry_run
 from luban_provisioner.commands.gitops import gitops
 from luban_provisioner.commands.infra import infra
 from luban_provisioner.commands.project import project
@@ -29,6 +32,7 @@ cli.add_command(promote)
 cli.add_command(config)
 cli.add_command(dagster)
 cli.add_command(infra)
+cli.add_command(dry_run)
 
 if __name__ == "__main__":
     cli()

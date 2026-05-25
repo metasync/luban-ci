@@ -21,6 +21,7 @@ from luban_provisioner.provider_factory import get_git_provider
     envvar="IMAGE_PULL_SECRET",
     help="Name of the image pull secret to use (env: IMAGE_PULL_SECRET)",
 )
+@click.option("--dry-run/--no-dry-run", default=False, help="Skip provider operations")
 def project(
     project_name,
     git_organization,
@@ -30,8 +31,13 @@ def project(
     admin_group,
     developer_group,
     image_pull_secret,
+    dry_run,
 ):
     """Ensure Git Project/Organization exists."""
+
+    if dry_run:
+        click.echo("Dry run: skipping provider operations.")
+        return
 
     provider = get_git_provider(
         git_provider,

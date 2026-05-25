@@ -3,16 +3,16 @@ import sys
 
 import click
 
-from luban_provisioner.provider_factory import get_git_provider, get_remote_url
-from luban_provisioner.utils import (
-    apply_git_https_config,
-    configure_git_https_auth,
-    configure_git_identity,
+from luban_provisioner.cli.common import format_context_for_log, parse_set_overrides
+from luban_provisioner.config.io import load_config
+from luban_provisioner.git.repo import (
     create_and_push_branch,
     initialize_git_repo,
-    load_config,
-    render_template,
 )
+from luban_provisioner.git.setup import prepare_git_https
+from luban_provisioner.provider_factory import get_git_provider, get_remote_url
+from luban_provisioner.templates.paths import resolve_template_path
+from luban_provisioner.templates.render import render_template
 
 
 @click.command(name="gitops")
@@ -40,6 +40,7 @@ from luban_provisioner.utils import (
 )
 @click.option("--config-file", required=False, help="Path to configuration file (YAML/JSON)")
 @click.option("--set", multiple=True, help="Set extra context values (key=value)")
+@click.option("--dry-run/--no-dry-run", default=False, help="Render only; skip provider operations")
 def gitops(
     project_name,
     application_name,
@@ -57,6 +58,7 @@ def gitops(
     template_type,
     config_file,
     set,
+    dry_run,
 ):
     """Provision GitOps Repository"""
 
@@ -64,13 +66,7 @@ def gitops(
     config = load_config(config_file)
 
     # Parse set options
-    cli_extra_context = {}
-    for item in set:
-        if "=" in item:
-            key, value = item.split("=", 1)
-            cli_extra_context[key] = value
-        else:
-            click.echo(f"Warning: Invalid set option '{item}'. Must be key=value", err=True)
+    cli_extra_context = parse_set_overrides(set)
 
     # Merge config with CLI args (CLI args take precedence if provided, otherwise fallback to config)
     # Note: For optional args, we check if they are None from CLI
@@ -108,19 +104,24 @@ def gitops(
     org = git_organization if git_organization else project_name
     repo_name = f"{application_name}-gitops"
 
-    git_base_url = apply_git_https_config(config, git_provider, git_server)
-    provider = get_git_provider(
-        git_provider,
-        git_token,
-        server=git_server,
-        organization=org,
-        project=project_name,
-        base_url=git_base_url,
-    )
+    git_base_url = None
+    provider = None
+    if not dry_run:
+        from luban_provisioner.git.auth import apply_git_https_config
 
-    if provider.repo_exists(repo_name):
-        click.echo(f"Repository {repo_name} already exists. Skipping.")
-        sys.exit(0)
+        git_base_url = apply_git_https_config(config, git_provider, git_server)
+        provider = get_git_provider(
+            git_provider,
+            git_token,
+            server=git_server,
+            organization=org,
+            project=project_name,
+            base_url=git_base_url,
+        )
+
+        if provider.repo_exists(repo_name):
+            click.echo(f"Repository {repo_name} already exists. Skipping.")
+            sys.exit(0)
 
     # Template Selection
     if template_type == "dagster-platform":
@@ -129,6 +130,11 @@ def gitops(
         template_path = "/app/templates/gitops/luban-dagster-code-location-gitops-template"
     else:
         template_path = "/app/templates/gitops/luban-gitops-template"
+
+    try:
+        template_path = resolve_template_path(template_path)
+    except FileNotFoundError:
+        sys.exit(1)
 
     package_name = application_name.replace("-", "_")
 
@@ -153,13 +159,19 @@ def gitops(
         extra_context["default_image_tag"] = default_image_tag
 
     click.echo(f"Provisioning GitOps repo for app {application_name} in project {project_name}...")
-    click.echo(f"Context: {extra_context}")
+    formatted_context = format_context_for_log(extra_context)
+    if formatted_context is not None:
+        click.echo(f"Context: {formatted_context}")
 
     try:
         render_template(template_path, output_dir, extra_context)
     except Exception:
         click.echo(f"Error: Failed to render template to {output_dir}", err=True)
         sys.exit(1)
+
+    if dry_run:
+        click.echo("Dry run: skipping provider operations.")
+        return
 
     # Inflate Helm Chart if necessary (for Dagster Platform)
     # This logic detects if we used the dagster platform template and runs helm template
@@ -182,8 +194,7 @@ def gitops(
             git_provider, git_token, git_server, org, project_name, repo_name, base_url=git_base_url
         )
 
-        configure_git_https_auth(git_username, git_token, git_server)
-        configure_git_identity()
+        prepare_git_https(git_username, git_token, git_server)
 
         initialize_git_repo(repo_dir, remote_url)
 

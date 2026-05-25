@@ -4,15 +4,15 @@ import sys
 
 import click
 
-from luban_provisioner.provider_factory import get_git_provider, get_remote_url
-from luban_provisioner.utils import (
+from luban_provisioner.git.repo import (
     clone_git_repo,
     commit_and_push,
-    configure_git_https_auth,
-    configure_git_identity,
     initialize_git_repo,
-    render_template,
 )
+from luban_provisioner.git.setup import prepare_git_https
+from luban_provisioner.provider_factory import get_git_provider, get_remote_url
+from luban_provisioner.templates.paths import resolve_template_path
+from luban_provisioner.templates.render import render_template
 
 
 @click.group(name="infra")
@@ -51,18 +51,21 @@ def _update_impl(
     work_dir,
     infra_project_name,
     local_dir=None,
+    dry_run=False,
+    dry_run_dir=None,
 ):
-    # Fallback for local template
-    if not os.path.exists(template_path):
-        cwd = os.getcwd()
-        # template_path passed in might be absolute /app/..., try to find local relative
-        template_dirname = os.path.basename(template_path)
-        local_template = os.path.join(cwd, f"tools/luban-provisioner/templates/{template_dirname}")
-        if os.path.exists(local_template):
-            template_path = local_template
-        else:
-            click.echo(f"Error: Template not found at {template_path}", err=True)
-            sys.exit(1)
+    try:
+        template_path = resolve_template_path(template_path)
+    except FileNotFoundError:
+        sys.exit(1)
+
+    if dry_run:
+        base_dir = dry_run_dir or os.path.join(work_dir, "dry-run")
+        overlays_dir = os.path.join(base_dir, repo_name, "overlays")
+        os.makedirs(overlays_dir, exist_ok=True)
+        render_template(template_path, overlays_dir, context, overwrite=True)
+        click.echo("Dry run: rendered overlay; skipping git operations.")
+        return
 
     # Clone Repo
     remote_url = get_remote_url(
@@ -75,8 +78,7 @@ def _update_impl(
         base_url=git_base_url,
     )
 
-    configure_git_https_auth(git_username, git_token, git_server)
-    configure_git_identity()
+    prepare_git_https(git_username, git_token, git_server)
 
     # Use local_dir if provided, otherwise repo_name
     clone_dir_name = local_dir if local_dir else repo_name
@@ -116,17 +118,22 @@ def _init_impl(
     git_token,
     output_dir,
     project_name,
+    dry_run=False,
+    dry_run_dir=None,
 ):
-    # Fallback logic
-    if not os.path.exists(template_path):
-        cwd = os.getcwd()
-        template_dirname = os.path.basename(template_path)
-        local_template = os.path.join(cwd, f"tools/luban-provisioner/templates/{template_dirname}")
-        if os.path.exists(local_template):
-            template_path = local_template
-        else:
-            click.echo(f"Error: Template not found at {template_path}", err=True)
-            sys.exit(1)
+    try:
+        template_path = resolve_template_path(template_path)
+    except FileNotFoundError:
+        sys.exit(1)
+
+    if dry_run:
+        if dry_run_dir:
+            output_dir = dry_run_dir
+        if "repo_name" not in context:
+            context["repo_name"] = repo_name
+        render_template(template_path, output_dir, context, overwrite=True)
+        click.echo("Dry run: rendered base; skipping provider and git operations.")
+        return
 
     # Get Provider
     provider = get_git_provider(
@@ -168,8 +175,7 @@ def _init_impl(
     )
     repo_dir = os.path.join(output_dir, repo_name)
 
-    configure_git_https_auth(git_username, git_token, git_server)
-    configure_git_identity()
+    prepare_git_https(git_username, git_token, git_server)
 
     if os.path.exists(repo_dir):
         shutil.rmtree(repo_dir)
@@ -224,6 +230,8 @@ def _init_impl(
     help="Image Pull Secret Name (env: IMAGE_PULL_SECRET)",
 )
 @click.option("--local-dir", default=None, help="Local directory name (defaults to repo-name)")
+@click.option("--dry-run/--no-dry-run", default=False, help="Render only; skip git operations")
+@click.option("--dry-run-dir", default=None, help="Output directory for --dry-run")
 def update_ci(
     repo_name,
     project_name,
@@ -239,6 +247,8 @@ def update_ci(
     developer_group,
     image_pull_secret,
     local_dir,
+    dry_run,
+    dry_run_dir,
 ):
     """Update CI infra repo with new overlay."""
     context = {
@@ -264,6 +274,8 @@ def update_ci(
         work_dir,
         infra_project_name,
         local_dir=local_dir,
+        dry_run=dry_run,
+        dry_run_dir=dry_run_dir,
     )
 
 
@@ -300,6 +312,10 @@ def update_ci(
     default="",
     help="Host for ADO Server SSH (kpack.io/git annotation)",
 )
+@click.option(
+    "--dry-run/--no-dry-run", default=False, help="Render only; skip provider and git ops"
+)
+@click.option("--dry-run-dir", default=None, help="Output directory for --dry-run")
 def init_ci(
     repo_name,
     git_organization,
@@ -313,6 +329,8 @@ def init_ci(
     image_pull_secret,
     azure_ssh_host,
     ado_ssh_host,
+    dry_run,
+    dry_run_dir,
 ):
     """Initialize CI infra repo with base structure."""
 
@@ -355,6 +373,8 @@ def init_ci(
         git_token,
         output_dir,
         project_name,
+        dry_run=dry_run,
+        dry_run_dir=dry_run_dir,
     )
 
 
@@ -385,6 +405,8 @@ def init_ci(
     help="Image Pull Secret Name (env: IMAGE_PULL_SECRET)",
 )
 @click.option("--local-dir", default=None, help="Local directory name (defaults to repo-name)")
+@click.option("--dry-run/--no-dry-run", default=False, help="Render only; skip git operations")
+@click.option("--dry-run-dir", default=None, help="Output directory for --dry-run")
 def update_cd(
     repo_name,
     project_name,
@@ -399,6 +421,8 @@ def update_cd(
     infra_project_name,
     image_pull_secret,
     local_dir,
+    dry_run,
+    dry_run_dir,
 ):
     """Update CD infra repo with new overlay."""
     context = {
@@ -423,6 +447,8 @@ def update_cd(
         work_dir,
         infra_project_name,
         local_dir=local_dir,
+        dry_run=dry_run,
+        dry_run_dir=dry_run_dir,
     )
 
 
@@ -447,6 +473,10 @@ def update_cd(
     envvar="IMAGE_PULL_SECRET",
     help="Image Pull Secret Name (env: IMAGE_PULL_SECRET)",
 )
+@click.option(
+    "--dry-run/--no-dry-run", default=False, help="Render only; skip provider and git ops"
+)
+@click.option("--dry-run-dir", default=None, help="Output directory for --dry-run")
 def init_cd(
     repo_name,
     git_organization,
@@ -458,6 +488,8 @@ def init_cd(
     output_dir,
     project_name,
     image_pull_secret,
+    dry_run,
+    dry_run_dir,
 ):
     """Initialize CD infra repo with base structure."""
     context = {"image_pull_secret": image_pull_secret}
@@ -474,4 +506,6 @@ def init_cd(
         git_token,
         output_dir,
         project_name,
+        dry_run=dry_run,
+        dry_run_dir=dry_run_dir,
     )

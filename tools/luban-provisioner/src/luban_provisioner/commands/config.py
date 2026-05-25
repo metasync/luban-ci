@@ -3,7 +3,7 @@ import os
 import click
 import yaml
 
-from luban_provisioner.utils import load_config_from_dir
+from luban_provisioner.config.io import load_config_from_dir
 
 
 @click.command(name="config")
