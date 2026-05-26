@@ -38,9 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Provisioner**: Centralized `--set key=value` override parsing, template path resolution, and Git HTTPS preparation (auth + identity).
 - **Provisioner**: Warning suppression for `urllib3` is now controlled via `LUBAN_PROVISIONER_SUPPRESS_URLLIB3_WARNING` (default enabled).
 - **Provisioner**: Print context summary by default and support env-configurable masking/logging modes; add helper unit tests; add `--dry-run` for local render-only runs (including infra templates, project, and promote).
-- **Provisioner**: Bumped `luban-provisioner` to `0.4.0`.
+- **Provisioner**: Bumped `luban-provisioner` to `0.4.1`.
 - **Workflows (kpack/argocd/provisioning/harbor/dispatcher)**: Templates now invoke versioned `gitops-utils` helper scripts instead of embedding large inline shell programs.
-- **Tooling Images**: Bumped `gitops-utils` to `0.4.0`.
+- **Tooling Images**: Bumped `gitops-utils` to `0.4.1`.
 - **Workflows (dispatcher)**: Supersede commit builds (latest wins) by stopping in-flight workflows for the same app+git_ref stream; de-duplicate duplicate submissions for the same revision via workflow labels.
 
 ### Docs
