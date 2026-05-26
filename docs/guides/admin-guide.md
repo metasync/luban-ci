@@ -273,6 +273,15 @@ Common values:
   - A ConfigMap (`workflow-semaphores`) defines a named semaphore and its limit in each tenant CI namespace (`ci-*`).
   - The CI kpack ClusterWorkflowTemplate references this semaphore via `spec.synchronization.semaphores[].configMapKeyRef`.
   - Increase or decrease `kpack-builds` in the tenant namespace ConfigMap to control how many kpack builds run concurrently.
+- **Recommended for frequent commits**: Supersede (latest commit wins)
+  - Semaphores only throttle concurrency; they do not prevent builds for commits that become obsolete minutes later.
+  - The dispatcher script applies a “supersede” policy for non-tag refs: before submitting a new workflow, it stops any in-flight workflows for the same app+git_ref stream.
+  - Workflows are labeled to support grouping/dedup:
+    - `luban-supersede-key`: stable key derived from `app_name + git_ref` (commit stream identifier).
+    - `luban-revision`: commit SHA for the run.
+  - Dispatcher behavior for non-tag refs:
+    - Stop in-flight workflows with the same `luban-supersede-key` but a different `luban-revision`.
+    - If there is already an in-flight workflow for the same `luban-supersede-key` and `luban-revision`, skip submitting a duplicate.
 - **Optional**: Workflow spec.parallelism
   - Limits concurrent nodes within a single workflow. Our pipeline is sequential, so this is less impactful.
   - For parallel DAG/steps, set `spec.parallelism` in the Workflow/WorkflowTemplate.

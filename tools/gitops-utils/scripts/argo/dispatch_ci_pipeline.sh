@@ -10,6 +10,60 @@ slugify_dns_label() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g'
 }
 
+truncate_dns_label() {
+  value=$1
+  max_len=${2:-63}
+
+  truncated=$(printf '%s' "$value" | cut -c1-"$max_len")
+  printf '%s' "$truncated" | sed -E 's/^-+//; s/-+$//'
+}
+
+supersede_inflight_workflows() {
+  namespace=$1
+  supersede_key=$2
+  skip_revision=${3:-}
+
+  workflows=$(
+    kubectl -n "$namespace" get workflows.argoproj.io \
+      -l "luban-supersede-key=${supersede_key}" \
+      -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.phase}{"\t"}{.metadata.labels.luban-revision}{"\n"}{end}'
+  )
+
+  printf '%s\n' "$workflows" |
+    while IFS="$(printf '\t')" read -r wf_name wf_phase wf_rev; do
+      [ -n "${wf_name:-}" ] || continue
+      if [ -n "${skip_revision:-}" ] && [ "${wf_rev:-}" = "$skip_revision" ]; then
+        continue
+      fi
+      case "${wf_phase:-}" in Succeeded|Failed|Error) continue ;; esac
+      kubectl -n "$namespace" patch workflows.argoproj.io "$wf_name" --type merge -p '{"spec":{"shutdown":"Stop"}}' >/dev/null 2>&1 || true
+    done
+}
+
+has_inflight_workflow_for_revision() {
+  namespace=$1
+  supersede_key=$2
+  revision=$3
+
+  workflows=$(
+    kubectl -n "$namespace" get workflows.argoproj.io \
+      -l "luban-supersede-key=${supersede_key},luban-revision=${revision}" \
+      -o jsonpath='{range .items[*]}{.status.phase}{"\n"}{end}'
+  )
+
+  inflight=1
+  while IFS= read -r wf_phase; do
+    [ -n "${wf_phase:-}" ] || continue
+    case "${wf_phase:-}" in Succeeded|Failed|Error) continue ;; esac
+    inflight=0
+    break
+  done <<EOF
+$workflows
+EOF
+
+  return "$inflight"
+}
+
 derive_namespace_scope() {
   repo_url=$1
   git_provider=$2
@@ -89,6 +143,7 @@ require_no_cntrl repo_url "$REPO_URL"
 require_no_cntrl app_name "$APP_NAME"
 require_no_cntrl git_ref "$GIT_REF"
 require_no_cntrl git_creds_secret "$GIT_CREDS_SECRET"
+require_hex_rev revision "$REVISION"
 
 if [ -n "${KUBERNETES_SERVICE_HOST:-}" ] && [ -n "${KUBERNETES_SERVICE_PORT:-}" ]; then
   configure_incluster_kubeconfig
@@ -108,6 +163,25 @@ echo "Dispatching CI pipeline for ${APP_NAME} to ${TARGET_NS} (GitOps Env: ${DEP
 
 REGISTRY_SERVER_VALUE=${REGISTRY_SERVER:-}
 
+LABELS="app=$APP_NAME"
+LABELS="${LABELS},luban-revision=${REVISION}"
+
+if printf '%s' "$GIT_REF" | grep -Eqv '^refs/tags/'; then
+  SUPERSEDE_KEY=$(truncate_dns_label "$(slugify_dns_label "${APP_NAME}-${GIT_REF}")")
+  if [ -z "$SUPERSEDE_KEY" ]; then
+    SUPERSEDE_KEY=$(truncate_dns_label "$(slugify_dns_label "$APP_NAME")")
+  fi
+  require_dns_label supersede_key "$SUPERSEDE_KEY"
+
+  supersede_inflight_workflows "$TARGET_NS" "$SUPERSEDE_KEY" "$REVISION"
+  LABELS="${LABELS},luban-supersede-key=${SUPERSEDE_KEY}"
+
+  if has_inflight_workflow_for_revision "$TARGET_NS" "$SUPERSEDE_KEY" "$REVISION"; then
+    echo "Found an in-flight workflow for this revision; skipping duplicate submission."
+    exit 0
+  fi
+fi
+
 argo submit \
   --from clusterworkflowtemplate/luban-ci-kpack-template \
   -n "$TARGET_NS" \
@@ -121,5 +195,4 @@ argo submit \
   -p git_creds_secret="$GIT_CREDS_SECRET" \
   -p deploy_env="$DEPLOY_ENV" \
   -p registry_server="$REGISTRY_SERVER_VALUE" \
-  --labels "app=$APP_NAME"
-
+  --labels "$LABELS"

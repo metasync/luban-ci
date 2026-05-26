@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
-## \[v1.3.0] - 2026-05-25
+## \[v1.3.0] - 2026-05-26
 
 ### Added
 
@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tooling (gitops-utils)**: Added reusable workflow helper scripts (kpack apply/wait, GitOps update, Argo CD AppProject/Application provisioning, infra apps) to reduce workflow shell/YAML fragility.
 
 ### Fixed
+
+- **Dagster Platform (GitOps template)**: Grant `jobs/status` RBAC so the platform ServiceAccount can read Kubernetes Job status when launching runs.
 
 ### Changed
 
@@ -39,11 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Provisioner**: Bumped `luban-provisioner` to `0.4.0`.
 - **Workflows (kpack/argocd/provisioning/harbor/dispatcher)**: Templates now invoke versioned `gitops-utils` helper scripts instead of embedding large inline shell programs.
 - **Tooling Images**: Bumped `gitops-utils` to `0.4.0`.
+- **Workflows (dispatcher)**: Supersede commit builds (latest wins) by stopping in-flight workflows for the same app+git_ref stream; de-duplicate duplicate submissions for the same revision via workflow labels.
 
 ### Docs
 
 - **Docs (Entry points)**: Linked DevOps ops docs from README and cross-linked ops guidance from existing guides.
 - **Provisioner**: Updated `tools/luban-provisioner/README.md` to match the new internal module layout.
+- **Admin Guide**: Documented supersede behavior and the workflow labels used for grouping and de-duplication.
 
 ## \[v1.2.7] - 2026-05-22
 
