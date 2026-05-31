@@ -7,8 +7,8 @@ run_coordinator:
   class: QueuedRunCoordinator
 
 run_launcher:
-  module: dagster_k8s
-  class: K8sRunLauncher
+  module: luban_dagster_platform.k8s_run_launcher
+  class: CodeLocationAwareK8sRunLauncher
   config:
     service_account_name: "{{cookiecutter.app_name}}-sa"
     job_namespace:
@@ -17,6 +17,45 @@ run_launcher:
     env_config_maps:
       - dagster-env
       - dagster-observability
+    # ── Per-code-location env injection ──────────────────────────────
+    #
+    # The run launcher ensures every run pod (including ad-hoc asset
+    # materializations like __ASSET_JOB) receives the correct ConfigMaps
+    # and Secrets for its code location.
+    #
+    # Auto-discovery (no config needed):
+    #   Every code location automatically gets:
+    #     ConfigMap: `<location>-config`
+    #     Secret:    `<location>-secret`
+    #   (matches the naming convention set by code location deployments)
+    #
+    # Secret expectation:
+    #   `<location>-secret` is expected to exist. If a pipeline does not need any
+    #   secrets, create an empty Secret with that name to keep the convention.
+    #
+    # Explicit entries (optional, augments auto-discovery):
+    #   Add entries to code_location_env below to append extra env_vars,
+    #   extra ConfigMaps/Secrets, or custom k8s_config.
+    #   Explicit entries are MERGED on top of auto-discovered defaults,
+    #   they do NOT replace them.
+    #
+    # env_vars format:
+    #   Use `NAME=value` strings. NAME must match `[A-Za-z_][A-Za-z0-9_]*`.
+    #
+    # Merge rules for dagster-k8s/config:
+    #   envFrom    ─ platform items first, then user items (deduped)
+    #   env        ─ platform vars first by name, user vars preserved
+    #   other keys ─ deep-merged (platform augments, platform wins on conflict)
+    #
+    # Example with no overrides (auto-discovery only):
+    #   code_location_env: {}
+    #
+    # Example with overrides:
+    #   code_location_env:
+    #     my_etl:
+    #       env_config_maps: ["extra-env"]
+    #       env_vars: ["CUSTOM_VAR=value"]
+    code_location_env: {}
     instance_config_map: dagster-instance
     postgres_password_secret: dagster-postgresql-secret
     run_k8s_config:

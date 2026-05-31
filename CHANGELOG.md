@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
+## \[v1.3.1] - 2026-05-31
+
+### Changed
+
+- **Provisioner**: Bumped `luban-provisioner` to `0.4.2`.
+- **Provisioner (Templates)**: Dagster platform template now injects per-code-location ConfigMaps/Secrets and env vars into run pods via a code-location-aware run launcher (covers ad-hoc asset materializations).
+- **Dagster Code Locations (GitOps template)**: Require `<app>-secret` to exist (non-optional) to match default run pod injection behavior.
+
+### Docs
+
+- **Dagster Platform (Templates)**: Documented per-code-location run pod env injection (auto-discovery, overrides, merge rules) and `env_vars` format validation.
+
 ## \[v1.3.0] - 2026-05-26
 
 ### Added
