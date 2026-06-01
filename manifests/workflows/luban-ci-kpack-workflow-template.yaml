@@ -10,6 +10,11 @@ spec:
     runAsNonRoot: true
     runAsUser: 1000
     fsGroup: 1000
+  volumes:
+    - name: luban-ca-cert
+      secret:
+        secretName: luban-ca-cert
+        optional: true
   # Keep pods until the workflow is deleted to ensure logs are available
   podGC:
     strategy: OnWorkflowDeletion
@@ -132,6 +137,30 @@ spec:
         /usr/local/bin/kpack_wait_build.sh
 
       env:
+      - name: SSL_CERT_FILE
+        valueFrom:
+          secretKeyRef:
+            name: luban-ca-cert
+            key: ssl_cert_file
+            optional: true
+      - name: REQUESTS_CA_BUNDLE
+        valueFrom:
+          secretKeyRef:
+            name: luban-ca-cert
+            key: requests_ca_bundle
+            optional: true
+      - name: GIT_SSL_CAINFO
+        valueFrom:
+          secretKeyRef:
+            name: luban-ca-cert
+            key: git_ssl_cainfo
+            optional: true
+      - name: CURL_CA_BUNDLE
+        valueFrom:
+          secretKeyRef:
+            name: luban-ca-cert
+            key: curl_ca_bundle
+            optional: true
       - name: REGISTRY_NAMESPACE
         value: "{{inputs.parameters.namespace}}"
       - name: REPO_URL
@@ -151,6 +180,9 @@ spec:
       volumeMounts:
       - name: workdir
         mountPath: /workdir
+      - name: luban-ca-cert
+        mountPath: /var/run/luban/ca
+        readOnly: true
 
   - name: git-update
     inputs:
@@ -167,6 +199,30 @@ spec:
           cpu: "500m"
       command: [/usr/local/bin/gitops_update_repo.sh]
       env:
+      - name: SSL_CERT_FILE
+        valueFrom:
+          secretKeyRef:
+            name: luban-ca-cert
+            key: ssl_cert_file
+            optional: true
+      - name: REQUESTS_CA_BUNDLE
+        valueFrom:
+          secretKeyRef:
+            name: luban-ca-cert
+            key: requests_ca_bundle
+            optional: true
+      - name: GIT_SSL_CAINFO
+        valueFrom:
+          secretKeyRef:
+            name: luban-ca-cert
+            key: git_ssl_cainfo
+            optional: true
+      - name: CURL_CA_BUNDLE
+        valueFrom:
+          secretKeyRef:
+            name: luban-ca-cert
+            key: curl_ca_bundle
+            optional: true
       - name: REGISTRY_NAMESPACE
         value: "{{inputs.parameters.namespace}}"
       - name: GIT_USERNAME
@@ -212,3 +268,6 @@ spec:
       volumeMounts:
       - name: workdir
         mountPath: /workdir
+      - name: luban-ca-cert
+        mountPath: /var/run/luban/ca
+        readOnly: true
