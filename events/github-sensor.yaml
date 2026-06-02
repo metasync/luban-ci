@@ -25,7 +25,6 @@ spec:
                 labels:
                   app: placeholder
               spec:
-                serviceAccountName: luban-ci-sa
                 workflowTemplateRef:
                   name: luban-pipeline-dispatcher-template
                 arguments:

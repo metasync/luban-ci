@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Fixed
+- **Workflows (kpack)**: Inject optional `luban-ca-cert` CA bundle into `build-push` and `update-gitops` so Git HTTPS operations can verify on-prem TLS chains.
+- **Workflows (dispatcher)**: Stop forcing `--serviceaccount` when submitting `luban-ci-kpack-template` via `workflowTemplateRef` so submissions comply with `templateReferencing: Strict`.
 
 ### Changed
 

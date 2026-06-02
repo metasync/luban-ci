@@ -72,7 +72,7 @@ data:
 
   # Tooling Images
   luban_provisioner_image: "quay.io/luban-ci/luban-provisioner:0.4.2"
-  gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.4.1"
+  gitops_utils_image: "quay.io/luban-ci/gitops-utils:0.4.2"
 
   # Python Package Index (Optional)
   # python_index_url: "https://devpi.luban-ci.io/root/pypi"

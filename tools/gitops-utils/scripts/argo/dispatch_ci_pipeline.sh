@@ -185,7 +185,6 @@ fi
 argo submit \
   --from clusterworkflowtemplate/luban-ci-kpack-template \
   -n "$TARGET_NS" \
-  --serviceaccount workflow-runner \
   -p repo_url="$REPO_URL" \
   -p registry_namespace="$NAMESPACE_SCOPE" \
   -p revision="$REVISION" \
