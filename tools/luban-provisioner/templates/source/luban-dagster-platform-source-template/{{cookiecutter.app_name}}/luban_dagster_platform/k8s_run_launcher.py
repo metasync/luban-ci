@@ -31,10 +31,7 @@ class CodeLocationAwareK8sRunLauncher(K8sRunLauncher):
         base_config_type = DagsterK8sJobConfig.config_type_run_launcher()
         base_fields: Mapping[str, Field] | None = getattr(base_config_type, "fields", None)
         if not base_fields:
-            raise ValueError(
-                "DagsterK8sJobConfig.config_type_run_launcher() did not expose fields; refusing to fall back to Permissive() "
-                "because it disables StringSource resolution (e.g. env:). Update CodeLocationAwareK8sRunLauncher.config_type."
-            )
+            return Permissive()
 
         code_location_env_schema = Field(
             Map(
@@ -56,14 +53,12 @@ class CodeLocationAwareK8sRunLauncher(K8sRunLauncher):
     @classmethod
     def from_config_value(cls, inst_data, config_value):
         config_value = dict(config_value)
-        if isinstance(config_value.get("job_namespace"), Mapping):
-            raise ValueError(
-                "job_namespace config did not resolve to a string (expected StringSource resolution)."
-            )
-        if isinstance(config_value.get("dagster_home"), Mapping):
-            raise ValueError(
-                "dagster_home config did not resolve to a string (expected StringSource resolution)."
-            )
+        config_value["job_namespace"] = _resolve_env_string_source(
+            config_value.get("job_namespace"), "job_namespace"
+        )
+        config_value["dagster_home"] = _resolve_env_string_source(
+            config_value.get("dagster_home"), "dagster_home"
+        )
         if config_value.get("dagster_home") is None:
             config_value["dagster_home"] = os.getenv("DAGSTER_HOME")
         if config_value.get("dagster_home") is None:
@@ -187,6 +182,25 @@ def _parse_env_var(env_var: str) -> Mapping[str, str]:
             f"Invalid env var entry: {env_var!r}. Name must match [A-Za-z_][A-Za-z0-9_]*."
         )
     return {"name": name, "value": value}
+
+
+def _resolve_env_string_source(value: Any, field_name: str) -> Any:
+    if not isinstance(value, Mapping):
+        return value
+
+    env_var = value.get("env")
+    if not isinstance(env_var, str) or not env_var:
+        return value
+
+    resolved = os.getenv(env_var)
+    if resolved is not None:
+        return resolved
+
+    default = value.get("default")
+    if isinstance(default, str):
+        return default
+
+    raise ValueError(f"{field_name} references env var {env_var!r} but it is not set")
 
 
 def _validate_code_location_env(code_location_env: Mapping[str, Any]) -> None:
