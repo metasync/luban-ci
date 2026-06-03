@@ -10,14 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Fixed
+
+### Changed
+
+### Docs
+
+## \[v1.3.2] - 2026-06-01
+
+### Fixed
 - **Workflows (kpack)**: Inject optional `luban-ca-cert` CA bundle into `build-push` and `update-gitops` so Git HTTPS operations can verify on-prem TLS chains (`gitops-utils:0.4.3`).
 - **Workflows (dispatcher)**: Stop forcing `--serviceaccount` when submitting `luban-ci-kpack-template` via `workflowTemplateRef` so submissions comply with `templateReferencing: Strict` (`gitops-utils:0.4.3`, `argo` CLI v4.0.5).
 - **Dagster Platform (Source template)**: Allow `run_launcher.job_namespace` and `run_launcher.dagster_home` to be configured via `env:` so ad-hoc asset materializations work with `CodeLocationAwareK8sRunLauncher` (`luban-provisioner:0.4.4`).
 
 ### Changed
 - **Tooling Images**: Bumped `gitops-utils` to `0.4.3` and `luban-provisioner` to `0.4.4`.
-
-### Docs
 
 ## \[v1.3.1] - 2026-05-31
 
