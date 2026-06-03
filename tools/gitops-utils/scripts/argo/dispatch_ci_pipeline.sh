@@ -158,6 +158,9 @@ DEPLOY_ENV="snd"
 if ! kubectl get namespace "$TARGET_NS" >/dev/null 2>&1; then
   die "Error: Target namespace '$TARGET_NS' not found. Provision the tenant CI namespace first."
 fi
+if ! kubectl -n "$TARGET_NS" get sa workflow-runner >/dev/null 2>&1; then
+  die "Error: ServiceAccount 'workflow-runner' not found in '$TARGET_NS'. Provision tenant CI infra first."
+fi
 
 echo "Dispatching CI pipeline for ${APP_NAME} to ${TARGET_NS} (GitOps Env: ${DEPLOY_ENV})..."
 

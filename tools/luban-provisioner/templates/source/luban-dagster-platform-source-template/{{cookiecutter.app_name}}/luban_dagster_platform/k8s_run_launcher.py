@@ -1,3 +1,4 @@
+import os
 import json
 import re
 from collections.abc import Mapping, Sequence
@@ -30,7 +31,10 @@ class CodeLocationAwareK8sRunLauncher(K8sRunLauncher):
         base_config_type = DagsterK8sJobConfig.config_type_run_launcher()
         base_fields: Mapping[str, Field] | None = getattr(base_config_type, "fields", None)
         if not base_fields:
-            return Permissive()
+            raise ValueError(
+                "DagsterK8sJobConfig.config_type_run_launcher() did not expose fields; refusing to fall back to Permissive() "
+                "because it disables StringSource resolution (e.g. env:). Update CodeLocationAwareK8sRunLauncher.config_type."
+            )
 
         code_location_env_schema = Field(
             Map(
@@ -51,6 +55,19 @@ class CodeLocationAwareK8sRunLauncher(K8sRunLauncher):
 
     @classmethod
     def from_config_value(cls, inst_data, config_value):
+        config_value = dict(config_value)
+        if isinstance(config_value.get("job_namespace"), Mapping):
+            raise ValueError(
+                "job_namespace config did not resolve to a string (expected StringSource resolution)."
+            )
+        if isinstance(config_value.get("dagster_home"), Mapping):
+            raise ValueError(
+                "dagster_home config did not resolve to a string (expected StringSource resolution)."
+            )
+        if config_value.get("dagster_home") is None:
+            config_value["dagster_home"] = os.getenv("DAGSTER_HOME")
+        if config_value.get("dagster_home") is None:
+            raise ValueError("dagster_home is required (set run_launcher.dagster_home or DAGSTER_HOME)")
         return cls(inst_data=inst_data, **config_value)
 
     def _get_code_location_for_run(self, run: DagsterRun) -> str:

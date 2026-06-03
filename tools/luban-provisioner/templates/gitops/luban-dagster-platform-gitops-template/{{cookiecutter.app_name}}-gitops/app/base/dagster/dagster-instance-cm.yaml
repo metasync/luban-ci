@@ -13,6 +13,8 @@ run_launcher:
     service_account_name: "{{cookiecutter.app_name}}-sa"
     job_namespace:
       env: DAGSTER_K8S_PIPELINE_RUN_NAMESPACE
+    dagster_home:
+      env: DAGSTER_HOME
     image_pull_policy: Always
     env_config_maps:
       - dagster-env
