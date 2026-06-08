@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
+## \[v1.3.3] - 2026-06-03
+
+### Fixed
+- **Workflows (Dagster code locations)**: Mount optional `luban-ca-cert` and inject `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `GIT_SSL_CAINFO` for `register-code-location` so Git HTTPS clone can verify internal TLS chains.
+- **Workflows (project setup)**: Mount optional `luban-ca-cert` and inject `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `GIT_SSL_CAINFO` so Git HTTPS operations can verify internal TLS chains.
+- **Workflows (cleanup)**: Remove unused `luban-ca-cert` volume declarations from templates that do not mount or use the CA bundle.
+
 ## \[v1.3.2] - 2026-06-01
 
 ### Fixed

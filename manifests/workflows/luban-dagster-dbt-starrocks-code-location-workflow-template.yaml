@@ -246,6 +246,24 @@ spec:
               secretKeyRef:
                 name: "{{inputs.parameters.git_provider}}-creds"
                 key: token
+          - name: SSL_CERT_FILE
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: ssl_cert_file
+                optional: true
+          - name: REQUESTS_CA_BUNDLE
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: requests_ca_bundle
+                optional: true
+          - name: GIT_SSL_CAINFO
+            valueFrom:
+              secretKeyRef:
+                name: luban-ca-cert
+                key: git_ssl_cainfo
+                optional: true
           - name: AZURE_DEVOPS_API_VERSION
             valueFrom:
               configMapKeyRef:
@@ -275,3 +293,7 @@ spec:
               configMapKeyRef:
                 name: luban-config
                 key: "{{inputs.parameters.git_provider}}_server"
+        volumeMounts:
+          - name: luban-ca-cert
+            mountPath: /var/run/luban/ca
+            readOnly: true
