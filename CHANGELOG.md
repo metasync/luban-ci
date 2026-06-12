@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Fixed
+- **Workflows (Dagster platform setup)**: Add optional `luban-ca-cert` volume to `luban-dagster-platform-setup-template` so `templateRef` tasks that mount the CA bundle pass Argo volume validation.
 
 ### Changed
 
